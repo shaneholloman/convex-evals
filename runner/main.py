@@ -1,4 +1,6 @@
 import os
+import re
+import json
 import sys
 import time
 import requests
@@ -8,9 +10,10 @@ from bs4 import BeautifulSoup
 import subprocess
 from convex_backend import deploy
 from generate import generate
-from typescript import setup_js, lint_js
+from typescript import setup_js, lint_js, typecheck_js
 import argparse
 import concurrent.futures
+from errors import error_status
 
 def generate_test(input_dir: str, output_root: str, client: Anthropic):
     output_dir = os.path.join(output_root, input_dir)
@@ -27,7 +30,8 @@ if __name__ == "__main__":
     parser.add_argument('--test-filter', '-k', help='Filter tests by regexp')
     parser.add_argument('--skip-generation', '-g', action='store_true', help='Skip generation')
     parser.add_argument('--skip-evaluation', '-e', action='store_true', help='Skip evaluation')
-    parser.add_argument('--concurrency', '-c', help='Concurrency', default=4)
+    parser.add_argument('--concurrency', '-c', help='Concurrency', default=4) 
+    parser.add_argument('--report', help="Path for writing report JSON file")
     
     args = parser.parse_args()
 
@@ -41,6 +45,7 @@ if __name__ == "__main__":
     evals_dir = args.evals_dir
     output_dir = args.output_dir
     concurrency = int(args.concurrency)
+    report_path = args.report
 
     test_filter = re.compile(args.test_filter) if args.test_filter else None
     tests = [
@@ -78,18 +83,52 @@ if __name__ == "__main__":
 
     if do_evaluation:
         any_failed = False
+        report = []
         for (category, test) in tests:
             print(f"Evaluating {category}/{test}...")
-            test_output_dir = os.path.join(output_dir, 'evals', category, test)
-            try:            
+            test_output_dir = os.path.join(output_dir, 'evals', category, test)            
+            report_entry = {
+                "category": category,
+                "test": test,
+            }            
+            all_ok = True
+            try:
                 setup_js(test_output_dir)    
-                lint_js(test_output_dir)
-                deploy(test_output_dir)
-                print(f"Evaluation of {category}/{test} succeeded")
-            except Exception as e:
-                print(f"Error evaluating {category}/{test}: {e}")
+                report_entry["setup"] = { "status": "ok" }                
+            except Exception as e:                
+                report_entry["setup"] = { "status": "failed", "error": str(e) }
+                all_ok = False
+
+            if report_entry["setup"]["status"] == "ok":
+                try:
+                    typecheck_js(test_output_dir)
+                    report_entry["typecheck"] = { "status": "ok" }
+                except Exception as e:
+                    report_entry["typecheck"] = error_status(e)
+                    all_ok = False
+
+                try:
+                    lint_js(test_output_dir)
+                    report_entry["lint"] = { "status": "ok" }
+                except Exception as e:
+                    report_entry["lint"] = error_status(e)
+                    all_ok = False
+
+                try:
+                    deploy(test_output_dir)
+                    report_entry["deploy"] = { "status": "ok" }
+                except Exception as e:
+                    report_entry["deploy"] = error_status(e)
+                    all_ok = False
+
+            report.append(report_entry)
+            if not all_ok:
                 any_failed = True
-                
+
+        if report_path:
+            with open(report_path, "w") as f:
+                json.dump(report, f)
+
         if any_failed:
             raise Exception("Evaluation failed.")
 
