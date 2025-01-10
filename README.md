@@ -7,6 +7,9 @@
 - deploys fine
 
 
+- valid package.json
+- valid convex version
+
 
 - Pitfalls
   - Old function syntax
@@ -29,3 +32,9 @@
 - Succinctness vs. "large scale"    
   - public functions should have argument + return validators
   - only use internal functions for `ctx.run*` and `ctx.scheduler`  
+
+```
+pip install pdm
+pdm run python runner/main.py <test_dir>
+
+
