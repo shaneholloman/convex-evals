@@ -1,0 +1,3 @@
+Create a backend with only two HTTP routes. Serve the text "there" concatenated
+onto the request body for GETs at `/api/hello`. Serve an empty response for POSTs 
+at `/api/messages/*`.

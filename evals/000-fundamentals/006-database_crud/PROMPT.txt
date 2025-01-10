@@ -1,0 +1,43 @@
+Create a backend for a database CRUD system that manages location data.
+
+Use the following schema at `convex/schema.ts`:
+```ts
+import { v } from "convex/values";
+import { defineSchema, defineTable } from "convex/server";
+
+export default defineSchema({
+    locations: defineTable({
+        name: v.string(),
+        latitude: v.number(),
+        longitude: v.number(),
+    })
+})
+```
+
+Implement the following functions in `convex/public.ts`:
+
+1. Create a mutation `createLocation` that:
+   - Takes name (string), latitude (number), and longitude (number) as arguments
+   - Inserts a new location into the "locations" table
+   - Returns the new location's ID
+
+2. Create a query `readLocation` that:
+   - Takes a location ID as an argument
+   - Returns either null or an object containing the location's name, latitude, and longitude
+   - Use proper union typing for the return value
+
+3. Create a mutation `updateLocation` that:
+   - Takes an ID and full location data (name, latitude, longitude)
+   - Replaces the existing location with new data
+   - Throws an error if the location doesn't exist
+   - Returns null
+
+4. Create a mutation `patchLocation` that:
+   - Takes an ID and optional location fields (name, latitude, longitude)
+   - Updates only the provided fields
+   - Returns null
+
+5. Create a mutation `deleteLocation` that:
+   - Takes a location ID
+   - Deletes the location from the database
+   - Returns null

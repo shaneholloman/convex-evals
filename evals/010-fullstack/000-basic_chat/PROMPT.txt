@@ -1,6 +1,0 @@
-Create a backend for a basic chat app without authentication. The app should have the following features:
-- Users can create, rename, and delete channels.
-- Users can post messages to a channel.
-- Users can list messages in the channel in reverse chronological order.
-- Users can react to messages with a single emoji.
-
