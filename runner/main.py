@@ -8,13 +8,14 @@ from bs4 import BeautifulSoup
 import subprocess
 from convex_backend import deploy
 from generate import generate
-from typescript import setup_js
+from typescript import setup_js, lint_js
 
 def run_test(input_dir: str, output_root: str, client: Anthropic):
     output_dir = os.path.join(output_root, input_dir)
     os.makedirs(output_dir, exist_ok=True)    
     generate(input_dir, output_dir, client)
     setup_js(output_dir)    
+    lint_js(output_dir)
     deploy(output_dir)
 
 if __name__ == "__main__":

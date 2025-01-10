@@ -1,0 +1,10 @@
+Write a backend that has six empty functions in `public.ts`:
+
+1. A public query called `emptyPublicQuery`.
+2. A public mutation called `emptyPublicMutation`.
+3. A public action called `emptyPublicAction`.
+4. A private query called `emptyPrivateQuery`.
+5. A private mutation called `emptyPrivateMutation`.
+6. A private action called `emptyPrivateAction`.
+
+All six of these functions take in no arguments and return null.

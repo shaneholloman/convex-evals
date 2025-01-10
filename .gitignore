@@ -179,3 +179,4 @@ dist
 **/convex/_generated
 output/
 __pycache__/
+convex-local-backend

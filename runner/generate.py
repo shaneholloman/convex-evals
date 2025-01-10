@@ -92,6 +92,8 @@ After your analysis, generate the necessary files for a Convex backend that impl
      });
      ```
    - Use 2 spaces for code indentation.
+   - Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
+   - Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(id)` on each one.
 
 4. Best Practices:
    - Ensure your code is clear, efficient, concise, and innovative.

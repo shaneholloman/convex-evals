@@ -1,0 +1,5 @@
+Create a backend that has only a schema and no functions. The schema
+should contain exactly two tables: `users` and `messages`. The users
+table should only have a single field: `name`, which is a string. The
+messages table should have two fields: `text`, which is a string, and
+`authorName`, which is also a string.

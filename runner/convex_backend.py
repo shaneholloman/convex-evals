@@ -1,6 +1,7 @@
 import os
 import subprocess
 import requests
+import time 
 
 def deploy(output_dir: str):
     project_dir = os.path.abspath(os.path.join(output_dir, 'project'))
@@ -28,15 +29,30 @@ def deploy(output_dir: str):
         cwd=backend_dir,
         stdout=open(os.path.join(backend_dir, 'backend.stdout.log'), 'w'),
         stderr=open(os.path.join(backend_dir, 'backend.stderr.log'), 'w')
-    )    
+    )        
     try:
         # Do a health check and then make sure that *our* process is still running.
-        requests.get('http://localhost:3210/version').raise_for_status()    
+        health_check()    
         if convex_process.poll() is not None:
             raise ValueError("Convex process failed to start")        
         subprocess.check_call(
             ['bunx', 'convex', 'dev', '--once', '--admin-key', admin_key, '--url', 'http://localhost:3210'],
             cwd=project_dir,
         )                
+        print("Deploy OK!")
     finally:
         convex_process.terminate()
+
+def health_check():
+    deadline = time.time() + 10
+    num_attempts = 0
+    while True:
+        try:
+            requests.get('http://localhost:3210/version').raise_for_status()
+            return True
+        except Exception as e:
+            remaining = deadline - time.time()
+            if remaining < 0:
+                raise e
+            time.sleep(min(0.1 * (2 ** num_attempts), remaining))
+            num_attempts += 1            
