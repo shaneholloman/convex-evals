@@ -1,0 +1,7 @@
+Create a schema file that has a single table `messages` with:
+1. content: string
+2. author_email: string
+3. sent_at: number
+
+Add an index so I can efficiently query all of the messages for a given author that were
+sent in a given time range.

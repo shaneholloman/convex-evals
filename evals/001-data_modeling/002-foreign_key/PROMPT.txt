@@ -1,0 +1,10 @@
+Create a schema file for a table called `example` that
+has two tables. The first table is called `users` and
+contains the following fields:
+- name: string
+- email_addresses: string[]
+
+The second table is called `posts` and has:
+- title: string
+- author: Id<"users">
+- content: string

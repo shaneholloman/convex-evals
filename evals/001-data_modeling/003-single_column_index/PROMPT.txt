@@ -1,0 +1,5 @@
+Create a schema file that has a single table `messages` with:
+1. content: string
+2. author_email: string
+
+Please add an index so I can efficiently find all of the messages for a given author.

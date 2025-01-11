@@ -58,7 +58,7 @@ if __name__ == "__main__":
         if os.path.isdir(os.path.join(evals_dir, category))
         for test in os.listdir(os.path.join(evals_dir, category))
         if os.path.isdir(os.path.join(evals_dir, category, test))
-        if test_filter is None or test_filter.match(test)
+        if test_filter is None or test_filter.match(f"{category}/{test}")
     ]  
     tests.sort()
 

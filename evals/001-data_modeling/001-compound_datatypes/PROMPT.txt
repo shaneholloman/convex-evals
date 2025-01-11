@@ -1,0 +1,8 @@
+Create a schema file for a table called `example` that
+contains fields with the following types:
+- a: { artist: number, tags: string[] }
+- b: { x: number, y: number }[]
+- c: Record<Id<"example">, { z: bytes }>
+- d: Record<string, string>
+- e: A discriminated union of `{ type: "a", value: number }` and `{ type: "b", value: string }`
+- f: A union of strings and numbers

@@ -1,0 +1,11 @@
+Create a schema file for a table called `example` that
+contains fields with the following types:
+- a: null
+- b: number
+- c: float64
+- d: bigint
+- e: int64
+- f: boolean
+- g: string
+- h: bytes
+- i: any
