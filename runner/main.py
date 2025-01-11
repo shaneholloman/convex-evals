@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run tests with specified input and output directories')    
     parser.add_argument('--force', '-f', action='store_true', help='Overwrite output directory if it exists')
     parser.add_argument("--evals-dir", help="Evals directory", default="evals")
-    parser.add_argument("--output-dir", help="Output directory", default="output")
+    parser.add_argument("--output-dir", help="Output directory")
     parser.add_argument('--test-filter', '-k', help='Filter tests by regexp')
     parser.add_argument('--skip-generation', '-g', action='store_true', help='Skip generation')
     parser.add_argument('--skip-evaluation', '-e', action='store_true', help='Skip evaluation')
@@ -44,6 +44,10 @@ if __name__ == "__main__":
     do_evaluation = not args.skip_evaluation
     evals_dir = args.evals_dir
     output_dir = args.output_dir
+    if not output_dir:
+        git_rev = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+        output_dir = f"output-{git_rev}"
+
     concurrency = int(args.concurrency)
     report_path = args.report
 
