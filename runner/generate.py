@@ -79,41 +79,43 @@ After your analysis, generate the necessary files for a Convex backend that impl
 
   <general_coding_standards>
     - Use 2 spaces for code indentation.
+    - Ensure your code is clear, efficient, concise, and innovative.
+    - Maintain a friendly and approachable tone in any comments or documentation.    
   </general_coding_standards>
 
   <guidelines>
     <function_guidelines>
         <new_function_syntax>
-        ALWAYS use the new function syntax for Convex functions. For example:
-        ```typescript
-        import { query } from "./_generated/server";
-        import { v } from "convex/values";
-        export const f = query({
-            args: {},
-            returns: v.null(),
-            handler: async (ctx, args) => {
-            // Function body
-            },
-        });
-        ```
+            ALWAYS use the new function syntax for Convex functions. For example:
+            ```typescript
+            import { query } from "./_generated/server";
+            import { v } from "convex/values";
+            export const f = query({
+                args: {},
+                returns: v.null(),
+                handler: async (ctx, args) => {
+                // Function body
+                },
+            });
+            ```
         </new_function_syntax>
         <http_endpoint_syntax>
-        HTTP endpoints are defined in `convex/http.ts` and require an `httpAction` decorator. For example:
-        ```typescript
-        import { httpRouter } from "convex/server";
-        import { httpAction } from "./_generated/server";
-        const http = httpRouter();
-        http.route({
-            path: "/echo",
-            method: "POST",
-            handler: httpAction(async (ctx, req) => {
-            const body = await req.bytes();
-            return new Response(body, { status: 200 });
-            }),
-        });
-        ```
-        For simple HTTP routes, define the handler directly within the route definition.
-        </http_endpoint_syntax>
+            HTTP endpoints are defined in `convex/http.ts` and require an `httpAction` decorator. For example:
+            ```typescript
+            import { httpRouter } from "convex/server";
+            import { httpAction } from "./_generated/server";
+            const http = httpRouter();
+            http.route({
+                path: "/echo",
+                method: "POST",
+                handler: httpAction(async (ctx, req) => {
+                const body = await req.bytes();
+                return new Response(body, { status: 200 });
+                }),
+            });
+            ```
+            For simple HTTP routes, define the handler directly within the route definition.
+        </http_endpoint_syntax>        
         <function_calling>
             - Use `ctx.runQuery` to call a query from a mutation or action.
             - Use `ctx.runMutation` to call a mutation from an action.
@@ -121,18 +123,30 @@ After your analysis, generate the necessary files for a Convex backend that impl
               and mutations are transactions, so splitting logic up into multiple calls introduces
               the risk of race conditions.
             - Use `ctx.runAction` to call an action from an action. ONLY call an action from another
-            action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the
-            shared code into a helper async function and call that directly instead.        
-            - All of these calls take in a `FunctionReference` from the `api` and `internal` objects
-              defined by the framework in `convex/_generated/api.ts`. If you're calling a public
-              function (i.e. one defined with `query`, `mutation`, or `action`), use the `api` object.
-              If you're calling an internal function (i.e. one defined with `internalQuery`, 
-              `internalMutation`, or `internalAction`), use the `internal` object. Do NOT try to
-              pass the callee function directly into one of these calls.
+              action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the
+              shared code into a helper async function and call that directly instead.        
+            - All of these calls take in a `FunctionReference` Do NOT try to pass the callee 
+              function directly into one of these calls.
         </function_calling>
+        <function_references>
+            - Function references are pointers to registered Convex functions.
+            - Use the `api` object defined by the framework in `convex/_generated/api.ts` to call public functions
+              registered with `query`, `mutation`, or `action`.
+            - Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal 
+              (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.              
+            - Convex uses file-based routing, so a public function defined in `convex/public.ts` named `f` has
+              a function reference of `api.public.f`.
+            - A private function defined in `convex/private.ts` named `g` has a function reference of 
+              `internal.private.g`.
+            - Functions can also registered within directories nested within the `convex/` folder. For example,
+              a public function `h` defined in `convex/messages/access.ts` has a function reference of
+              `api.messages.access.h`.
+        </function_references>
         <api_design>
-        - Convex uses file-based routing, so thoughtfully organize files with public query, mutation,
-            or action functions within the `convex/` directory.
+            - Convex uses file-based routing, so thoughtfully organize files with public query, mutation,
+                or action functions within the `convex/` directory.
+            - Use `query`, `mutation`, and `action` to define public functions.
+            - Use `internalQuery`, `internalMutation`, and `internalAction` to define private, internal functions.
         </api_design>
     </function_guidelines>
     <schema_guidelines>
@@ -158,11 +172,6 @@ After your analysis, generate the necessary files for a Convex backend that impl
         - Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist.
     </mutation_guidelines>
 </guidelines>
-
-<best_practices>
-  - Ensure your code is clear, efficient, concise, and innovative.
-  - Maintain a friendly and approachable tone in any comments or documentation.
-</best_practices>
 
 Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.
 """    
