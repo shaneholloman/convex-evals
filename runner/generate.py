@@ -135,9 +135,23 @@ After your analysis, generate the necessary files for a Convex backend that impl
             or action functions within the `convex/` directory.
         </api_design>
     </function_guidelines>
+    <schema_guidelines>
+        - Always define your schema in `convex/schema.ts`.
+        - Always import the schema definition functions from `convex/server`:
+          ```typescript
+          import { defineSchema, defineTable } from "convex/server";
+          import { v } from "convex/values";
+
+          export default defineSchema({
+            exampleTable: defineTable({
+              exampleField: v.string(),
+            }),
+          });
+          ```        
+    </schema_guidelines>
     <query_guidelines>
         - Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
-        - Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(id)` on each one.
+        - Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(row._id)` on each result.
     </query_guidelines>
     <mutation_guidelines>
         - Use `ctx.db.replace` to fully replace an existing document. This method will throw an error if the document does not exist.
