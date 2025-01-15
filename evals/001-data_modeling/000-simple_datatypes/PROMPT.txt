@@ -9,3 +9,5 @@ contains fields with the following types:
 - g: string
 - h: bytes
 - i: any
+
+Only create the `convex/schema.ts` file. Do NOT create any functions.

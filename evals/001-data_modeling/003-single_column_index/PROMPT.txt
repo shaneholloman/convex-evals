@@ -3,3 +3,5 @@ Create a schema file that has a single table `messages` with:
 2. author_email: string
 
 Please add an index so I can efficiently find all of the messages for a given author.
+
+Only create the `convex/schema.ts` file. Do NOT create any functions.

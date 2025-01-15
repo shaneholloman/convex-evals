@@ -8,3 +8,5 @@ The second table is called `posts` and has:
 - title: string
 - author: Id<"users">
 - content: string
+
+Only create the `convex/schema.ts` file. Do NOT create any functions.

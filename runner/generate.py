@@ -83,7 +83,7 @@ After your analysis, generate the necessary files for a Convex backend that impl
     - Maintain a friendly and approachable tone in any comments or documentation.    
   </general_coding_standards>
 
-  <guidelines>
+  <convex_guidelines>
     <function_guidelines>
         <new_function_syntax>
             ALWAYS use the new function syntax for Convex functions. For example:
@@ -149,6 +149,9 @@ After your analysis, generate the necessary files for a Convex backend that impl
             - Use `internalQuery`, `internalMutation`, and `internalAction` to define private, internal functions.
         </api_design>
     </function_guidelines>
+    <validator_guidelines>
+        - `v.bigint()` is deprecated for representing signed 64-bit integers. Use `v.int64()` instead.
+    </validator_guidelines>
     <schema_guidelines>
         - Always define your schema in `convex/schema.ts`.
         - Always import the schema definition functions from `convex/server`:
@@ -161,7 +164,7 @@ After your analysis, generate the necessary files for a Convex backend that impl
               exampleField: v.string(),
             }),
           });
-          ```        
+          ```                  
     </schema_guidelines>
     <query_guidelines>
         - Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
@@ -171,7 +174,7 @@ After your analysis, generate the necessary files for a Convex backend that impl
         - Use `ctx.db.replace` to fully replace an existing document. This method will throw an error if the document does not exist.
         - Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist.
     </mutation_guidelines>
-</guidelines>
+</convex_guidelines>
 
 Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.
 """    
