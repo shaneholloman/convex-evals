@@ -33,8 +33,7 @@ if __name__ == "__main__":
     parser.add_argument('--test-filter', '-k', help='Filter tests by regexp')
     parser.add_argument('--skip-generation', '-g', action='store_true', help='Skip generation')
     parser.add_argument('--skip-evaluation', '-e', action='store_true', help='Skip evaluation')
-    parser.add_argument('--concurrency', '-c', help='Concurrency', default=4) 
-    parser.add_argument('--report', help="Path for writing report JSON file")
+    parser.add_argument('--concurrency', '-c', help='Concurrency', default=4)     
     parser.add_argument('--model', help="Model to use for generation", default="claude-3-5-sonnet-latest")
 
     args = parser.parse_args()    
@@ -58,7 +57,7 @@ if __name__ == "__main__":
         output_dir = f"output-{args.model}-{git_rev}"
 
     concurrency = int(args.concurrency)
-    report_path = args.report
+    report_path = os.path.join(output_dir, "report.json")
 
     test_filter = re.compile(args.test_filter) if args.test_filter else None
     tests = [
@@ -138,9 +137,8 @@ if __name__ == "__main__":
             if not all_ok:
                 any_failed = True
 
-        if report_path:
-            with open(report_path, "w") as f:
-                json.dump(report, f)
+        with open(report_path, "w") as f:
+            json.dump(report, f)
 
         if any_failed:
             raise Exception("Evaluation failed.")

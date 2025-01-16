@@ -13,20 +13,22 @@ pdm install
 npm install -g bun
 bun install
 
-cat "ANTHROPIC_API_KEY=<your ANTHROPIC_API_KEY>" > .env
+echo "ANTHROPIC_API_KEY=<your ANTHROPIC_API_KEY>" > .env
+echo "OPENAI_API_KEY=<your OPENAI_API_KEY>" >> .env
 
-pdm run python runner/main.py 
+pdm run python runner/main.py --model=claude-3-5-sonnet-latest
 ```
 
 If you'd like to grade the evaluations again without regenerating them, run:
 ```
 pdm run python runner/main.py --skip-generation
 ```
+Grading writes out a JSON report in the output directory.
 
-You can also write out a JSON report for pretty printing:
+You can also pretty print the report:
 ```
-pdm run python runner/main.py --report=/tmp/report.json
-pdm run python print_report.py /tmp/report.json
+pdm run python runner/main.py --output-dir=output
+pdm run python print_report.py output/report.json
 ```
 
 ## Creating a new evaluation
