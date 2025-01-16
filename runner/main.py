@@ -14,11 +14,13 @@ from typescript import setup_js, lint_js, typecheck_js
 import argparse
 import concurrent.futures
 from errors import error_status
+from models.anthropic import AnthropicModel
+from models import ConvexCodegenModel
 
-def generate_test(input_dir: str, output_root: str, client: Anthropic):
+def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
     output_dir = os.path.join(output_root, input_dir)
     os.makedirs(output_dir, exist_ok=True)    
-    generate(input_dir, output_dir, client)    
+    generate(input_dir, output_dir, model)    
 
 if __name__ == "__main__":
     load_dotenv()
@@ -32,16 +34,20 @@ if __name__ == "__main__":
     parser.add_argument('--skip-evaluation', '-e', action='store_true', help='Skip evaluation')
     parser.add_argument('--concurrency', '-c', help='Concurrency', default=4) 
     parser.add_argument('--report', help="Path for writing report JSON file")
-    
-    args = parser.parse_args()
+    parser.add_argument('--model', help="Model to use for generation", default="claude-3-5-sonnet-latest")
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if api_key is None:
-        raise ValueError("ANTHROPIC_API_KEY is not set")
-    client = Anthropic(api_key=api_key)
+    args = parser.parse_args()    
 
     do_generation = not args.skip_generation
     do_evaluation = not args.skip_evaluation
+
+    model = None
+    if do_generation:
+        if args.model == "claude-3-5-sonnet-latest":
+            model = AnthropicModel("claude-3-5-sonnet-latest")
+        else:
+            raise ValueError(f"Unknown model: {args.model}")
+
     evals_dir = args.evals_dir
     output_dir = args.output_dir
     if not output_dir:
