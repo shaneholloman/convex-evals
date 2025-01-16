@@ -1,14 +1,15 @@
 import openai
 import os
-from . import ConvexCodegenModel, SYSTEM_PROMPT    
+from . import ConvexCodegenModel, SYSTEM_PROMPT
 import re
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
 
+
 class OpenAIModel(ConvexCodegenModel):
     def __init__(self, model: str):
-        assert model in ["gpt-4o", "gpt-4o-mini", 'o1', 'o1-mini']
-        self.chain_of_thought = 'o1' not in model
+        assert model in ["gpt-4o", "gpt-4o-mini", "o1", "o1-mini"]
+        self.chain_of_thought = "o1" not in model
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set")
@@ -16,13 +17,13 @@ class OpenAIModel(ConvexCodegenModel):
         self.client = openai.OpenAI(api_key=api_key)
         self.model = model
 
-    def generate(self, prompt: str):      
-        if self.chain_of_thought:            
+    def generate(self, prompt: str):
+        if self.chain_of_thought:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": 'system', "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt(prompt, self.chain_of_thought)}
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt(prompt, self.chain_of_thought)},
                 ],
                 max_tokens=16384,
             )
@@ -31,8 +32,8 @@ class OpenAIModel(ConvexCodegenModel):
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": 'user', "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt(prompt, self.chain_of_thought)}
+                    {"role": "user", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt(prompt, self.chain_of_thought)},
                 ],
                 max_completion_tokens=16384,
             )
@@ -41,31 +42,32 @@ class OpenAIModel(ConvexCodegenModel):
     def _parse_response(self, response: str):
         md = MarkdownIt()
         tokens = md.parse(response)
-        
+
         files = {}
         current_file = None
         in_files_section = False
         code_lang = None
-        
+
         for i, token in enumerate(tokens):
-            if token.type == 'heading_open' and token.tag == 'h1':
+            if token.type == "heading_open" and token.tag == "h1":
                 title_token = tokens[i + 1]
-                if title_token.content == 'Files':
+                if title_token.content == "Files":
                     in_files_section = True
                     continue
-            
+
             if not in_files_section:
                 continue
-                
-            if token.type == 'heading_open' and token.tag == 'h2':
+
+            if token.type == "heading_open" and token.tag == "h2":
                 title_token = tokens[i + 1]
                 current_file = title_token.content.strip()
-            elif token.type == 'fence' and current_file:
+            elif token.type == "fence" and current_file:
                 code_lang = token.info
                 files[current_file] = token.content.strip()
                 current_file = None
-                
+
         return files
+
 
 TASK_INSTRUCTION = """
 Your task is to generate a Convex backend based on the following task description:
@@ -223,19 +225,22 @@ For simple HTTP routes, define the handler directly within the route definition.
 - Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist.
 """
 
+
 def chain_of_thought_prompt(prompt: str):
     yield TASK_INSTRUCTION % prompt
     yield CHAIN_OF_THOUGHT_ANALYSIS_INSTRUCTION
     yield GUIDELINES_INSTRUCTION
     yield "Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend."
 
+
 def reasoning_prompt(prompt: str):
     yield TASK_INSTRUCTION % prompt
     yield REASONING_ANALYSIS_INSTRUCTION
     yield GUIDELINES_INSTRUCTION
 
-def user_prompt(prompt: str, chain_of_thought: bool = True):    
+
+def user_prompt(prompt: str, chain_of_thought: bool = True):
     if chain_of_thought:
-        return '\n'.join(chain_of_thought_prompt(prompt))
+        return "\n".join(chain_of_thought_prompt(prompt))
     else:
-        return '\n'.join(reasoning_prompt(prompt))
+        return "\n".join(reasoning_prompt(prompt))

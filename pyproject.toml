@@ -13,3 +13,13 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+
+[dependency-groups]
+dev = [
+    "black>=24.10.0",
+]

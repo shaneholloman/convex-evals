@@ -1,58 +1,74 @@
 import os
 import subprocess
 import requests
-import time 
+import time
+
 
 def deploy(output_dir: str):
-    project_dir = os.path.abspath(os.path.join(output_dir, 'project'))
+    project_dir = os.path.abspath(os.path.join(output_dir, "project"))
 
-    backend_dir = os.path.join(output_dir, 'backend')
+    backend_dir = os.path.join(output_dir, "backend")
     os.makedirs(backend_dir, exist_ok=True)
 
-    storage_dir = os.path.abspath(os.path.join(backend_dir, 'convex_local_storage'))
+    storage_dir = os.path.abspath(os.path.join(backend_dir, "convex_local_storage"))
     os.makedirs(storage_dir, exist_ok=True)
-    sqlite_path = os.path.abspath(os.path.join(backend_dir, 'convex_local_backend.sqlite3'))
-    instance_name = 'carnitas'
-    instance_secret = '4361726e697461732c206c69746572616c6c79206d65616e696e6720226c6974'
-    admin_key = '0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd'
-    convex_binary = os.path.abspath('convex-local-backend')
+    sqlite_path = os.path.abspath(os.path.join(backend_dir, "convex_local_backend.sqlite3"))
+    instance_name = "carnitas"
+    instance_secret = "4361726e697461732c206c69746572616c6c79206d65616e696e6720226c6974"
+    admin_key = "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd"
+    convex_binary = os.path.abspath("convex-local-backend")
     convex_process = subprocess.Popen(
         [
-            convex_binary,            
-            '--port', '3210', 
-            '--site-proxy-port', '3211', 
-            '--instance-name', instance_name, 
-            '--instance-secret', instance_secret, 
-            '--local-storage', storage_dir, 
-            sqlite_path
+            convex_binary,
+            "--port",
+            "3210",
+            "--site-proxy-port",
+            "3211",
+            "--instance-name",
+            instance_name,
+            "--instance-secret",
+            instance_secret,
+            "--local-storage",
+            storage_dir,
+            sqlite_path,
         ],
         cwd=backend_dir,
-        stdout=open(os.path.join(backend_dir, 'backend.stdout.log'), 'w'),
-        stderr=open(os.path.join(backend_dir, 'backend.stderr.log'), 'w')
-    )        
+        stdout=open(os.path.join(backend_dir, "backend.stdout.log"), "w"),
+        stderr=open(os.path.join(backend_dir, "backend.stderr.log"), "w"),
+    )
     try:
         # Do a health check and then make sure that *our* process is still running.
-        health_check()    
+        health_check()
         if convex_process.poll() is not None:
-            raise ValueError("Convex process failed to start")        
+            raise ValueError("Convex process failed to start")
         subprocess.check_call(
-            ['bunx', 'convex', 'dev', '--once', '--admin-key', admin_key, '--url', 'http://localhost:3210'],
+            [
+                "bunx",
+                "convex",
+                "dev",
+                "--once",
+                "--admin-key",
+                admin_key,
+                "--url",
+                "http://localhost:3210",
+            ],
             cwd=project_dir,
-        )                
+        )
         print("Deploy OK!")
     finally:
         convex_process.terminate()
+
 
 def health_check():
     deadline = time.time() + 10
     num_attempts = 0
     while True:
         try:
-            requests.get('http://localhost:3210/version').raise_for_status()
+            requests.get("http://localhost:3210/version").raise_for_status()
             return True
         except Exception as e:
             remaining = deadline - time.time()
             if remaining < 0:
                 raise e
-            time.sleep(min(0.1 * (2 ** num_attempts), remaining))
-            num_attempts += 1            
+            time.sleep(min(0.1 * (2**num_attempts), remaining))
+            num_attempts += 1

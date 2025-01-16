@@ -5,7 +5,7 @@ import subprocess
 name = sys.argv[1]
 category = sys.argv[2]
 
-evals_dir = 'evals'
+evals_dir = "evals"
 categories = os.listdir(evals_dir)
 assert category in categories
 
@@ -14,22 +14,22 @@ category_dir = os.path.join(evals_dir, category)
 if not os.path.exists(category_dir):
     os.makedirs(category_dir)
 
-existing = [int(l.split('-')[0]) for l in os.listdir(category_dir)]
+existing = [int(l.split("-")[0]) for l in os.listdir(category_dir)]
 
 if existing:
     next_id = max(existing) + 1
 else:
     next_id = 0
 
-assert '-' not in name
-testdir_name = f'{next_id:03d}-{name}'
+assert "-" not in name
+testdir_name = f"{next_id:03d}-{name}"
 
 os.makedirs(os.path.join(category_dir, testdir_name))
 
-with open(os.path.join(category_dir, testdir_name, 'PROMPT.txt'), 'w') as f:
-    f.write(f'Create a backend for a {name} system.')
+with open(os.path.join(category_dir, testdir_name, "PROMPT.txt"), "w") as f:
+    f.write(f"Create a backend for a {name} system.")
 
-answer_dir = os.path.join(category_dir, testdir_name, 'answer')
+answer_dir = os.path.join(category_dir, testdir_name, "answer")
 os.makedirs(answer_dir)
 
 package_json = """{
@@ -40,15 +40,15 @@ package_json = """{
   }
 }""".strip()
 
-with open(os.path.join(answer_dir, 'package.json'), 'w') as f:    
+with open(os.path.join(answer_dir, "package.json"), "w") as f:
     f.write(package_json)
 
-convex_dir = os.path.join(answer_dir, 'convex')
+convex_dir = os.path.join(answer_dir, "convex")
 os.makedirs(convex_dir)
 
-with open(os.path.join(convex_dir, 'public.ts'), 'w') as f:
+with open(os.path.join(convex_dir, "public.ts"), "w") as f:
     f.write('import { v } from "convex/values"\n')
     f.write('import { query } from "./_generated/server"\n')
-    
-subprocess.run(['bun', 'install'], cwd=answer_dir, check=True)
-subprocess.run(['bunx', 'convex', 'codegen'], cwd=answer_dir, check=True)
+
+subprocess.run(["bun", "install"], cwd=answer_dir, check=True)
+subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)

@@ -1,7 +1,8 @@
 from anthropic import Anthropic
-import os 
+import os
 from bs4 import BeautifulSoup
 from . import ConvexCodegenModel, SYSTEM_PROMPT
+
 
 class AnthropicModel(ConvexCodegenModel):
     def __init__(self, model: str):
@@ -17,26 +18,27 @@ class AnthropicModel(ConvexCodegenModel):
         message = self.client.messages.create(
             model=self.model,
             system=SYSTEM_PROMPT,
-            messages=[            
+            messages=[
                 {"role": "user", "content": [{"type": "text", "text": user_prompt}]},
-                {"role": "assistant", "content": [{"type": "text", "text": "<analysis>"}]}
+                {"role": "assistant", "content": [{"type": "text", "text": "<analysis>"}]},
             ],
-            max_tokens=8192,        
+            max_tokens=8192,
         )
-        if len(message.content) != 1 or message.content[0].type != 'text':
+        if len(message.content) != 1 or message.content[0].type != "text":
             raise ValueError("Message content is not text: %s" % message.content)
 
-        soup = BeautifulSoup('<analysis>' + message.content[0].text, 'html.parser')
+        soup = BeautifulSoup("<analysis>" + message.content[0].text, "html.parser")
         out = {}
 
-        for file_tag in soup.find_all('file'):
-            path = file_tag.attrs['path']
+        for file_tag in soup.find_all("file"):
+            path = file_tag.attrs["path"]
             if not path:
                 raise ValueError("File path is not set")
 
             out[path.strip()] = file_tag.text.strip()
 
         return out
+
 
 USER_PROMPT_TEMPLATE = """
 Your task is to generate a Convex backend based on the following task description:
@@ -74,7 +76,7 @@ After your analysis, generate the necessary files for a Convex backend that impl
   %s
 
 Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.
-"""    
+"""
 
 CONVEX_GUIDELINES = """
 <convex_guidelines>
