@@ -14,7 +14,8 @@ from typescript import setup_js, lint_js, typecheck_js
 import argparse
 import concurrent.futures
 from errors import error_status
-from models.anthropic import AnthropicModel
+from models.anthropic_codegen import AnthropicModel
+from models.openai_codegen import OpenAIModel
 from models import ConvexCodegenModel
 
 def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
@@ -77,7 +78,7 @@ if __name__ == "__main__":
             futures = {}
             for category, test in tests:
                 test_dir = os.path.join(evals_dir, category, test)
-                future = executor.submit(generate_test, test_dir, output_dir, client)
+                future = executor.submit(generate_test, test_dir, output_dir, model)
                 futures[future] = (category, test_dir)            
             any_failed = False
             for future in concurrent.futures.as_completed(futures):

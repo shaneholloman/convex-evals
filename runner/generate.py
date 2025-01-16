@@ -1,5 +1,6 @@
 import os
 import time
+from models import ConvexCodegenModel
 
 def generate(input_dir: str, output_dir: str, model: ConvexCodegenModel):
     start = time.time()

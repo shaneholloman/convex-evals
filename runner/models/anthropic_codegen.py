@@ -1,17 +1,19 @@
 from anthropic import Anthropic
 import os 
 from bs4 import BeautifulSoup
-from . import ConvexCodegenModel
+from . import ConvexCodegenModel, SYSTEM_PROMPT
 
 class AnthropicModel(ConvexCodegenModel):
     def __init__(self, model: str):
+        assert model in ["claude-3-5-sonnet-latest"]
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY is not set")
         self.client = Anthropic(api_key=api_key)
         self.model = model
 
-    def generate(self, user_prompt: str):
+    def generate(self, prompt: str):
+        user_prompt = USER_PROMPT_TEMPLATE % (prompt, CONVEX_GUIDELINES)
         message = self.client.messages.create(
             model=self.model,
             system=SYSTEM_PROMPT,
@@ -19,7 +21,7 @@ class AnthropicModel(ConvexCodegenModel):
                 {"role": "user", "content": [{"type": "text", "text": user_prompt}]},
                 {"role": "assistant", "content": [{"type": "text", "text": "<analysis>"}]}
             ],
-            max_tokens=65536,        
+            max_tokens=8192,        
         )
         if len(message.content) != 1 or message.content[0].type != 'text':
             raise ValueError("Message content is not text: %s" % message.content)
@@ -35,8 +37,6 @@ class AnthropicModel(ConvexCodegenModel):
             out[path.strip()] = file_tag.text.strip()
 
         return out
-
-SYSTEM_PROMPT = "You are convexbot, a highly advanced AI programmer specialized in creating backend systems using Convex."
 
 USER_PROMPT_TEMPLATE = """
 Your task is to generate a Convex backend based on the following task description:
