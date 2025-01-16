@@ -44,8 +44,10 @@ if __name__ == "__main__":
 
     model = None
     if do_generation:
-        if args.model == "claude-3-5-sonnet-latest":
-            model = AnthropicModel("claude-3-5-sonnet-latest")
+        if args.model.startswith("claude-3-5-sonnet"):
+            model = AnthropicModel(args.model)
+        elif args.model.startswith("gpt") or args.model.startswith("o1"):
+            model = OpenAIModel(args.model)
         else:
             raise ValueError(f"Unknown model: {args.model}")
 
@@ -53,7 +55,7 @@ if __name__ == "__main__":
     output_dir = args.output_dir
     if not output_dir:
         git_rev = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
-        output_dir = f"output-{git_rev}"
+        output_dir = f"output-{args.model}-{git_rev}"
 
     concurrency = int(args.concurrency)
     report_path = args.report

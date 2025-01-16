@@ -119,7 +119,7 @@ CONVEX_GUIDELINES = """
           - Use `ctx.runAction` to call an action from an action. ONLY call an action from another
             action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the
             shared code into a helper async function and call that directly instead.        
-          - All of these calls take in a `FunctionReference` Do NOT try to pass the callee 
+          - All of these calls take in a `FunctionReference`. Do NOT try to pass the callee 
             function directly into one of these calls.
       </function_calling>
       <function_references>
