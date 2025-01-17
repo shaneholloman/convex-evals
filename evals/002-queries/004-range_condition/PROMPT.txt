@@ -10,7 +10,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getSensorReadingsInRange` that:
+Write a query named `getSensorReadingsInRange` in `public.ts` that:
 - Takes sensorId, startTime, and endTime as arguments
 - Efficiently gets all readings where:
   * sensorId matches (equality)

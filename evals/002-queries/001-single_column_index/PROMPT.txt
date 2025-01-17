@@ -10,7 +10,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getUserByEmail` that:
+Write a query named `getUserByEmail` in `public.ts` that:
 - Takes an email address as an argument
 - Efficiently looks up the user by email
 - Returns null if no user is found with that email

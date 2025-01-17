@@ -11,7 +11,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getPopularPinnedMessages` that:
+Write a query named `getPopularPinnedMessages` in `public.ts` that:
 - Takes an author name and a minimum likes threshold as arguments
 - Loads all of the messages by the author into memory.
 - Filters IN JAVASCRIPT (not in the database) to find messages that are:

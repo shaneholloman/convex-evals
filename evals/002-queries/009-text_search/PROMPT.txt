@@ -15,7 +15,7 @@ export default defineSchema({
 }); 
 ```
 
-Write a query named `searchArticles` that:
+Write a query named `searchArticles` in `public.ts` that:
 - Takes a searchTerm and author as arguments
 - Searches for all published articles that match the search term
 - Returns the top 10 matching articles with:

@@ -10,4 +10,4 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getAllProducts` that returns all products in the table.
+Write a query named `getAllProducts` in `public.ts` that returns all products in the table.

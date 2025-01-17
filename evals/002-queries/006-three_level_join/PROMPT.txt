@@ -27,7 +27,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getProAdminsByOrg` that:
+Write a query named `getProAdminsByOrg` in `public.ts` that:
 - Takes an organizationId as an argument
 - Returns the unique set of all admins within that organization as a record 
   mapping `Id<"users">` to their profileUrl.

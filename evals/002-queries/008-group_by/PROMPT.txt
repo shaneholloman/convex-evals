@@ -12,7 +12,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getMonthlySalesByCategory` that:
+Write a query named `getMonthlySalesByCategory` in `public.ts` that:
 - Takes a region and month (YYYY-MM) as arguments
 - Returns an array of objects, each containing:
   * category: string

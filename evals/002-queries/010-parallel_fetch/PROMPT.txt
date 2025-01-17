@@ -27,7 +27,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getAuthorDashboard` that:
+Write a query named `getAuthorDashboard` in `public.ts` that:
 - Takes a user's email as an argument
 - Returns an object containing:
   * user: the user's name, email, theme, and notifications

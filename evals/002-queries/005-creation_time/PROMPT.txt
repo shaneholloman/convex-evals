@@ -10,6 +10,6 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getPostComments` that:
+Write a query named `getPostComments` in `public.ts` that:
 - Takes a postId as an argument
 - Efficiently returns all comments for that post in descending creation time order

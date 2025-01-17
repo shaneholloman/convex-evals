@@ -11,7 +11,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getCustomerStats` that:
+Write a query named `getCustomerStats` in `public.ts` that:
 - Takes a customerId as an argument
 - Returns an object with:
   * totalOrders: number of orders
