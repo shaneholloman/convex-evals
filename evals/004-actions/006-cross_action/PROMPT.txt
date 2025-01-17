@@ -1,0 +1,108 @@
+Create an action that demonstrates cross-action invocation for bridging different runtimes.
+
+Required Action:
+Create two actions:
+1. `innerAction` that:
+   - Takes a document ID and operation type as input
+   - Performs different operations based on type:
+     * "analyze": Simulates text analysis with a delay
+     * "transform": Simulates data transformation
+     * "validate": Simulates data validation
+   - Returns operation results with timing info
+
+2. `outerAction` that:
+   - Takes an array of tasks, each with:
+     * documentId: Id<"documents">
+     * operation: "analyze" | "transform" | "validate"
+   - Calls innerAction for each task in parallel
+   - Aggregates results and adds metadata
+   - Returns combined results
+
+Schema Requirements:
+- Table: "documents"
+  - title: string
+  - content: string
+  - status: union("pending", "processing", "completed", "failed")
+  - lastOperation: optional string
+  - operationCount: number
+  - metadata: object
+
+- Table: "operation_results"
+  - documentId: Id<"documents">
+  - operation: string
+  - startTime: number
+  - endTime: number
+  - success: boolean
+  - result: any
+  - error: optional string
+
+Example Usage:
+```typescript
+const result = await ctx.runAction("outerAction", {
+  tasks: [
+    { documentId: "doc1", operation: "analyze" },
+    { documentId: "doc2", operation: "transform" },
+    { documentId: "doc3", operation: "validate" }
+  ]
+});
+```
+
+Example Response:
+```json
+{
+  "batchId": "batch_1234567890",
+  "results": [
+    {
+      "documentId": "doc1",
+      "operation": "analyze",
+      "success": true,
+      "timing": {
+        "start": 1678901234567,
+        "end": 1678901235567,
+        "duration": 1000
+      },
+      "result": {
+        "sentiment": "positive",
+        "score": 0.85
+      }
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "successful": 2,
+    "failed": 1,
+    "totalTime": 2500
+  }
+}
+```
+
+Test Cases:
+1. Basic Operations
+   - Single operation execution
+   - Multiple operations in sequence
+   - Parallel operation handling
+   - Result aggregation
+
+2. Error Handling
+   - Invalid document IDs
+   - Unsupported operations
+   - Runtime errors
+   - Partial failures
+
+3. Performance
+   - Parallel execution timing
+   - Resource utilization
+   - Memory management
+   - Operation timeouts
+
+4. Data Consistency
+   - Document status updates
+   - Operation result recording
+   - Metadata preservation
+   - Atomic updates
+
+5. Edge Cases
+   - Empty task list
+   - Duplicate tasks
+   - Maximum concurrency
+   - Operation cancellation

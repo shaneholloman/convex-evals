@@ -1,0 +1,47 @@
+Create an action that demonstrates asynchronous logic and concurrency in Convex.
+
+Required Action:
+Create an action named `delayedInsert` that:
+1. Takes a `message` string and `delayMs` number as arguments
+2. Sleeps for `delayMs` milliseconds using an async delay
+3. Inserts a document into a "messages" table with:
+   - message: the input message
+   - createdAt: timestamp when inserted
+   - delayMs: the delay that was used
+4. Returns the ID of the inserted document
+
+Schema Requirements:
+- Table: "messages"
+  - message: string
+  - createdAt: number (timestamp)
+  - delayMs: number
+
+Example Usage:
+```typescript
+const docId = await ctx.runAction("delayedInsert", {
+  message: "Hello after delay",
+  delayMs: 2000
+});
+```
+
+Test Cases:
+1. Basic Delay
+   - Call with 2 second delay
+   - Verify document is created after delay
+   - Check timestamp is after the delay
+
+2. Multiple Concurrent Delays
+   - Call action multiple times with different delays
+   - Verify documents are created in order of delay completion
+   - Check timestamps reflect actual delays
+
+3. Edge Cases
+   - Zero delay should work
+   - Very short delays (1ms) should work
+   - Maximum delay should be capped at 60 seconds
+   - Empty messages should be rejected
+
+4. Error Cases
+   - Negative delays should be rejected
+   - Missing arguments should be rejected
+   - Invalid argument types should be rejected

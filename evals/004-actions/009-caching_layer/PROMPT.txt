@@ -1,0 +1,100 @@
+Create an HTTP action that implements a caching layer for expensive operations.
+
+Required Action:
+Create an HTTP action at `/cached` that:
+1. Implements a caching system for expensive operations:
+   - Cache results with configurable TTL
+   - Support cache invalidation
+   - Handle cache misses gracefully
+   - Track cache hit/miss metrics
+2. Manages cached data:
+   - Store cache entries with metadata
+   - Handle concurrent cache updates
+   - Implement cache eviction policies
+   - Support cache warming
+3. Returns appropriate responses:
+   - Include cache status headers
+   - Handle stale cache data
+   - Support cache bypass options
+
+Schema Requirements:
+- Table: "cache_entries"
+  - key: string (unique identifier)
+  - value: any (cached data)
+  - createdAt: number (timestamp)
+  - expiresAt: number (timestamp)
+  - lastAccessed: number (timestamp)
+  - accessCount: number
+  - size: number (bytes)
+
+- Table: "cache_metrics"
+  - timestamp: number
+  - hits: number
+  - misses: number
+  - evictions: number
+  - totalSize: number
+  - avgLatency: number
+
+Configuration:
+```typescript
+const CACHE_CONFIG = {
+  defaultTTL: 3600,     // Default TTL in seconds
+  maxSize: 1048576,     // Maximum cache size in bytes
+  maxEntries: 1000,     // Maximum number of entries
+  warmupKeys: ["popular_data", "critical_config"],
+  evictionPolicy: "lru" // Least Recently Used
+};
+```
+
+Example Usage:
+```typescript
+// Request with cache control
+const response = await fetch("/cached/data", {
+  headers: {
+    "Cache-Control": "max-age=3600",
+    "If-None-Match": "etag123"
+  }
+});
+
+// Cache hit response
+{
+  "data": { ... },
+  "cache": {
+    "hit": true,
+    "age": 120,
+    "ttl": 3600,
+    "key": "data:123"
+  }
+}
+```
+
+Test Cases:
+1. Basic Caching
+   - First request (cache miss)
+   - Subsequent request (cache hit)
+   - TTL expiration
+   - Cache invalidation
+
+2. Cache Management
+   - Size-based eviction
+   - LRU eviction
+   - Concurrent updates
+   - Cache warming
+
+3. Error Handling
+   - Invalid cache data
+   - Storage errors
+   - Concurrent errors
+   - Eviction errors
+
+4. Headers and Controls
+   - Cache-Control directives
+   - ETag handling
+   - Conditional requests
+   - Force refresh
+
+5. Edge Cases
+   - Large cache entries
+   - High concurrency
+   - Cache stampede
+   - Network failures

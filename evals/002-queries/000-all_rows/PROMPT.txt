@@ -1,0 +1,22 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  products: defineTable({
+    name: v.string(),
+    price: v.number(),
+    inStock: v.boolean(),
+  }),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertProducts` that inserts at least 3 different products into the table.
+
+2. A query named `getAllProducts` that returns all products in the table.
+
+Your solution should:
+- Use proper Convex types and patterns
+- Return all fields for each product
+- Handle the case where the table is empty

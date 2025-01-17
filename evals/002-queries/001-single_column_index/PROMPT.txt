@@ -1,0 +1,26 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  users: defineTable({
+    email: v.string(),
+    name: v.string(),
+    age: v.number(),
+  }).index("by_email", ["email"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertUsers` that inserts at least 3 different users with unique email addresses.
+
+2. A query named `getUserByEmail` that:
+   - Takes an email address as an argument
+   - Uses the "by_email" index to efficiently look up the user
+   - Returns null if no user is found with that email
+   - Returns all fields if a user is found
+
+Your solution should:
+- Use proper Convex types and patterns
+- Use the index correctly with .withIndex() and .eq()
+- Use .first() or .unique() appropriately since email is unique

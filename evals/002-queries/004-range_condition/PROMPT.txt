@@ -1,0 +1,33 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  temperatures: defineTable({
+    sensorId: v.string(),
+    timestamp: v.number(), // Unix timestamp in seconds
+    value: v.number(),     // Temperature in Celsius
+  }).index("by_sensor_time", ["sensorId", "timestamp"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertTemperatures` that inserts at least 8 temperature readings with:
+   - At least 2 different sensors
+   - Timestamps spanning several hours
+   - Varying temperature values
+   - Timestamps should be ordered but not necessarily evenly spaced
+
+2. A query named `getSensorReadingsInRange` that:
+   - Takes sensorId, startTime, and endTime as arguments
+   - Uses the "by_sensor_time" index to efficiently get readings where:
+     * sensorId matches (equality)
+     * timestamp is >= startTime (range start)
+     * timestamp is <= endTime (range end)
+   - Returns readings in chronological order (which is automatic due to the index)
+
+Your solution should:
+- Use proper Convex types and patterns
+- Use .withIndex() with both .eq() and .gte()/.lte() operators
+- Demonstrate understanding that the index handles time ordering
+- NOT use JavaScript filtering or sorting

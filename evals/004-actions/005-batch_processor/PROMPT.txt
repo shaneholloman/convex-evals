@@ -1,0 +1,94 @@
+Create an action that processes large batches of data in chunks with progress tracking.
+
+Required Action:
+Create an action named `processUsers` that:
+1. Takes an array of user IDs and a batch size as input
+2. For each batch of users:
+   - Fetches user data from the "users" table
+   - Updates their status to "processed"
+   - Creates an audit log entry
+   - Updates progress in a "jobs" table
+3. Returns a summary of the processing results
+
+Schema Requirements:
+- Table: "users"
+  - name: string
+  - email: string
+  - status: union("pending", "processed", "failed")
+  - lastProcessed: optional number
+  - retryCount: number
+  - metadata: object
+
+- Table: "jobs"
+  - jobId: string (UUID)
+  - type: string
+  - status: union("running", "completed", "failed")
+  - progress: number (0-100)
+  - totalItems: number
+  - processedItems: number
+  - error: optional string
+  - startedAt: number
+  - completedAt: optional number
+
+- Table: "audit_logs"
+  - userId: Id<"users">
+  - action: string
+  - timestamp: number
+  - details: object
+  - status: union("success", "failure")
+
+Example Usage:
+```typescript
+const result = await ctx.runAction("processUsers", {
+  userIds: ["user1", "user2", "user3", ...],
+  batchSize: 10
+});
+```
+
+Example Response:
+```json
+{
+  "jobId": "job_1234567890",
+  "totalProcessed": 100,
+  "successful": 95,
+  "failed": 5,
+  "timeElapsed": 12500,
+  "errors": [
+    {
+      "userId": "user5",
+      "error": "Invalid metadata format"
+    }
+  ]
+}
+```
+
+Test Cases:
+1. Basic Processing
+   - Process small batch of users
+   - Verify status updates
+   - Check audit logs
+   - Validate progress tracking
+
+2. Batch Handling
+   - Process multiple batches
+   - Correct batch size enforcement
+   - Progress calculation accuracy
+   - Job status updates
+
+3. Error Handling
+   - Individual record failures
+   - Batch-level failures
+   - Retry logic
+   - Error reporting
+
+4. Performance
+   - Large batch processing
+   - Memory usage
+   - Processing time tracking
+   - Progress updates frequency
+
+5. Edge Cases
+   - Empty user list
+   - Single user batch
+   - All users failing
+   - Invalid user IDs

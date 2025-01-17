@@ -1,0 +1,83 @@
+Create an HTTP action that handles Stripe webhook events securely.
+
+Required Action:
+Create an HTTP action at `/webhook/stripe` that:
+1. Accepts POST requests with JSON payloads from Stripe
+2. Verifies the webhook signature using the Stripe-Signature header
+3. Processes different event types:
+   - payment_intent.succeeded
+   - payment_intent.failed
+   - customer.subscription.created
+   - customer.subscription.deleted
+4. Stores event data in the database
+5. Returns appropriate HTTP responses
+
+Schema Requirements:
+- Table: "webhook_events"
+  - stripeEventId: string
+  - eventType: string
+  - timestamp: number
+  - status: union("processed", "failed")
+  - data: object (raw event data)
+  - error: optional string
+  - processedAt: number
+
+- Table: "payments"
+  - stripePaymentId: string
+  - amount: number
+  - currency: string
+  - status: union("succeeded", "failed")
+  - customerId: string
+  - metadata: object
+  - createdAt: number
+
+Example Webhook Payload:
+```json
+{
+  "id": "evt_1234567890",
+  "type": "payment_intent.succeeded",
+  "created": 1678901234,
+  "data": {
+    "object": {
+      "id": "pi_1234567890",
+      "amount": 2000,
+      "currency": "usd",
+      "status": "succeeded",
+      "customer": "cus_1234567890",
+      "metadata": {
+        "orderId": "order_123"
+      }
+    }
+  }
+}
+```
+
+Test Cases:
+1. Basic Event Processing
+   - Valid payment success event
+   - Valid payment failure event
+   - Valid subscription events
+   - Event data stored correctly
+
+2. Security
+   - Valid signature verification
+   - Invalid signature rejection
+   - Replay attack prevention
+   - Missing signature header
+
+3. Error Handling
+   - Invalid JSON payload
+   - Unknown event type
+   - Missing required fields
+   - Database errors
+
+4. Idempotency
+   - Duplicate events handled correctly
+   - Event ID checking
+   - No duplicate records
+
+5. Edge Cases
+   - Zero amount payments
+   - Different currencies
+   - Metadata variations
+   - Large payloads

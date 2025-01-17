@@ -1,0 +1,32 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  tasks: defineTable({
+    projectId: v.string(),
+    status: v.string(),
+    priority: v.number(),
+    title: v.string(),
+    assignee: v.string(),
+  }).index("by_project_status_priority", ["projectId", "status", "priority"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertTasks` that inserts at least 6 tasks with:
+   - At least 2 different projects
+   - Different statuses ("todo", "in_progress", "done")
+   - Different priorities (1 = highest, 3 = lowest)
+   - Meaningful titles and assignees
+
+2. A query named `getProjectTasksByStatus` that:
+   - Takes projectId and status as arguments
+   - Uses the "by_project_status_priority" index with an equality prefix on projectId and status
+   - Returns all matching tasks sorted by priority (which is automatic due to the index order)
+   - Does NOT use JavaScript sorting
+
+Your solution should:
+- Use proper Convex types and patterns
+- Demonstrate understanding that index ordering handles the priority sort
+- Use .withIndex() and .eq() correctly for the equality prefix

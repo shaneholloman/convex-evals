@@ -1,0 +1,74 @@
+Create an HTTP action that handles file uploads and stores them in Convex's file storage.
+
+Required Action:
+Create an HTTP action at `/upload` that:
+1. Accepts multipart/form-data POST requests with:
+   - file: File data
+   - description: Optional text description
+   - tags: Optional comma-separated list of tags
+2. Validates and stores the file in Convex storage
+3. Creates a record in the "files" table with metadata
+4. Returns a JSON response with the file details
+
+Schema Requirements:
+- Table: "files"
+  - storageId: string (Convex storage ID)
+  - filename: string
+  - size: number (in bytes)
+  - mimeType: string
+  - description: optional string
+  - tags: array of strings
+  - uploadedAt: number (timestamp)
+
+Example Usage:
+```bash
+curl -X POST https://your-deployment.convex.cloud/upload \
+  -F "file=@example.pdf" \
+  -F "description=Project documentation" \
+  -F "tags=docs,pdf,project"
+```
+
+Example Response:
+```json
+{
+  "success": true,
+  "file": {
+    "id": "files:abc123...",
+    "storageId": "...",
+    "filename": "example.pdf",
+    "size": 1234567,
+    "mimeType": "application/pdf",
+    "description": "Project documentation",
+    "tags": ["docs", "pdf", "project"],
+    "uploadedAt": 1678901234567
+  }
+}
+```
+
+Test Cases:
+1. Basic Upload
+   - Upload single file with metadata
+   - Verify file is stored in Convex storage
+   - Check database record matches file
+
+2. File Validation
+   - Maximum file size (10MB)
+   - Allowed file types (pdf, jpg, png, doc)
+   - Required fields present
+
+3. Metadata Handling
+   - Optional description
+   - Tag parsing and normalization
+   - File type detection
+
+4. Error Cases
+   - Missing file in request
+   - Invalid file type
+   - File too large
+   - Malformed request
+
+5. Edge Cases
+   - Files with spaces in names
+   - Special characters in metadata
+   - Empty tags list
+   - Zero-byte files

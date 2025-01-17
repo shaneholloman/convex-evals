@@ -1,0 +1,68 @@
+# Basic Insert with Required Fields and Timestamp Validation
+
+Write a mutation that creates records in a "notes" table. This will test your understanding of:
+1. Basic document creation
+2. Schema validation
+3. Timestamp handling
+4. Return value patterns
+
+## Schema
+
+Create a schema with a "notes" table that has these fields:
+- `title`: string (required) - The note's title, must be between 1-100 characters
+- `content`: string (required) - The note's content, must be between 1-1000 characters
+- `createdAt`: number (required) - Unix timestamp in milliseconds when the note was created
+- `tags`: array of strings (optional) - Tags associated with the note, each tag must be 1-20 characters
+
+## Required Functions
+
+Write a mutation called `insertNote` that:
+
+1. Takes these arguments:
+   - `title`: string
+   - `content`: string
+   - `tags`: string[] (optional)
+
+2. Validates that:
+   - The title length is between 1-100 characters
+   - The content length is between 1-1000 characters
+   - If tags are provided, each tag is between 1-20 characters
+   - The createdAt timestamp is set to the current time
+
+3. Returns:
+   - The complete inserted document including its _id
+
+4. Throws an error if:
+   - Any validation fails
+   - Required fields are missing
+
+## Example Usage
+
+```typescript
+// Success case
+const note = await client.mutation("insertNote", {
+  title: "Meeting Notes",
+  content: "Discussed Q4 planning",
+  tags: ["work", "planning"]
+});
+// Returns: { _id: "...", title: "Meeting Notes", content: "Discussed Q4 planning", createdAt: 1234567890, tags: ["work", "planning"] }
+
+// Error case - title too long
+await client.mutation("insertNote", {
+  title: "x".repeat(101),
+  content: "Valid content"
+}); 
+// Throws error: "Title must be between 1-100 characters"
+```
+
+## Test Cases
+
+Your implementation should handle these cases:
+1. Basic insert with all fields (including optional tags)
+2. Insert without tags (optional field omitted)
+3. Error on empty title
+4. Error on empty content
+5. Error on title > 100 chars
+6. Error on content > 1000 chars
+7. Error on tag > 20 chars
+8. Verify createdAt is a recent timestamp

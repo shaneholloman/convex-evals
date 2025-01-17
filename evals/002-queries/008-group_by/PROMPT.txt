@@ -1,0 +1,37 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  sales: defineTable({
+    region: v.string(),
+    product: v.string(),
+    category: v.string(),
+    amount: v.number(),
+    date: v.string(), // YYYY-MM format
+  }).index("by_region_date", ["region", "date"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertSales` that inserts at least 8 sales records with:
+   - Multiple regions (e.g., "north", "south")
+   - Multiple products and categories
+   - Different amounts
+   - Spanning at least 2 months
+
+2. A query named `getMonthlySalesByCategory` that:
+   - Takes a region and month (YYYY-MM) as arguments
+   - Returns an array of objects, each containing:
+     * category: string
+     * totalSales: number (sum of amounts)
+     * averageSaleAmount: number
+     * numberOfSales: number
+   - Groups sales by category using JavaScript
+   - Sorts results by totalSales descending
+
+Your solution should:
+- Use proper Convex types and patterns
+- Use Object.values() and reduce() for grouping
+- Format monetary values to 2 decimal places
+- Handle empty results appropriately

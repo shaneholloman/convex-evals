@@ -1,0 +1,32 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  messages: defineTable({
+    author: v.string(),
+    text: v.string(),
+    likes: v.number(),
+    isPinned: v.boolean(),
+  }).index("by_author", ["author"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertMessages` that inserts at least 5 messages with:
+   - At least 2 different authors
+   - A mix of pinned and unpinned messages
+   - Various numbers of likes
+
+2. A query named `getPopularPinnedMessages` that:
+   - Takes an author name and a minimum likes threshold as arguments
+   - Uses the "by_author" index to get all messages by that author
+   - Filters IN JAVASCRIPT (not in the database) to find messages that are:
+     * Pinned (isPinned === true)
+     * Have at least the minimum number of likes
+   - Returns the filtered messages sorted by likes in descending order
+
+Your solution should:
+- Use proper Convex types and patterns
+- Use array methods like .filter() and .sort() for post-query processing
+- Handle empty results appropriately

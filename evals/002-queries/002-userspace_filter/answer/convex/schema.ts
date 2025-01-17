@@ -1,0 +1,11 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  messages: defineTable({
+    author: v.string(),
+    text: v.string(),
+    likes: v.number(),
+    isPinned: v.boolean(),
+  }).index("by_author", ["author"]),
+}); 

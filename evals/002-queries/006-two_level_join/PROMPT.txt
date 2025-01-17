@@ -1,0 +1,51 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  // Organizations have many teams
+  organizations: defineTable({
+    name: v.string(),
+    plan: v.string(), // "free" or "pro"
+  }),
+
+  // Teams belong to organizations and have many members
+  teams: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+  }).index("by_org", ["organizationId"]),
+
+  // Team members belong to teams
+  teamMembers: defineTable({
+    teamId: v.id("teams"),
+    userId: v.string(),
+    role: v.string(), // "member" or "admin"
+  }).index("by_team", ["teamId"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertOrgData` that inserts:
+   - 2 organizations (one free, one pro)
+   - At least 2 teams per organization
+   - At least 2 members per team (mix of admins and regular members)
+
+2. A query named `getOrgMembersByRole` that:
+   - Takes an organizationId and role as arguments
+   - Returns all members with that role across all teams in the organization
+   - For each member, includes:
+     * userId
+     * role
+     * teamId
+     * teamName
+   - Demonstrates proper two-level join:
+     * First get all teams in the org
+     * Then get all members of those teams
+     * Filter by role
+     * Include team details in result
+
+Your solution should:
+- Use proper Convex types and patterns
+- Handle the two-level join efficiently
+- Use Promise.all() for parallel fetching where appropriate
+- NOT use nested loops for joins

@@ -1,0 +1,55 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  // Users and their preferences
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+  }),
+  userPreferences: defineTable({
+    userId: v.id("users"),
+    theme: v.string(),
+    notifications: v.boolean(),
+  }).index("by_user", ["userId"]),
+
+  // Posts and their reactions
+  posts: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    content: v.string(),
+  }).index("by_author", ["authorId"]),
+  reactions: defineTable({
+    postId: v.id("posts"),
+    userId: v.id("users"),
+    type: v.string(), // "like", "heart", "celebrate"
+  }).index("by_post", ["postId"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertTestData` that creates:
+   - At least 3 users with preferences
+   - At least 2 posts per user
+   - Multiple reactions on different posts
+
+2. A query named `getAuthorDashboard` that:
+   - Takes a userId as an argument
+   - Returns an object containing:
+     * user: basic user info and preferences
+     * posts: array of author's posts, each with:
+       - post details (title, content)
+       - reactionCounts: count of each reaction type
+       - recentReactors: names of last 3 users who reacted
+   - Demonstrates efficient parallel fetching:
+     * Fetch user and preferences in parallel
+     * Fetch all posts in one query
+     * Fetch reactions for all posts in parallel
+     * Fetch reactor details in parallel
+
+Your solution should:
+- Use proper Convex types and patterns
+- Use Promise.all() effectively
+- Minimize the number of sequential database queries
+- Handle missing data gracefully

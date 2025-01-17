@@ -1,0 +1,135 @@
+# Complex Validation Rules and Business Logic
+
+Write mutations that implement complex validation rules for an event management system. This will test your understanding of:
+1. Complex validation rules
+2. Cross-field validation
+3. Cross-table validation
+4. Business logic enforcement
+
+## Schema
+
+Create a schema with these tables:
+
+1. "events" table:
+   - `title`: string (required) - Event title, 5-100 chars
+   - `description`: string (required) - Event description, max 1000 chars
+   - `startTime`: number (required) - Event start time (Unix timestamp)
+   - `endTime`: number (required) - Event end time (Unix timestamp)
+   - `capacity`: number (required) - Maximum attendees (1-1000)
+   - `minAge`: number (required) - Minimum age to attend (0-100)
+   - `status`: string (required) - One of: "draft", "published", "cancelled"
+   - `organizerId`: Id<"users"> (required) - Reference to organizing user
+   - `categoryId`: Id<"categories"> (required) - Reference to event category
+   - `venue`: object (required) - Venue information:
+     - `name`: string (required) - Venue name
+     - `address`: string (required) - Physical address
+     - `capacity`: number (required) - Venue capacity
+     - `accessible`: boolean (required) - Wheelchair accessible
+
+2. "categories" table:
+   - `name`: string (required) - Category name
+   - `minDuration`: number (required) - Minimum event duration in minutes
+   - `maxDuration`: number (required) - Maximum event duration in minutes
+   - `requiresModeration`: boolean (required) - Whether events need approval
+
+3. "users" table:
+   - `name`: string (required) - User's full name
+   - `email`: string (required) - Valid email address
+   - `birthDate`: number (required) - Unix timestamp of birth date
+   - `role`: string (required) - One of: "user", "organizer", "moderator"
+   - `verifiedOrganizer`: boolean (required) - Whether they can create events
+
+## Required Functions
+
+Write a mutation called `createEvent` that:
+
+1. Takes these arguments:
+   - All fields for an event except status (which starts as "draft")
+
+2. Validates that:
+   - All string lengths are within limits
+   - Times are in the future
+   - End time is after start time
+   - Duration meets category requirements
+   - Capacity doesn't exceed venue capacity
+   - Organizer exists and is verified
+   - Category exists
+   - If category requires moderation, user must be moderator
+   - Event doesn't overlap with organizer's other events
+   - Venue name and address are not empty
+   - Email notifications can be sent (simulate with console.log)
+
+3. Returns:
+   - The complete event document
+   - Validation status if category requires moderation
+
+4. Throws detailed errors for:
+   - Any validation failure
+   - Missing references
+   - Permission issues
+   - Business rule violations
+
+## Example Usage
+
+```typescript
+// Success case
+const event = await client.mutation("createEvent", {
+  title: "Summer Concert",
+  description: "Annual summer concert series",
+  startTime: futureDate1,
+  endTime: futureDate2,
+  capacity: 500,
+  minAge: 18,
+  organizerId: userId,
+  categoryId: musicCategoryId,
+  venue: {
+    name: "City Park",
+    address: "123 Park Ave",
+    capacity: 1000,
+    accessible: true
+  }
+});
+// Returns: { _id: "...", status: "draft", ... }
+
+// Error case - invalid duration
+await client.mutation("createEvent", {
+  // ... valid fields ...
+  startTime: now + 3600000,  // 1 hour from now
+  endTime: now + 3900000,    // Only 5 minutes long
+  categoryId: categoryRequiring3Hours
+}); 
+// Throws: "Event duration (5 min) below category minimum (180 min)"
+```
+
+## Test Cases
+
+Your implementation should validate:
+
+1. Basic Validation:
+   - String lengths (title, description)
+   - Number ranges (capacity, minAge)
+   - Required fields
+   - Enum values
+
+2. Time Validation:
+   - Future dates only
+   - End after start
+   - Category duration limits
+   - No overlapping events
+
+3. Reference Validation:
+   - Valid organizer
+   - Valid category
+   - Organizer verification
+   - Moderator requirements
+
+4. Capacity Validation:
+   - Event vs venue capacity
+   - Venue information
+   - Accessibility requirements
+
+5. Business Rules:
+   - Category-specific rules
+   - Role-based permissions
+   - Moderation requirements
+   - Notification handling

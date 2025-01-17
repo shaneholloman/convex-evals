@@ -1,0 +1,33 @@
+Given this schema:
+
+```typescript
+export default defineSchema({
+  comments: defineTable({
+    postId: v.string(),
+    author: v.string(),
+    text: v.string(),
+  }).index("by_post", ["postId"]),
+});
+```
+
+Write two functions:
+
+1. A mutation named `insertComments` that inserts at least 5 comments with:
+   - At least 2 different posts
+   - Different authors
+   - Comments should be inserted in a specific order that matters for testing
+
+2. A query named `getPostComments` that:
+   - Takes a postId as an argument
+   - Uses the "by_post" index to get all comments for that post
+   - Returns comments in chronological order (oldest to newest)
+   - Demonstrates understanding that:
+     * Tables are implicitly ordered by _creationTime
+     * The default order is ascending (oldest first)
+     * No explicit sorting is needed
+
+Your solution should:
+- Use proper Convex types and patterns
+- Show understanding that _creationTime ordering is automatic
+- NOT use JavaScript sorting
+- NOT use order("desc") since we want oldest first

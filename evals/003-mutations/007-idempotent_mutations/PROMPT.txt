@@ -1,0 +1,135 @@
+# Idempotent Mutations with Safe Retries
+
+Write mutations that handle duplicate requests and retries safely in a payment processing system. This will test your understanding of:
+1. Idempotency keys
+2. Safe retries
+3. Duplicate detection
+4. Transaction consistency
+
+## Schema
+
+Create a schema with these tables:
+
+1. "accounts" table:
+   - `userId`: Id<"users"> (required) - Account owner
+   - `balance`: number (required) - Current balance in cents
+   - `currency`: string (required) - Three-letter currency code
+   - `status`: string (required) - One of: "active", "frozen", "closed"
+   - `lastTransaction`: number (required) - Timestamp of last transaction
+
+2. "transactions" table:
+   - `accountId`: Id<"accounts"> (required) - Source account
+   - `type`: string (required) - One of: "deposit", "withdrawal", "transfer"
+   - `amount`: number (required) - Transaction amount in cents
+   - `status`: string (required) - One of: "pending", "completed", "failed", "reversed"
+   - `idempotencyKey`: string (required) - Unique key for duplicate detection
+   - `metadata`: object (required) - Transaction details:
+     - `description`: string (required) - Transaction description
+     - `category`: string (optional) - Transaction category
+     - `reference`: string (optional) - External reference
+   - `timestamp`: number (required) - When transaction was initiated
+   - `completedAt`: number (optional) - When transaction completed
+
+3. "transactionAttempts" table:
+   - `transactionId`: Id<"transactions"> (required) - Related transaction
+   - `attemptNumber`: number (required) - Attempt sequence number
+   - `status`: string (required) - One of: "started", "succeeded", "failed"
+   - `error`: string (optional) - Error message if failed
+   - `timestamp`: number (required) - When attempt was made
+
+4. "users" table:
+   - `name`: string (required) - User's name
+   - `email`: string (required) - User's email
+   - `status`: string (required) - One of: "active", "suspended"
+
+## Required Functions
+
+Write a mutation called `processPayment` that:
+
+1. Takes these arguments:
+   - `accountId`: Id<"accounts"> - Source account
+   - `amount`: number - Payment amount in cents
+   - `idempotencyKey`: string - Unique request identifier
+   - `metadata`: object - Payment details
+
+2. Implements idempotency by:
+   - Using idempotencyKey to detect duplicates
+   - Returning cached result for duplicate requests
+   - Handling concurrent requests safely
+   - Recording all attempt outcomes
+
+3. Validates that:
+   - Account exists and is active
+   - User is not suspended
+   - Sufficient balance exists
+   - Amount is positive
+   - Currency matches
+
+4. Returns:
+   - Transaction record
+   - Latest account balance
+   - Attempt details
+
+## Example Usage
+
+```typescript
+// First attempt
+const result1 = await client.mutation("processPayment", {
+  accountId: account123,
+  amount: 5000,  // $50.00
+  idempotencyKey: "payment_123",
+  metadata: {
+    description: "Monthly subscription",
+    category: "subscription",
+    reference: "sub_123"
+  }
+});
+// Returns: {
+//   transaction: { status: "completed", ... },
+//   balance: 45000,  // $450.00
+//   attempt: { status: "succeeded", ... }
+// }
+
+// Retry with same idempotency key
+const result2 = await client.mutation("processPayment", {
+  accountId: account123,
+  amount: 5000,
+  idempotencyKey: "payment_123",  // Same key
+  metadata: { /* ... */ }
+});
+// Returns same result, no new transaction created
+```
+
+## Test Cases
+
+Your implementation should handle:
+
+1. Basic Payments:
+   - Successful payment
+   - Insufficient funds
+   - Invalid amount
+   - Account/user status checks
+
+2. Idempotency:
+   - Duplicate requests
+   - Concurrent requests
+   - Different parameters with same key
+   - Key expiration/cleanup
+
+3. Error Cases:
+   - Account not found
+   - User suspended
+   - Invalid currency
+   - System errors
+
+4. Retry Scenarios:
+   - Immediate retry
+   - Delayed retry
+   - Multiple retries
+   - Different clients
+
+5. Edge Cases:
+   - Zero amount
+   - Maximum amount
+   - Rate limits
+   - Timeout handling
