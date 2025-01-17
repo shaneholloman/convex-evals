@@ -5,7 +5,6 @@ export default defineSchema({
   // Organizations have many teams
   organizations: defineTable({
     name: v.string(),
-    plan: v.string(), // "free" or "pro"
   }),
 
   // Teams belong to organizations and have many members
@@ -17,7 +16,12 @@ export default defineSchema({
   // Team members belong to teams
   teamMembers: defineTable({
     teamId: v.id("teams"),
-    userId: v.string(),
-    role: v.string(), // "member" or "admin"
-  }).index("by_team", ["teamId"]),
+    userId: v.id("users"),
+    role: v.union(v.literal("member"), v.literal("admin")),
+  }).index("by_team_role", ["teamId", "role"]),
+
+  users: defineTable({
+    name: v.string(),
+    profileUrl: v.string(),
+  }),
 }); 

@@ -1,28 +1,15 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
-
-export const insertUsers = mutation({
-  handler: async (ctx) => {
-    await ctx.db.insert("users", {
-      email: "alice@example.com",
-      name: "Alice Smith",
-      age: 28,
-    });
-    await ctx.db.insert("users", {
-      email: "bob@example.com",
-      name: "Bob Jones",
-      age: 35,
-    });
-    await ctx.db.insert("users", {
-      email: "carol@example.com",
-      name: "Carol Wilson",
-      age: 42,
-    });
-  },
-});
+import { query } from "./_generated/server"
 
 export const getUserByEmail = query({
   args: { email: v.string() },
+  returns: v.union(v.object({
+    _id: v.id("users"),
+    _creationTime: v.number(),
+    email: v.string(),
+    name: v.string(),
+    age: v.number(),
+  }), v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")

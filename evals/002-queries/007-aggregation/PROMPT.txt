@@ -1,4 +1,4 @@
-Given this schema:
+Assuming this schema:
 
 ```typescript
 export default defineSchema({
@@ -11,25 +11,13 @@ export default defineSchema({
 });
 ```
 
-Write two functions:
-
-1. A mutation named `insertOrders` that inserts at least 6 orders with:
-   - At least 2 different customers
-   - At least 3 different products
-   - Various quantities and prices
-   - Some customers should have multiple orders
-
-2. A query named `getCustomerStats` that:
-   - Takes a customerId as an argument
-   - Returns an object with:
-     * totalOrders: number of orders
-     * totalItems: sum of all quantities
-     * totalSpent: sum of (quantity * pricePerUnit) for all orders
-     * averageOrderValue: totalSpent / totalOrders
-   - Demonstrates proper aggregation in JavaScript after fetching data
-
-Your solution should:
-- Use proper Convex types and patterns
-- Use reduce() for aggregation
-- Handle the case where customer has no orders
+Write a query named `getCustomerStats` that:
+- Takes a customerId as an argument
+- Returns an object with:
+  * totalOrders: number of orders
+  * totalItems: sum of all quantities
+  * totalSpent: sum of (quantity * pricePerUnit) for all orders
+  * averageOrderValue: totalSpent / totalOrders
+- You can assume that the number of orders for each customer is small.
+- Handle the case where customer has no orders.
 - Format monetary values appropriately (2 decimal places)

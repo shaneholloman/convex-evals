@@ -1,0 +1,36 @@
+Assuming this schema:
+
+```typescript
+export default defineSchema({
+  // Organizations have many teams
+  organizations: defineTable({
+    name: v.string(),    
+  }),
+
+  // Teams belong to organizations and have many members
+  teams: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+  }).index("by_org", ["organizationId"]),
+
+  // Team members belong to teams
+  teamMembers: defineTable({
+    teamId: v.id("teams"),
+    userId: v.id("users"),
+    role: v.union(v.literal("member"), v.literal("admin")),
+  }).index("by_team_role", ["teamId", "role"]),
+
+  users: defineTable({
+    name: v.string(),
+    profileUrl: v.string(),
+  }),
+});
+```
+
+Write a query named `getProAdminsByOrg` that:
+- Takes an organizationId as an argument
+- Returns the unique set of all admins within that organization as a record 
+  mapping `Id<"users">` to their profileUrl.
+- This query should be efficient, assuming that there are many organizations,
+  but it can also assume that the number of rows for the queried organization 
+  is small.  

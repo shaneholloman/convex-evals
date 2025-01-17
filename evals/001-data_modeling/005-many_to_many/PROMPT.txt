@@ -6,16 +6,12 @@ Create a backend for a course enrollment system where:
    - All courses a student is enrolled in
    - All students enrolled in a course
 4. For each enrollment, we also want to track:
-   - The enrollment date
-   - The student's final grade (if completed)
+   - The enrollment date, represented as a number (Unix timestamp)
+   - The student's final grade (if completed), represented as an optional string
 
 Requirements:
-- Design the schema to efficiently support these queries:
+- Design the schema to efficiently support these queries with indexes:
   - List all courses a student is enrolled in
-  - List all students enrolled in a course
-  - Find all students who got an A in any course
-  - Find all courses where a student got an A
-- Use appropriate indexes to ensure optimal query performance
-- Include example queries demonstrating how to efficiently retrieve this data
+  - List all students enrolled in a course  
 
 Only write the `schema.ts` file.

@@ -8,5 +8,8 @@ export default defineSchema({
     author: v.string(),
     tags: v.array(v.string()),
     isPublished: v.boolean(),
-  }).index("by_author", ["author"]),
+  }).searchIndex("search_articles", { 
+    searchField: "content",
+    filterFields: ["author", "isPublished"]
+  }),
 }); 

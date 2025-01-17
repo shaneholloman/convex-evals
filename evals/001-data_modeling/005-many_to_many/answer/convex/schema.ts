@@ -23,6 +23,6 @@ export default defineSchema({
     enrollmentDate: v.number(), // Unix timestamp
     grade: v.optional(v.string()), // null if not graded yet
   })    
-    .index("by_student_and_course", ["studentId", "courseId", "grade"])
-    .index("by_course_and_student", ["courseId", "studentId", "grade"]),
+    .index("by_student_and_course", ["studentId", "courseId"])
+    .index("by_course_and_student", ["courseId", "studentId"]),
 }); 

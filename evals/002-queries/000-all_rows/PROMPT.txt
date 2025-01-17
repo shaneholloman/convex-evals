@@ -1,4 +1,4 @@
-Given this schema:
+Assuming this schema:
 
 ```typescript
 export default defineSchema({
@@ -10,13 +10,4 @@ export default defineSchema({
 });
 ```
 
-Write two functions:
-
-1. A mutation named `insertProducts` that inserts at least 3 different products into the table.
-
-2. A query named `getAllProducts` that returns all products in the table.
-
-Your solution should:
-- Use proper Convex types and patterns
-- Return all fields for each product
-- Handle the case where the table is empty
+Write a query named `getAllProducts` that returns all products in the table.

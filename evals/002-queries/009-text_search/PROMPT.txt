@@ -8,32 +8,18 @@ export default defineSchema({
     author: v.string(),
     tags: v.array(v.string()),
     isPublished: v.boolean(),
-  }).index("by_author", ["author"]),
-});
+  }).searchIndex("search_articles", { 
+    searchField: "content",
+    filterFields: ["author", "isPublished"]
+  }),
+}); 
 ```
 
-Write two functions:
-
-1. A mutation named `insertArticles` that inserts at least 6 articles with:
-   - Different authors
-   - Varied content with some overlapping words/phrases
-   - Mix of published and unpublished articles
-   - Different tags
-   - Content should be substantial enough to test search
-
-2. A query named `searchArticles` that:
-   - Takes a searchTerm and author (optional) as arguments
-   - Searches article content using .filter() with q.search()
-   - Only returns published articles
-   - If author is provided, uses the index to filter by author first
-   - Returns matching articles with:
-     * title
-     * author
-     * preview (first 100 characters of content)
-     * tags
-
-Your solution should:
-- Use proper Convex types and patterns
-- Demonstrate understanding of text search in filters
-- Show how to combine index and search filters
-- Handle optional parameters correctly
+Write a query named `searchArticles` that:
+- Takes a searchTerm and author as arguments
+- Searches for all published articles that match the search term
+- Returns the top 10 matching articles with:
+  * title
+  * author
+  * preview (first 100 characters of content)
+  * tags

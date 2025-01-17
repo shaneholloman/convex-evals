@@ -1,27 +1,15 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
-
-export const insertProducts = mutation({
-  handler: async (ctx) => {
-    await ctx.db.insert("products", {
-      name: "Laptop",
-      price: 999.99,
-      inStock: true,
-    });
-    await ctx.db.insert("products", {
-      name: "Headphones",
-      price: 149.99,
-      inStock: true,
-    });
-    await ctx.db.insert("products", {
-      name: "Keyboard",
-      price: 79.99,
-      inStock: false,
-    });
-  },
-});
+import { query } from "./_generated/server"
 
 export const getAllProducts = query({
+  args: {},
+  returns: v.array(v.object({
+    _id: v.id("products"),
+    _creationTime: v.number(),
+    name: v.string(),
+    price: v.number(),
+    inStock: v.boolean(),
+  })),
   handler: async (ctx) => {
     return await ctx.db.query("products").collect();
   },
