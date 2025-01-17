@@ -24,6 +24,42 @@ def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
     os.makedirs(output_dir, exist_ok=True)
     generate(input_dir, output_dir, model)
 
+def evaluate_test(category: str, test: str, test_output_dir: str):
+    report_entry = {
+        "category": category,
+        "test": test,
+    }
+    all_ok = True
+    try:
+        setup_js(test_output_dir)
+        report_entry["setup"] = {"status": "ok"}
+    except Exception as e:
+        report_entry["setup"] = {"status": "failed", "error": str(e)}
+        all_ok = False
+
+    if report_entry["setup"]["status"] == "ok":
+        try:
+            typecheck_js(test_output_dir)
+            report_entry["typecheck"] = {"status": "ok"}
+        except Exception as e:
+            report_entry["typecheck"] = error_status(e)
+            all_ok = False
+
+        try:
+            lint_js(test_output_dir)
+            report_entry["lint"] = {"status": "ok"}
+        except Exception as e:
+            report_entry["lint"] = error_status(e)
+            all_ok = False
+
+        try:
+            deploy(test_output_dir)
+            report_entry["deploy"] = {"status": "ok"}
+        except Exception as e:
+            report_entry["deploy"] = error_status(e)
+            all_ok = False
+
+    return report_entry, all_ok
 
 if __name__ == "__main__":
     load_dotenv()
@@ -39,7 +75,8 @@ if __name__ == "__main__":
     parser.add_argument("--test-filter", "-k", help="Filter tests by regexp")
     parser.add_argument("--skip-generation", "-g", action="store_true", help="Skip generation")
     parser.add_argument("--skip-evaluation", "-e", action="store_true", help="Skip evaluation")
-    parser.add_argument("--concurrency", "-c", help="Concurrency", default=4)
+    parser.add_argument("--generate-concurrency", help="Concurrency", default=4)
+    parser.add_argument("--evaluate-concurrency", help="Concurrency", default=8)
     parser.add_argument(
         "--model", help="Model to use for generation", default="claude-3-5-sonnet-latest"
     )
@@ -64,7 +101,8 @@ if __name__ == "__main__":
         git_rev = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
         output_dir = f"output-{args.model}-{git_rev}"
 
-    concurrency = int(args.concurrency)
+    generate_concurrency = int(args.generate_concurrency)
+    evaluate_concurrency = int(args.evaluate_concurrency)
     report_path = os.path.join(output_dir, "report.json")
 
     test_filter = re.compile(args.test_filter) if args.test_filter else None
@@ -83,7 +121,7 @@ if __name__ == "__main__":
             shutil.rmtree(output_dir)
         os.makedirs(output_dir, exist_ok=False)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=generate_concurrency) as executor:
             futures = {}
             for category, test in tests:
                 test_dir = os.path.join(evals_dir, category, test)
@@ -104,46 +142,20 @@ if __name__ == "__main__":
     if do_evaluation:
         any_failed = False
         report = []
-        for category, test in tests:
-            print(f"Evaluating {category}/{test}...")
-            test_output_dir = os.path.join(output_dir, "evals", category, test)
-            report_entry = {
-                "category": category,
-                "test": test,
-            }
-            all_ok = True
-            try:
-                setup_js(test_output_dir)
-                report_entry["setup"] = {"status": "ok"}
-            except Exception as e:
-                report_entry["setup"] = {"status": "failed", "error": str(e)}
-                all_ok = False
 
-            if report_entry["setup"]["status"] == "ok":
-                try:
-                    typecheck_js(test_output_dir)
-                    report_entry["typecheck"] = {"status": "ok"}
-                except Exception as e:
-                    report_entry["typecheck"] = error_status(e)
-                    all_ok = False
+        with concurrent.futures.ThreadPoolExecutor(max_workers=evaluate_concurrency) as executor:
+            futures = {}
+            for category, test in tests:
+                test_output_dir = os.path.join(output_dir, "evals", category, test)
+                future = executor.submit(evaluate_test, category, test, test_output_dir)
+                futures[future] = (category, test_output_dir)
+            for future in concurrent.futures.as_completed(futures):
+                report_entry, all_ok = future.result()
+                report.append(report_entry)
+                if not all_ok:
+                    any_failed = True
 
-                try:
-                    lint_js(test_output_dir)
-                    report_entry["lint"] = {"status": "ok"}
-                except Exception as e:
-                    report_entry["lint"] = error_status(e)
-                    all_ok = False
-
-                try:
-                    deploy(test_output_dir)
-                    report_entry["deploy"] = {"status": "ok"}
-                except Exception as e:
-                    report_entry["deploy"] = error_status(e)
-                    all_ok = False
-
-            report.append(report_entry)
-            if not all_ok:
-                any_failed = True
+        report.sort(key=lambda x: (x["category"], x["test"]))
 
         with open(report_path, "w") as f:
             json.dump(report, f)
