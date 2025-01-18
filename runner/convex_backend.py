@@ -1,10 +1,13 @@
 import os
+import platform
 import subprocess
 import requests
 import time
 from portpicker import pick_unused_port
 import threading
+import functools
 import contextlib
+import zipfile
 
 port_lock = threading.Lock()
 
@@ -17,7 +20,7 @@ def convex_backend(backend_dir: str):
     storage_dir = os.path.abspath(os.path.join(backend_dir, "convex_local_storage"))
     os.makedirs(storage_dir, exist_ok=True)
     sqlite_path = os.path.abspath(os.path.join(backend_dir, "convex_local_backend.sqlite3"))    
-    convex_binary = os.path.abspath("convex-local-backend")
+    convex_binary = download_convex_binary()
     
     with port_lock:
         port = pick_unused_port()
@@ -92,3 +95,85 @@ def health_check(port: int):
                 raise e
             time.sleep(min(0.1 * (2**num_attempts), remaining))
             num_attempts += 1
+
+download_binary_lock = threading.Lock()
+
+@functools.cache
+def fetch_convex_release():
+    releases = requests.get("https://api.github.com/repos/get-convex/convex-backend/releases").json()
+    return releases[0]
+
+def download_convex_binary():
+    latest = fetch_convex_release()    
+    version = latest["tag_name"]
+    
+    arch = { "x86_64": "x86_64", "arm64": "aarch64" }[platform.machine()]
+    triple_os = { "Darwin": "apple-darwin", "Linux": "unknown-linux-gnu", "Windows": "pc-windows-msvc" }[platform.system()]
+    target_pattern = f"convex-local-backend-{arch}-{triple_os}"
+
+    # Find the matching asset from the release
+    matching_asset = None
+    for asset in latest["assets"]:
+        if target_pattern in asset["name"]:
+            matching_asset = asset
+            break
+    
+    if not matching_asset:
+        raise RuntimeError(f"Could not find matching asset for {target_pattern}")
+
+    binary_dir = os.path.expanduser("~/.convex-evals/releases")
+    os.makedirs(binary_dir, exist_ok=True)    
+
+    # Include version in binary name
+    binary_name = f"convex-local-backend-{version}"
+    if platform.system() == "Windows":
+        binary_name += ".exe"
+    binary_path = os.path.join(binary_dir, binary_name)
+
+    if os.path.exists(binary_path):        
+        return binary_path    
+
+    with download_binary_lock:
+        if os.path.exists(binary_path):            
+            return binary_path
+
+        print("Latest release:", version)
+
+        url = matching_asset["browser_download_url"]
+        print("Downloading:", url)
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+            
+        zip_path = os.path.join(binary_dir, matching_asset["name"])
+        with open(zip_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        print("Downloaded:", matching_asset["name"])
+
+        # Unzip the file
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(binary_dir)
+        
+        # Rename the extracted binary to include version
+        extracted_binary = os.path.join(binary_dir, "convex-local-backend")
+        if platform.system() == "Windows":
+            extracted_binary += ".exe"
+        os.rename(extracted_binary, binary_path)
+        
+        # Make the binary executable on Unix systems
+        if platform.system() != "Windows":
+            os.chmod(binary_path, 0o755)
+            
+        # Clean up zip file
+        os.remove(zip_path)
+        print("Extracted binary to:", binary_path)
+
+    return binary_path
+
+    
+
+    
+
+
+
+    
