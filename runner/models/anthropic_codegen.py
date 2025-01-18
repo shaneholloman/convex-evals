@@ -123,7 +123,29 @@ CONVEX_GUIDELINES = """
           - Do NOT use `ctx.runQuery` or `ctx.runMutation` from a query or mutation. Instead,
             if you'd like to directly call one query from another, define a helper function and call
             that instead. Similarly, if you'd like to directly call a query or mutation from another
-            mutation, define a helper function and call that instead.
+            mutation, define a helper function and call that instead. For example:
+            ```typescript
+            async function concatenate(x: string, y: string) {
+              return x + y;
+            }
+
+            export const calleeQuery = query({
+              args: { x: v.string(), y: v.string() },
+              returns: v.string(),
+              handler: async (ctx, args) => {
+                return concatenate(args.x, args.y);
+              },
+            });
+
+            export const callerMutation = mutation({
+              args: {},
+              handler: async (ctx, args) => {
+                // Do NOT call `calleeQuery` directly here. Instead, call the helper function `concatenate` directly.
+                const result = await concatenate("Hello", "World");
+                return result;
+              },
+            });
+            ```
           - Try to use as few calls from actions to queries and mutations as possible. Queries
             and mutations are transactions, so splitting logic up into multiple calls introduces
             the risk of race conditions.

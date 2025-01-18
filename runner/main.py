@@ -118,10 +118,8 @@ if __name__ == "__main__":
     ]
     tests.sort()
 
-    if do_generation:
-        if args.force and os.path.exists(output_dir):
-            shutil.rmtree(output_dir)
-        os.makedirs(output_dir, exist_ok=False)
+    if do_generation:        
+        os.makedirs(output_dir, exist_ok=args.force)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=generate_concurrency) as executor:
             futures = {}
