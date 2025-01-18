@@ -15,13 +15,14 @@ instance_name = "carnitas"
 instance_secret = "4361726e697461732c206c69746572616c6c79206d65616e696e6720226c6974"
 admin_key = "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd"
 
+
 @contextlib.contextmanager
 def convex_backend(backend_dir: str):
     storage_dir = os.path.abspath(os.path.join(backend_dir, "convex_local_storage"))
     os.makedirs(storage_dir, exist_ok=True)
-    sqlite_path = os.path.abspath(os.path.join(backend_dir, "convex_local_backend.sqlite3"))    
+    sqlite_path = os.path.abspath(os.path.join(backend_dir, "convex_local_backend.sqlite3"))
     convex_binary = download_convex_binary()
-    
+
     with port_lock:
         port = pick_unused_port()
         site_proxy_port = pick_unused_port()
@@ -48,11 +49,11 @@ def convex_backend(backend_dir: str):
         # Do a health check and then make sure that *our* process is still running.
         health_check(port)
         if convex_process.poll() is not None:
-            raise ValueError("Convex process failed to start")        
+            raise ValueError("Convex process failed to start")
         yield {
             "port": port,
             "site_proxy_port": site_proxy_port,
-            'process': convex_process,
+            "process": convex_process,
         }
     finally:
         convex_process.terminate()
@@ -77,9 +78,9 @@ def deploy(output_dir: str):
                 f"http://localhost:{backend['port']}",
             ],
             cwd=project_dir,
-        )        
-    
-    print("Deploy OK!")    
+        )
+
+    print("Deploy OK!")
 
 
 def health_check(port: int):
@@ -96,19 +97,28 @@ def health_check(port: int):
             time.sleep(min(0.1 * (2**num_attempts), remaining))
             num_attempts += 1
 
+
 download_binary_lock = threading.Lock()
+
 
 @functools.cache
 def fetch_convex_release():
-    releases = requests.get("https://api.github.com/repos/get-convex/convex-backend/releases").json()
+    releases = requests.get(
+        "https://api.github.com/repos/get-convex/convex-backend/releases"
+    ).json()
     return releases[0]
 
+
 def download_convex_binary():
-    latest = fetch_convex_release()    
+    latest = fetch_convex_release()
     version = latest["tag_name"]
-    
-    arch = { "x86_64": "x86_64", "arm64": "aarch64" }[platform.machine()]
-    triple_os = { "Darwin": "apple-darwin", "Linux": "unknown-linux-gnu", "Windows": "pc-windows-msvc" }[platform.system()]
+
+    arch = {"x86_64": "x86_64", "arm64": "aarch64"}[platform.machine()]
+    triple_os = {
+        "Darwin": "apple-darwin",
+        "Linux": "unknown-linux-gnu",
+        "Windows": "pc-windows-msvc",
+    }[platform.system()]
     target_pattern = f"convex-local-backend-{arch}-{triple_os}"
 
     # Find the matching asset from the release
@@ -117,12 +127,12 @@ def download_convex_binary():
         if target_pattern in asset["name"]:
             matching_asset = asset
             break
-    
+
     if not matching_asset:
         raise RuntimeError(f"Could not find matching asset for {target_pattern}")
 
     binary_dir = os.path.expanduser("~/.convex-evals/releases")
-    os.makedirs(binary_dir, exist_ok=True)    
+    os.makedirs(binary_dir, exist_ok=True)
 
     # Include version in binary name
     binary_name = f"convex-local-backend-{version}"
@@ -130,11 +140,11 @@ def download_convex_binary():
         binary_name += ".exe"
     binary_path = os.path.join(binary_dir, binary_name)
 
-    if os.path.exists(binary_path):        
-        return binary_path    
+    if os.path.exists(binary_path):
+        return binary_path
 
     with download_binary_lock:
-        if os.path.exists(binary_path):            
+        if os.path.exists(binary_path):
             return binary_path
 
         print("Latest release:", version)
@@ -143,7 +153,7 @@ def download_convex_binary():
         print("Downloading:", url)
         response = requests.get(url, stream=True)
         response.raise_for_status()
-            
+
         zip_path = os.path.join(binary_dir, matching_asset["name"])
         with open(zip_path, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
@@ -151,29 +161,21 @@ def download_convex_binary():
         print("Downloaded:", matching_asset["name"])
 
         # Unzip the file
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(binary_dir)
-        
+
         # Rename the extracted binary to include version
         extracted_binary = os.path.join(binary_dir, "convex-local-backend")
         if platform.system() == "Windows":
             extracted_binary += ".exe"
         os.rename(extracted_binary, binary_path)
-        
+
         # Make the binary executable on Unix systems
         if platform.system() != "Windows":
             os.chmod(binary_path, 0o755)
-            
+
         # Clean up zip file
         os.remove(zip_path)
         print("Extracted binary to:", binary_path)
 
     return binary_path
-
-    
-
-    
-
-
-
-    

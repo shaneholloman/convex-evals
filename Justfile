@@ -2,5 +2,5 @@ default:
     @just --list
 
 # Format Python code with Black
-lint-python:
+format-python:
     pdm run black . 

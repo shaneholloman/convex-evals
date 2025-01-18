@@ -24,6 +24,7 @@ def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
     os.makedirs(output_dir, exist_ok=True)
     generate(input_dir, output_dir, model)
 
+
 def evaluate_test(category: str, test: str, test_output_dir: str):
     report_entry = {
         "category": category,
@@ -60,6 +61,7 @@ def evaluate_test(category: str, test: str, test_output_dir: str):
             all_ok = False
 
     return report_entry, all_ok
+
 
 if __name__ == "__main__":
     load_dotenv()
