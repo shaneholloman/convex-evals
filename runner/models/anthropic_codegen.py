@@ -56,7 +56,7 @@ Before writing any code, analyze the task and think through your approach. Use <
    - List each table with its fields and types
 5. Outline background processing requirements (if any):
 
-After your analysis, generate the necessary files for a Convex backend that implements the requested functionality. 
+After your analysis, generate the necessary files for a Convex backend that implements the requested functionality.
 
 <guidelines>
   <file_structure>
@@ -70,7 +70,7 @@ After your analysis, generate the necessary files for a Convex backend that impl
   <general_coding_standards>
     - Use 2 spaces for code indentation.
     - Ensure your code is clear, efficient, concise, and innovative.
-    - Maintain a friendly and approachable tone in any comments or documentation.    
+    - Maintain a friendly and approachable tone in any comments or documentation.
   </general_coding_standards>
 
   %s
@@ -111,7 +111,12 @@ CONVEX_GUIDELINES = """
           });
           ```
           For simple HTTP routes, define the handler directly within the route definition.
-      </http_endpoint_syntax>        
+      </http_endpoint_syntax>
+      <function_registration>
+          - Use `internalQuery`, `internalMutation`, and `internalAction` to register internal functions.
+          - Use `query`, `mutation`, and `action` to register public functions.
+          - You CANNOT register a function through the `api` or `internal` objects.
+      </function_registration>
       <function_calling>
           - Use `ctx.runQuery` to call a query from a mutation or action.
           - Use `ctx.runMutation` to call a mutation from an action.
@@ -120,19 +125,19 @@ CONVEX_GUIDELINES = """
             the risk of race conditions.
           - Use `ctx.runAction` to call an action from an action. ONLY call an action from another
             action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the
-            shared code into a helper async function and call that directly instead.        
-          - All of these calls take in a `FunctionReference`. Do NOT try to pass the callee 
+            shared code into a helper async function and call that directly instead.
+          - All of these calls take in a `FunctionReference`. Do NOT try to pass the callee
             function directly into one of these calls.
       </function_calling>
       <function_references>
           - Function references are pointers to registered Convex functions.
           - Use the `api` object defined by the framework in `convex/_generated/api.ts` to call public functions
             registered with `query`, `mutation`, or `action`.
-          - Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal 
-            (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.              
+          - Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal
+            (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.
           - Convex uses file-based routing, so a public function defined in `convex/public.ts` named `f` has
             a function reference of `api.public.f`.
-          - A private function defined in `convex/private.ts` named `g` has a function reference of 
+          - A private function defined in `convex/private.ts` named `g` has a function reference of
             `internal.private.g`.
           - Functions can also registered within directories nested within the `convex/` folder. For example,
             a public function `h` defined in `convex/messages/access.ts` has a function reference of
@@ -147,6 +152,7 @@ CONVEX_GUIDELINES = """
   </function_guidelines>
   <validator_guidelines>
       - `v.bigint()` is deprecated for representing signed 64-bit integers. Use `v.int64()` instead.
+      - Use `v.record()` for defining a record type. `v.map()` and `v.set()` are not supported.
   </validator_guidelines>
   <schema_guidelines>
       - Always define your schema in `convex/schema.ts`.
@@ -160,7 +166,9 @@ CONVEX_GUIDELINES = """
             exampleField: v.string(),
           }),
         });
-        ```                  
+        ```
+      - Database indexes defined with `.index()` do not support uniqueness constraints. Enforce these in the mutation
+        functions instead. This is safe since mutations are always serializable.
   </schema_guidelines>
   <query_guidelines>
       - Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
