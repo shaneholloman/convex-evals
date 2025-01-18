@@ -118,8 +118,12 @@ CONVEX_GUIDELINES = """
           - You CANNOT register a function through the `api` or `internal` objects.
       </function_registration>
       <function_calling>
-          - Use `ctx.runQuery` to call a query from a mutation or action.
+          - Use `ctx.runQuery` to call a query from an action.
           - Use `ctx.runMutation` to call a mutation from an action.
+          - Do NOT use `ctx.runQuery` or `ctx.runMutation` from a query or mutation. Instead,
+            if you'd like to directly call one query from another, define a helper function and call
+            that instead. Similarly, if you'd like to directly call a query or mutation from another
+            mutation, define a helper function and call that instead.
           - Try to use as few calls from actions to queries and mutations as possible. Queries
             and mutations are transactions, so splitting logic up into multiple calls introduces
             the risk of race conditions.
@@ -135,10 +139,10 @@ CONVEX_GUIDELINES = """
             registered with `query`, `mutation`, or `action`.
           - Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal
             (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.
-          - Convex uses file-based routing, so a public function defined in `convex/public.ts` named `f` has
-            a function reference of `api.public.f`.
-          - A private function defined in `convex/private.ts` named `g` has a function reference of
-            `internal.private.g`.
+          - Convex uses file-based routing, so a public function defined in `convex/example.ts` named `f` has
+            a function reference of `api.example.f`.
+          - A private function defined in `convex/example.ts` named `g` has a function reference of
+            `internal.example.g`.
           - Functions can also registered within directories nested within the `convex/` folder. For example,
             a public function `h` defined in `convex/messages/access.ts` has a function reference of
             `api.messages.access.h`.
