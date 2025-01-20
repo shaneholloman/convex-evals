@@ -116,36 +116,13 @@ CONVEX_GUIDELINES = """
           - Use `internalQuery`, `internalMutation`, and `internalAction` to register internal functions.
           - Use `query`, `mutation`, and `action` to register public functions.
           - You CANNOT register a function through the `api` or `internal` objects.
+          - ALWAYS include argument and return validators for all registered functions.
+          - If the JavaScript implementation of a Convex function doesn't have a return value, it
+            implicitly returns `null`.
       </function_registration>
       <function_calling>
-          - Use `ctx.runQuery` to call a query from an action.
+          - Use `ctx.runQuery` to call a query from a mutation or action.
           - Use `ctx.runMutation` to call a mutation from an action.
-          - Do NOT use `ctx.runQuery` or `ctx.runMutation` from a query or mutation. Instead,
-            if you'd like to directly call one query from another, define a helper function and call
-            that instead. Similarly, if you'd like to directly call a query or mutation from another
-            mutation, define a helper function and call that instead. For example:
-            ```typescript
-            async function concatenate(x: string, y: string) {
-              return x + y;
-            }
-
-            export const calleeQuery = query({
-              args: { x: v.string(), y: v.string() },
-              returns: v.string(),
-              handler: async (ctx, args) => {
-                return concatenate(args.x, args.y);
-              },
-            });
-
-            export const callerMutation = mutation({
-              args: {},
-              handler: async (ctx, args) => {
-                // Do NOT call `calleeQuery` directly here. Instead, call the helper function `concatenate` directly.
-                const result = await concatenate("Hello", "World");
-                return result;
-              },
-            });
-            ```
           - Try to use as few calls from actions to queries and mutations as possible. Queries
             and mutations are transactions, so splitting logic up into multiple calls introduces
             the risk of race conditions.
