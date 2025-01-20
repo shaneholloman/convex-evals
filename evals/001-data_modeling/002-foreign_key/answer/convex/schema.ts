@@ -10,5 +10,5 @@ export default defineSchema({
     title: v.string(),
     author: v.id("users"),
     content: v.string(),
-  }),  
+  }),
 });

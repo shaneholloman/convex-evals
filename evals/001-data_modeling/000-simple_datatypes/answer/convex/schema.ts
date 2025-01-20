@@ -11,6 +11,6 @@ export default defineSchema({
     f: v.boolean(),
     g: v.string(),
     h: v.bytes(),
-    i: v.any()
-  })
+    i: v.any(),
+  }),
 });

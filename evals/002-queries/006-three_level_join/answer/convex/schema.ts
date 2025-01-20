@@ -24,4 +24,4 @@ export default defineSchema({
     name: v.string(),
     profileUrl: v.string(),
   }),
-}); 
+});

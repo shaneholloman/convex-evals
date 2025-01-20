@@ -1,31 +1,36 @@
-import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { v } from "convex/values";
+import { query } from "./_generated/server";
 
 export const getMonthlySalesByCategory = query({
   args: {
     region: v.string(),
-    month: v.string(), 
+    month: v.string(),
   },
-  returns: v.array(v.object({
-    category: v.string(),
-    totalSales: v.number(),
-    averageSaleAmount: v.number(),
-    numberOfSales: v.number(),
-  })),
+  returns: v.array(
+    v.object({
+      category: v.string(),
+      totalSales: v.number(),
+      averageSaleAmount: v.number(),
+      numberOfSales: v.number(),
+    }),
+  ),
   handler: async (ctx, args) => {
     const sales = await ctx.db
       .query("sales")
       .withIndex("by_region_date", (q) =>
-        q.eq("region", args.region).eq("date", args.month)
+        q.eq("region", args.region).eq("date", args.month),
       )
       .collect();
-    
-    const resultByCategory: Record<string, {
-      category: string;
-      totalSales: number;
-      numberOfSales: number;
-      totalAmount: number;
-    }> = {};
+
+    const resultByCategory: Record<
+      string,
+      {
+        category: string;
+        totalSales: number;
+        numberOfSales: number;
+        totalAmount: number;
+      }
+    > = {};
 
     for (const sale of sales) {
       let result = resultByCategory[sale.category];
@@ -46,12 +51,12 @@ export const getMonthlySalesByCategory = query({
     return Object.values(resultByCategory)
       .sort((a, b) => b.totalSales - a.totalSales)
       .map((group) => ({
-          category: group.category,
-          totalSales: Number(group.totalSales.toFixed(2)),
-          averageSaleAmount: Number(
-            (group.totalAmount / group.numberOfSales).toFixed(2)
-          ),
-          numberOfSales: group.numberOfSales,
-        }));      
+        category: group.category,
+        totalSales: Number(group.totalSales.toFixed(2)),
+        averageSaleAmount: Number(
+          (group.totalAmount / group.numberOfSales).toFixed(2),
+        ),
+        numberOfSales: group.numberOfSales,
+      }));
   },
 });

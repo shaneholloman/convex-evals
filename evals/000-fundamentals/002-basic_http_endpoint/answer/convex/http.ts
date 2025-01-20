@@ -7,7 +7,7 @@ http.route({
   path: "/api/hello",
   method: "GET",
   handler: httpAction(async (ctx, req) => {
-    const bodyText = await req.text();    
+    const bodyText = await req.text();
     return new Response(bodyText + "there", {
       status: 200,
       headers: {

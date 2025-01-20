@@ -1,9 +1,9 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
-import { FileIcon } from '@radix-ui/react-icons';
-import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { promises as fs } from "fs";
+import path from "path";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { FileIcon } from "@radix-ui/react-icons";
+import { CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 
 interface TestStatus {
   status: string;
@@ -26,26 +26,26 @@ interface FileEntry {
 
 type ReportData = TestReport[];
 
-function CategorySummary({ 
-  category, 
-  tests 
-}: { 
-  category: string; 
+function CategorySummary({
+  category,
+  tests,
+}: {
+  category: string;
   tests: (TestReport & { files: FileEntry[] })[];
 }) {
   const totalTests = tests.length;
-  const passedTests = tests.filter(test => 
+  const passedTests = tests.filter((test) =>
     Object.values(test)
-      .filter(v => typeof v === 'object' && 'status' in v)
-      .every(v => v.status === 'ok')
+      .filter((v) => typeof v === "object" && "status" in v)
+      .every((v) => v.status === "ok"),
   ).length;
   const failedTests = totalTests - passedTests;
 
   return (
     <tr className="group hover:bg-gray-50 transition-colors">
       <td className="py-4 pl-6 pr-3">
-        <a 
-          href={`#category-${category}`} 
+        <a
+          href={`#category-${category}`}
           className="flex items-center gap-2 text-gray-900 hover:text-gray-600"
         >
           <ChevronDown className="h-4 w-4 text-gray-400" />
@@ -69,11 +69,11 @@ function CategorySummary({
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className={`h-2 rounded-full ${
-              passedTests === totalTests 
-                ? 'bg-green-500' 
-                : failedTests === totalTests 
-                ? 'bg-red-500' 
-                : 'bg-yellow-500'
+              passedTests === totalTests
+                ? "bg-green-500"
+                : failedTests === totalTests
+                  ? "bg-red-500"
+                  : "bg-yellow-500"
             }`}
             style={{ width: `${(passedTests / totalTests) * 100}%` }}
           />
@@ -83,19 +83,36 @@ function CategorySummary({
   );
 }
 
-const ignoredFiles = ['bun.lockb', '_generated', 'node_modules', '.env.local', 'README.md', 'tsconfig.json'];
+const ignoredFiles = [
+  "bun.lockb",
+  "_generated",
+  "node_modules",
+  ".env.local",
+  "README.md",
+  "tsconfig.json",
+];
 
-async function getGeneratedFilesList(dirName: string, testPath: string): Promise<FileEntry[]> {
+async function getGeneratedFilesList(
+  dirName: string,
+  testPath: string,
+): Promise<FileEntry[]> {
   const workspaceRoot = process.cwd();
-  const testDir = path.join(workspaceRoot, '..', dirName, 'evals', testPath, 'project');
+  const testDir = path.join(
+    workspaceRoot,
+    "..",
+    dirName,
+    "evals",
+    testPath,
+    "project",
+  );
   const files: FileEntry[] = [];
 
   async function walkDir(dir: string) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      
+
       if (ignoredFiles.includes(entry.name)) {
         continue;
       }
@@ -116,7 +133,7 @@ async function getGeneratedFilesList(dirName: string, testPath: string): Promise
     await walkDir(testDir);
     return files;
   } catch (error) {
-    console.error('Error reading generated files:', error);
+    console.error("Error reading generated files:", error);
     return [];
   }
 }
@@ -124,17 +141,21 @@ async function getGeneratedFilesList(dirName: string, testPath: string): Promise
 async function getReportData(dirName: string): Promise<ReportData | null> {
   try {
     const workspaceRoot = process.cwd();
-    const reportPath = path.join(workspaceRoot, '..', dirName, 'report.json');
-    const reportContent = await fs.readFile(reportPath, 'utf-8');
+    const reportPath = path.join(workspaceRoot, "..", dirName, "report.json");
+    const reportContent = await fs.readFile(reportPath, "utf-8");
     return JSON.parse(reportContent);
   } catch (error) {
     return null;
   }
 }
 
-export default async function OutputPage({ params }: { params: { dir: string } }) {
+export default async function OutputPage({
+  params,
+}: {
+  params: { dir: string };
+}) {
   const report = await getReportData(params.dir);
-  
+
   if (!report) {
     notFound();
   }
@@ -142,8 +163,11 @@ export default async function OutputPage({ params }: { params: { dir: string } }
   const testsWithFiles = await Promise.all(
     report.map(async (test) => ({
       ...test,
-      files: await getGeneratedFilesList(params.dir, `${test.category}/${test.test}`),
-    }))
+      files: await getGeneratedFilesList(
+        params.dir,
+        `${test.category}/${test.test}`,
+      ),
+    })),
   );
 
   const categories = testsWithFiles.reduce<{
@@ -165,26 +189,45 @@ export default async function OutputPage({ params }: { params: { dir: string } }
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              <th scope="col" className="py-3 pl-6 pr-3 text-left text-sm font-semibold text-gray-900">
+              <th
+                scope="col"
+                className="py-3 pl-6 pr-3 text-left text-sm font-semibold text-gray-900"
+              >
                 Category
               </th>
-              <th scope="col" className="px-3 py-3 text-center text-sm font-semibold text-gray-900">
+              <th
+                scope="col"
+                className="px-3 py-3 text-center text-sm font-semibold text-gray-900"
+              >
                 Total
               </th>
-              <th scope="col" className="px-3 py-3 text-center text-sm font-semibold text-gray-900">
+              <th
+                scope="col"
+                className="px-3 py-3 text-center text-sm font-semibold text-gray-900"
+              >
                 Passed
               </th>
-              <th scope="col" className="px-3 py-3 text-center text-sm font-semibold text-gray-900">
+              <th
+                scope="col"
+                className="px-3 py-3 text-center text-sm font-semibold text-gray-900"
+              >
                 Failed
               </th>
-              <th scope="col" className="px-3 py-3 text-left text-sm font-semibold text-gray-900">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-sm font-semibold text-gray-900"
+              >
                 Progress
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {Object.entries(categories).map(([category, tests]) => (
-              <CategorySummary key={category} category={category} tests={tests} />
+              <CategorySummary
+                key={category}
+                category={category}
+                tests={tests}
+              />
             ))}
           </tbody>
         </table>
@@ -192,8 +235,8 @@ export default async function OutputPage({ params }: { params: { dir: string } }
 
       <div className="space-y-10">
         {Object.entries(categories).map(([category, tests]) => (
-          <div 
-            key={category} 
+          <div
+            key={category}
             id={`category-${category}`}
             className="bg-white rounded-xl border shadow-sm overflow-hidden scroll-mt-8"
           >
@@ -209,38 +252,50 @@ export default async function OutputPage({ params }: { params: { dir: string } }
             <div className="divide-y divide-gray-100">
               {tests.map((test) => {
                 const isSuccess = Object.values(test)
-                  .filter(v => typeof v === 'object' && 'status' in v)
-                  .every(v => v.status === 'ok');
+                  .filter((v) => typeof v === "object" && "status" in v)
+                  .every((v) => v.status === "ok");
 
                 return (
                   <div key={test.test} className="px-6 py-5">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className={`w-2.5 h-2.5 rounded-full ${
-                        isSuccess ? 'bg-green-500' : 'bg-red-500'
-                      }`} />
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          isSuccess ? "bg-green-500" : "bg-red-500"
+                        }`}
+                      />
                       <h3 className="font-medium text-lg text-gray-900">
                         {test.test}
                       </h3>
                     </div>
 
                     <div className="space-y-3 ml-4">
-                      {['setup', 'typecheck', 'lint', 'deploy'].map((phase) => {
-                        const status = test[phase as keyof TestReport] as TestStatus | undefined;
+                      {["setup", "typecheck", "lint", "deploy"].map((phase) => {
+                        const status = test[phase as keyof TestReport] as
+                          | TestStatus
+                          | undefined;
                         if (!status) return null;
-                        
+
                         return (
                           <div key={phase} className="flex items-start gap-3">
-                            <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                              status.status === 'ok' ? 'bg-green-400' : 'bg-red-400'
-                            }`} />
+                            <div
+                              className={`w-2 h-2 rounded-full mt-1.5 ${
+                                status.status === "ok"
+                                  ? "bg-green-400"
+                                  : "bg-red-400"
+                              }`}
+                            />
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium capitalize text-gray-700">
                                   {phase}
                                 </span>
-                                <span className={`text-sm ${
-                                  status.status === 'ok' ? 'text-green-600' : 'text-red-600'
-                                }`}>
+                                <span
+                                  className={`text-sm ${
+                                    status.status === "ok"
+                                      ? "text-green-600"
+                                      : "text-red-600"
+                                  }`}
+                                >
                                   {status.status}
                                 </span>
                               </div>

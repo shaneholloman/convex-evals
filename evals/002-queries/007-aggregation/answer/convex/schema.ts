@@ -8,4 +8,4 @@ export default defineSchema({
     quantity: v.number(),
     pricePerUnit: v.number(),
   }).index("by_customer", ["customerId"]),
-}); 
+});

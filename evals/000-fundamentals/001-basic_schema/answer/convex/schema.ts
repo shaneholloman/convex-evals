@@ -5,7 +5,7 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
   }),
-  
+
   messages: defineTable({
     text: v.string(),
     authorName: v.string(),

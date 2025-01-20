@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import { adminClient, client, getActiveSchema } from "../../../grader";
-import { anyApi } from "convex/server"
+import { anyApi } from "convex/server";
 
 test("get schema", async () => {
   const schema = await getActiveSchema();
   expect(schema).toBeNull();
-})
+});
 
 test("empty public query", async () => {
   const result = await client.query(anyApi.index.emptyPublicQuery, {});
@@ -127,7 +127,10 @@ test("empty private mutation", async () => {
   expect(error).toBeDefined();
   expect(error.toString()).toContain("Could not find public function");
 
-  const result = await adminClient.mutation(anyApi.index.emptyPrivateMutation, {});
+  const result = await adminClient.mutation(
+    anyApi.index.emptyPrivateMutation,
+    {},
+  );
   expect(result).toBe(null);
 });
 

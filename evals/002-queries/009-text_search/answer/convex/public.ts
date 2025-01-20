@@ -1,20 +1,28 @@
-import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { v } from "convex/values";
+import { query } from "./_generated/server";
 
 export const searchArticles = query({
   args: {
     searchTerm: v.string(),
     author: v.string(),
   },
-  returns: v.array(v.object({
-    title: v.string(),
-    author: v.string(),
-    preview: v.string(),
-    tags: v.array(v.string()),
-  })),
+  returns: v.array(
+    v.object({
+      title: v.string(),
+      author: v.string(),
+      preview: v.string(),
+      tags: v.array(v.string()),
+    }),
+  ),
   handler: async (ctx, args) => {
-    const articles = await ctx.db.query("articles")
-      .withSearchIndex("search_articles", q => q.search("content", args.searchTerm).eq("author", args.author).eq("isPublished", true))
+    const articles = await ctx.db
+      .query("articles")
+      .withSearchIndex("search_articles", (q) =>
+        q
+          .search("content", args.searchTerm)
+          .eq("author", args.author)
+          .eq("isPublished", true),
+      )
       .take(10);
     return articles.map((article) => {
       let preview = article.content;

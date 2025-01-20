@@ -8,4 +8,4 @@ export default defineSchema({
     likes: v.number(),
     isPinned: v.boolean(),
   }).index("by_author", ["author"]),
-}); 
+});

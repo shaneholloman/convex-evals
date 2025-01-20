@@ -1,5 +1,5 @@
-import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { v } from "convex/values";
+import { query } from "./_generated/server";
 
 export const getSensorReadingsInRange = query({
   args: {
@@ -14,7 +14,7 @@ export const getSensorReadingsInRange = query({
         q
           .eq("sensorId", args.sensorId)
           .gte("timestamp", args.startTime)
-          .lte("timestamp", args.endTime)
+          .lte("timestamp", args.endTime),
       )
       .collect();
   },

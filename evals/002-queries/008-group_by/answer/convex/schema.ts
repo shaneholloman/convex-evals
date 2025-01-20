@@ -9,4 +9,4 @@ export default defineSchema({
     amount: v.number(),
     date: v.string(), // YYYY-MM format
   }).index("by_region_date", ["region", "date"]),
-}); 
+});

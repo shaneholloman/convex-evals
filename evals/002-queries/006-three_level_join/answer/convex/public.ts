@@ -1,5 +1,5 @@
-import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { v } from "convex/values";
+import { query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 export const getProAdminsByOrg = query({
@@ -19,12 +19,14 @@ export const getProAdminsByOrg = query({
       teams.map(async (team) => {
         const members = await ctx.db
           .query("teamMembers")
-          .withIndex("by_team_role", (q) => q.eq("teamId", team._id).eq("role", "admin"))
+          .withIndex("by_team_role", (q) =>
+            q.eq("teamId", team._id).eq("role", "admin"),
+          )
           .collect();
-        return Promise.all(members.map((member) => ctx.db.get(member.userId)));                  
-      })
+        return Promise.all(members.map((member) => ctx.db.get(member.userId)));
+      }),
     );
-    
+
     const result: Record<Id<"users">, string> = {};
     for (const user of teamMembers.flat()) {
       if (!user) {
@@ -35,4 +37,3 @@ export const getProAdminsByOrg = query({
     return result;
   },
 });
-

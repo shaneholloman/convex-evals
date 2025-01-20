@@ -18,10 +18,14 @@ export default defineSchema({
     authorId: v.id("users"),
     title: v.string(),
     content: v.string(),
-  }).index("by_author", ["authorId"]),  
+  }).index("by_author", ["authorId"]),
   reactions: defineTable({
     postId: v.id("posts"),
     userId: v.id("users"),
-    type: v.union(v.literal("like"), v.literal("heart"), v.literal("celebrate")),
+    type: v.union(
+      v.literal("like"),
+      v.literal("heart"),
+      v.literal("celebrate"),
+    ),
   }).index("by_post", ["postId"]),
-}); 
+});

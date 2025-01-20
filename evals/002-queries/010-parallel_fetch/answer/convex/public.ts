@@ -1,5 +1,5 @@
-import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { v } from "convex/values";
+import { query } from "./_generated/server";
 
 export const getAuthorDashboard = query({
   args: { email: v.string() },
@@ -10,29 +10,34 @@ export const getAuthorDashboard = query({
       theme: v.string(),
       notifications: v.boolean(),
     }),
-    posts: v.array(v.object({
-      title: v.string(),
-      reactionCounts: v.object({
-        like: v.number(),
-        heart: v.number(),
-        celebrate: v.number(),
+    posts: v.array(
+      v.object({
+        title: v.string(),
+        reactionCounts: v.object({
+          like: v.number(),
+          heart: v.number(),
+          celebrate: v.number(),
+        }),
       }),
-    })),
+    ),
   }),
   handler: async (ctx, args) => {
-    const user = await ctx.db.query("users")
+    const user = await ctx.db
+      .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
     if (!user) {
       throw new Error("User not found");
     }
-    const preferencesPromise = ctx.db.query("userPreferences")
+    const preferencesPromise = ctx.db
+      .query("userPreferences")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
-    const postQuery = ctx.db.query("posts")
+    const postQuery = ctx.db
+      .query("posts")
       .withIndex("by_author", (q) => q.eq("authorId", user._id))
-      .order("desc");      
+      .order("desc");
 
     let numPosts = 0;
     const promises = [];
@@ -42,7 +47,8 @@ export const getAuthorDashboard = query({
         break;
       }
       const promise = async () => {
-        const reactions = await ctx.db.query("reactions")
+        const reactions = await ctx.db
+          .query("reactions")
           .withIndex("by_post", (q) => q.eq("postId", post._id))
           .collect();
         const reactionCounts = { like: 0, heart: 0, celebrate: 0 };
@@ -53,7 +59,7 @@ export const getAuthorDashboard = query({
           title: post.title,
           reactionCounts,
         };
-      }
+      };
       promises.push(promise());
     }
     const posts = await Promise.all(promises);
@@ -70,5 +76,5 @@ export const getAuthorDashboard = query({
       },
       posts,
     };
-  }
-})
+  },
+});

@@ -1,6 +1,7 @@
 # hallucinated wrong ".private()" method for internal functions
 
 # hallucinated "convex/schema" import
+
 ```ts
 import { defineSchema, defineTable } from "convex/schema";
 import { v } from "convex/values";
@@ -9,7 +10,7 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
   }),
-  
+
   messages: defineTable({
     text: v.string(),
     authorName: v.string(),
@@ -17,7 +18,8 @@ export default defineSchema({
 });
 ```
 
-# forgot to use httpAction 
+# forgot to use httpAction
+
 ```ts
 http.route({
   path: "/api/hello",
@@ -32,7 +34,9 @@ http.route({
   },
 });
 ```
+
 also creating handler at `http.config.ts`??
+
 ```ts
 http.route({
   path: "/api/hello",
@@ -47,14 +51,16 @@ http.route({
   handler: messages.handlePost,
 });
 ```
+
 and then pulling out the handler into separate files and hallucinating
 types.
+
 ```ts
 export const hello = {
   handleGet: async (request: Http.Request) => {
     // Get the request body as text
     const bodyText = await request.text();
-    
+
     // Return the concatenated response
     return new Response(bodyText + "there", {
       status: 200,

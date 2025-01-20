@@ -1,7 +1,7 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { formatDate } from '@/lib/utils';
-import DirectoryList from '@/components/DirectoryList';
+import { promises as fs } from "fs";
+import path from "path";
+import { formatDate } from "@/lib/utils";
+import DirectoryList from "@/components/DirectoryList";
 
 interface OutputDir {
   name: string;
@@ -11,12 +11,14 @@ interface OutputDir {
 
 async function getOutputDirectories(): Promise<OutputDir[]> {
   const workspaceRoot = process.cwd();
-  const parentDir = path.join(workspaceRoot, '..');
+  const parentDir = path.join(workspaceRoot, "..");
   const entries = await fs.readdir(parentDir, { withFileTypes: true });
-  
+
   const outputDirs = await Promise.all(
     entries
-      .filter(entry => entry.isDirectory() && entry.name.startsWith('output-'))
+      .filter(
+        (entry) => entry.isDirectory() && entry.name.startsWith("output-"),
+      )
       .map(async (entry) => {
         const fullPath = path.join(parentDir, entry.name);
         const stats = await fs.stat(fullPath);
@@ -25,10 +27,12 @@ async function getOutputDirectories(): Promise<OutputDir[]> {
           createdAt: stats.birthtime,
           path: entry.name,
         };
-      })
+      }),
   );
 
-  return outputDirs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return outputDirs.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
 }
 
 export default async function Home() {
@@ -46,4 +50,4 @@ export default async function Home() {
       <DirectoryList directories={outputDirs} />
     </div>
   );
-} 
+}

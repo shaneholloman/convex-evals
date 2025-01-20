@@ -7,4 +7,4 @@ export default defineSchema({
     name: v.string(),
     age: v.number(),
   }).index("by_email", ["email"]),
-}); 
+});

@@ -9,4 +9,4 @@ export default defineSchema({
     title: v.string(),
     assignee: v.string(),
   }).index("by_project_status_priority", ["projectId", "status", "priority"]),
-}); 
+});

@@ -7,4 +7,4 @@ export default defineSchema({
     author: v.string(),
     text: v.string(),
   }).index("by_post", ["postId"]),
-}); 
+});

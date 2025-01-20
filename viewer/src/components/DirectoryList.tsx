@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { FolderIcon, ChevronRight } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { FolderIcon, ChevronRight } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 interface OutputDir {
   name: string;
@@ -21,9 +21,9 @@ export default function DirectoryList({ directories }: DirectoryListProps) {
   const [selectedDirs, setSelectedDirs] = useState<string[]>([]);
 
   const handleDirSelect = (path: string) => {
-    setSelectedDirs(prev => {
+    setSelectedDirs((prev) => {
       if (prev.includes(path)) {
-        return prev.filter(p => p !== path);
+        return prev.filter((p) => p !== path);
       }
       if (prev.length < 2) {
         return [...prev, path];
@@ -44,7 +44,7 @@ export default function DirectoryList({ directories }: DirectoryListProps) {
         <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
           <div>
             <p className="text-blue-700">
-              {selectedDirs.length === 1 
+              {selectedDirs.length === 1
                 ? "Select one more directory to compare"
                 : "Ready to compare"}
             </p>
@@ -86,7 +86,7 @@ export default function DirectoryList({ directories }: DirectoryListProps) {
                 onChange={() => handleDirSelect(dir.path)}
                 className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              
+
               <Link
                 href={`/viewer/${dir.path}`}
                 className="flex flex-1 items-center gap-4"
@@ -94,7 +94,7 @@ export default function DirectoryList({ directories }: DirectoryListProps) {
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
                   <FolderIcon className="h-6 w-6" />
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-gray-900 truncate text-lg">
                     {dir.name}
@@ -119,4 +119,4 @@ export default function DirectoryList({ directories }: DirectoryListProps) {
       </div>
     </>
   );
-} 
+}

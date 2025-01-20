@@ -7,4 +7,4 @@ export default defineSchema({
     price: v.number(),
     inStock: v.boolean(),
   }),
-}); 
+});

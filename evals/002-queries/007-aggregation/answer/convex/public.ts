@@ -1,11 +1,11 @@
-import { v } from "convex/values"
-import { query } from "./_generated/server"
+import { v } from "convex/values";
+import { query } from "./_generated/server";
 
 export const getCustomerStats = query({
   args: { customerId: v.string() },
   returns: v.object({
     totalOrders: v.number(),
-    totalItems: v.number(),  
+    totalItems: v.number(),
     totalSpent: v.number(),
     averageOrderValue: v.number(),
   }),
@@ -20,13 +20,15 @@ export const getCustomerStats = query({
         totalItems: acc.totalItems + order.quantity,
         totalSpent: acc.totalSpent + order.quantity * order.pricePerUnit,
       }),
-      { totalOrders: 0, totalItems: 0, totalSpent: 0 }
+      { totalOrders: 0, totalItems: 0, totalSpent: 0 },
     );
     return {
       totalOrders: stats.totalOrders,
       totalItems: stats.totalItems,
       totalSpent: Number(stats.totalSpent.toFixed(2)),
-      averageOrderValue: Number((stats.totalSpent / stats.totalOrders).toFixed(2)),
+      averageOrderValue: Number(
+        (stats.totalSpent / stats.totalOrders).toFixed(2),
+      ),
     };
   },
 });

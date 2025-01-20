@@ -180,3 +180,5 @@ dist
 output*/
 __pycache__/
 convex-local-backend
+
+.venv/
