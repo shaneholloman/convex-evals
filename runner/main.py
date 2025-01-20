@@ -8,7 +8,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import subprocess
-from convex_backend import deploy
+from convex_backend import deploy, convex_backend, run_tests, check_function_spec
 from generate import generate
 from typescript import setup_js, lint_js, typecheck_js
 import argparse
@@ -18,48 +18,78 @@ from models.anthropic_codegen import AnthropicModel
 from models.openai_codegen import OpenAIModel
 from models import ConvexCodegenModel
 
-
 def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
     output_dir = os.path.join(output_root, input_dir)
     os.makedirs(output_dir, exist_ok=True)
     generate(input_dir, output_dir, model)
 
 
-def evaluate_test(category: str, test: str, test_output_dir: str):
+def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str):
     report_entry = {
         "category": category,
         "test": test,
+        "setup": {"status": "skipped"},
+        "typecheck": {"status": "skipped"},
+        "lint": {"status": "skipped"},
+        "deploy": {"status": "skipped"},
+        "tests": {"status": "skipped"},
+        "function_spec": {"status": "skipped"},
     }
-    all_ok = True
+
     try:
         setup_js(test_output_dir)
         report_entry["setup"] = {"status": "ok"}
     except Exception as e:
+        print(f"Error setting up: {e}")
         report_entry["setup"] = {"status": "failed", "error": str(e)}
-        all_ok = False
+        return report_entry, False
 
-    if report_entry["setup"]["status"] == "ok":
-        try:
-            typecheck_js(test_output_dir)
-            report_entry["typecheck"] = {"status": "ok"}
-        except Exception as e:
-            report_entry["typecheck"] = error_status(e)
-            all_ok = False
+    try:
+        typecheck_js(test_output_dir)
+        report_entry["typecheck"] = {"status": "ok"}
+    except Exception as e:
+        print(f"Error typechecking: {e}")
+        report_entry["typecheck"] = error_status(e)
 
-        try:
-            lint_js(test_output_dir)
-            report_entry["lint"] = {"status": "ok"}
-        except Exception as e:
-            report_entry["lint"] = error_status(e)
-            all_ok = False
+    try:
+        lint_js(test_output_dir)
+        report_entry["lint"] = {"status": "ok"}
+    except Exception as e:
+        print(f"Error linting: {e}")
+        report_entry["lint"] = error_status(e)
 
+    backend_dir = os.path.join(test_output_dir, "backend")
+    os.makedirs(backend_dir, exist_ok=True)
+
+    with convex_backend(backend_dir) as backend:
+        project_dir = os.path.join(test_output_dir, "project")
         try:
-            deploy(test_output_dir)
-            report_entry["deploy"] = {"status": "ok"}
+            deploy(backend, project_dir)
         except Exception as e:
+            print(f"Error deploying: {e}")
             report_entry["deploy"] = error_status(e)
-            all_ok = False
+            return report_entry, False
 
+        test_file = os.path.abspath(os.path.join(evals_dir, category, test, "grader.test.ts"))
+        if os.path.exists(test_file):
+            try:
+                run_tests(backend, test_file)
+                report_entry["tests"] = {"status": "ok"}
+            except Exception as e:
+                print(f"Error running tests: {e}")
+                report_entry["tests"] = error_status(e)
+
+        function_spec_file = os.path.join(evals_dir, category, test, "function_spec.json")
+
+        if os.path.exists(function_spec_file):
+            try:
+                check_function_spec(backend, project_dir, function_spec_file)
+                report_entry["function_spec"] = {"status": "ok"}
+            except Exception as e:
+                print(f"Error checking function spec: {e}")
+                report_entry["function_spec"] = error_status(e)
+
+    all_ok = all(v["status"] != "error" for k, v in report_entry.items() if 'status' in v)
     return report_entry, all_ok
 
 
@@ -118,7 +148,7 @@ if __name__ == "__main__":
     ]
     tests.sort()
 
-    if do_generation:        
+    if do_generation:
         os.makedirs(output_dir, exist_ok=args.force)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=generate_concurrency) as executor:
@@ -147,7 +177,7 @@ if __name__ == "__main__":
             futures = {}
             for category, test in tests:
                 test_output_dir = os.path.join(output_dir, "evals", category, test)
-                future = executor.submit(evaluate_test, category, test, test_output_dir)
+                future = executor.submit(evaluate_test, evals_dir, category, test, test_output_dir)
                 futures[future] = (category, test_output_dir)
             for future in concurrent.futures.as_completed(futures):
                 report_entry, all_ok = future.result()

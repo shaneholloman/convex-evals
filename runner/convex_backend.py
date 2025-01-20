@@ -8,6 +8,7 @@ import threading
 import functools
 import contextlib
 import zipfile
+import json
 
 port_lock = threading.Lock()
 
@@ -59,29 +60,57 @@ def convex_backend(backend_dir: str):
         convex_process.terminate()
 
 
-def deploy(output_dir: str):
-    project_dir = os.path.abspath(os.path.join(output_dir, "project"))
-
-    backend_dir = os.path.join(output_dir, "backend")
-    os.makedirs(backend_dir, exist_ok=True)
-
-    with convex_backend(backend_dir) as backend:
-        subprocess.check_call(
-            [
-                "bunx",
-                "convex",
-                "dev",
-                "--once",
-                "--admin-key",
-                admin_key,
-                "--url",
-                f"http://localhost:{backend['port']}",
-            ],
-            cwd=project_dir,
-        )
-
+def deploy(backend: dict, project_dir: str):
+    subprocess.check_call(
+        [
+            "bunx",
+            "convex",
+            "dev",
+            "--once",
+            "--admin-key",
+            admin_key,
+            "--url",
+            f"http://localhost:{backend['port']}",
+        ],
+        cwd=project_dir,
+    )
     print("Deploy OK!")
 
+def run_tests(backend: dict, test_file: str):
+    subprocess.check_call(
+        [
+            "bunx",
+            "vitest",
+            "run",
+            test_file,
+        ],
+        env=dict(os.environ, CONVEX_PORT=str(backend["port"])),
+    )
+    print("Tests OK!")
+
+def check_function_spec(backend: dict, project_dir: str, function_spec_file: str):
+    result = subprocess.check_output(
+        [
+            "bunx",
+            "convex",
+            "function-spec",
+            "--url",
+            f"http://localhost:{backend['port']}",
+            "--admin-key",
+            admin_key,
+        ],
+        cwd=project_dir,
+    )
+    function_spec = json.loads(result.decode("utf-8"))['functions']
+    function_spec.sort(key = lambda f: f['identifier'])
+
+    expected_function_spec = json.load(open(function_spec_file, "r"))
+    expected_function_spec.sort(key = lambda f: f['identifier'])
+
+    if function_spec != expected_function_spec:
+        raise ValueError(f"Function spec mismatch: {function_spec} != {expected_function_spec}")
+
+    print("Function spec OK!")
 
 def health_check(port: int):
     deadline = time.time() + 10

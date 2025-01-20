@@ -1,4 +1,4 @@
-Write a backend that has six empty functions in `public.ts`:
+Write a backend that has six empty functions in `index.ts`:
 
 1. A public query called `emptyPublicQuery`.
 2. A public mutation called `emptyPublicMutation`.

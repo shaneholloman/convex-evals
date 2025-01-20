@@ -121,14 +121,16 @@ CONVEX_GUIDELINES = """
             implicitly returns `null`.
       </function_registration>
       <function_calling>
-          - Use `ctx.runQuery` to call a query from a mutation or action.
-          - Use `ctx.runMutation` to call a mutation from an action.
-          - Try to use as few calls from actions to queries and mutations as possible. Queries
-            and mutations are transactions, so splitting logic up into multiple calls introduces
-            the risk of race conditions.
+          - Use `ctx.runQuery` to call a query from a query, mutation, or action. This subquery
+            will run in a subtransaction, which has some additional overhead but is safe.
+          - Use `ctx.runMutation` to call a mutation from a mutation or action. This submutation
+            will run in a subtransaction, which has some additional overhead but is safe.
           - Use `ctx.runAction` to call an action from an action. ONLY call an action from another
             action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the
             shared code into a helper async function and call that directly instead.
+          - Try to use as few calls from actions to queries and mutations as possible. Queries
+            and mutations are transactions, so splitting logic up into multiple calls introduces
+            the risk of race conditions.
           - All of these calls take in a `FunctionReference`. Do NOT try to pass the callee
             function directly into one of these calls.
       </function_calling>
