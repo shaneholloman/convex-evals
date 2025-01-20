@@ -24,12 +24,13 @@ else:
 assert "-" not in name
 testdir_name = f"{next_id:03d}-{name}"
 
-os.makedirs(os.path.join(category_dir, testdir_name))
+testdir = os.path.join(category_dir, testdir_name)
+os.makedirs(testdir)
 
-with open(os.path.join(category_dir, testdir_name, "PROMPT.txt"), "w") as f:
+with open(os.path.join(testdir, "PROMPT.txt"), "w") as f:
     f.write(f"Create a backend for a {name} system.")
 
-answer_dir = os.path.join(category_dir, testdir_name, "answer")
+answer_dir = os.path.join(testdir, "answer")
 os.makedirs(answer_dir)
 
 package_json = """{
@@ -49,6 +50,23 @@ os.makedirs(convex_dir)
 with open(os.path.join(convex_dir, "public.ts"), "w") as f:
     f.write('import { v } from "convex/values"\n')
     f.write('import { query } from "./_generated/server"\n')
+
+with open(os.path.join(testdir, "function_spec.json"), "w") as f:
+    f.write('[]')
+
+grader_ts = """
+import { expect, test } from "vitest";
+import { adminClient, client, getActiveSchema } from "../../../grader";
+import { anyApi } from "convex/server"
+
+test("get schema", async () => {
+  const schema = await getActiveSchema();
+  expect(schema).toBeNull();
+})
+"""
+
+with open(os.path.join(testdir, "grader.test.ts"), "w") as f:
+    f.write(grader_ts)
 
 subprocess.run(["bun", "install"], cwd=answer_dir, check=True)
 subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
