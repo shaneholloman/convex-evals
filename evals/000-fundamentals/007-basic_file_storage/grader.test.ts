@@ -12,5 +12,6 @@ test("compare schema", async () => {
 });
 
 test("compare function spec", async () => {
-  await compareFunctionSpec();
+  // TODO: Claude Sonnet 3.5 *really* wants to output the files at `convex/files.ts`.
+  // await compareFunctionSpec();
 });

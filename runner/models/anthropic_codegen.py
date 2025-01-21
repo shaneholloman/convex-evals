@@ -52,8 +52,8 @@ Before writing any code, analyze the task and think through your approach. Use <
 
 1. Summarize the task requirements
 2. List out the main components needed for the backend
-3. Design the public API:
-   - List each function with its purpose and expected arguments
+3. Design the public API and internal functions:
+   - List each function with its file path, argument validators, and return validator, and purpose.
 4. Plan the schema design (if needed):
    - List each table with its fields and types
 5. Outline background processing requirements (if any):
@@ -65,6 +65,7 @@ After your analysis, generate the necessary files for a Convex backend that impl
    - You can write to `package.json` and any files within the `convex/` folder.
    - Do NOT write to the `convex/_generated` folder. You can assume that `npx convex dev` will populate this folder.
    - Use <file path="file_path" /> syntax to output each file.
+   - It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.
    - Always start with a `package.json` file.
    - Use Convex version "^1.17.4".
   </file_structure>

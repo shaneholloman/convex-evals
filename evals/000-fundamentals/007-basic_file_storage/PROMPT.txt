@@ -1,6 +1,6 @@
 Create a backend for a basic file storage system that demonstrates all core file operations in Convex.
 
-Assume the following schema exists at `convex/schema.ts`:
+Assume the following schema, and output it to `convex/schema.ts`:
 ```ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
@@ -8,34 +8,34 @@ import { v } from "convex/values";
 export default defineSchema({
     files: defineTable({
         storageId: v.id("_storage"),
-    })
+    }),
 })
 ```
 
-Implement the following functions in `convex/public.ts`:
-
-1. Create a mutation `generateUploadUrl` that:
+1. Create a mutation `generateUploadUrl`:
    - Takes no arguments
-   - Returns a string URL for file upload   
+   - Returns a string URL for file upload
 
-2. Create a mutation `finishUpload` that:
+2. Create a mutation `finishUpload`:
    - Takes a storage ID as an argument
    - Inserts a new record in the "files" table with the storage ID
    - Returns null
 
-3. Create a query `getFileUrl` that:
+3. Create a query `getFileUrl`:
    - Takes a file ID as an argument
    - Retrieves the file record from the database, throwing an error if not found
    - Gets the download URL for the storage ID associated with the file.
    - Throws an error if the storage entry is not found
    - Returns the URL as a string
 
-4. Create a query `getFileMetadata` that:
+4. Create a query `getFileMetadata`:
    - Takes a file ID as an argument
-   - Retrieves the file record and returns all of its system metadata   
+   - Retrieves the file record and returns all of its system metadata
    - Throws an error if the file is not found
 
-5. Create a mutation `deleteFile` that:
+5. Create a mutation `deleteFile`:
    - Takes a file ID as an argument
    - Deletes both the storage object and database record
-   - Throws an error if the file is not found   
+   - Throws an error if the file is not found
+
+Implement ALL functions in `convex/index.ts`.
