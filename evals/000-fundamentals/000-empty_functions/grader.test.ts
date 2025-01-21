@@ -3,7 +3,7 @@ import {
   adminClient,
   client,
   checkSchemaJson,
-  checkFunctionSpec,
+  compareFunctionSpec,
 } from "../../../grader";
 import { anyApi } from "convex/server";
 
@@ -11,51 +11,8 @@ test("check schema", async () => {
   await checkSchemaJson(null);
 });
 
-test("check function spec", async () => {
-  await checkFunctionSpec([
-    {
-      args: { type: "object", value: {} },
-      functionType: "Action",
-      identifier: "index.js:emptyPrivateAction",
-      returns: { type: "null" },
-      visibility: { kind: "internal" },
-    },
-    {
-      args: { type: "object", value: {} },
-      functionType: "Mutation",
-      identifier: "index.js:emptyPrivateMutation",
-      returns: { type: "null" },
-      visibility: { kind: "internal" },
-    },
-    {
-      args: { type: "object", value: {} },
-      functionType: "Query",
-      identifier: "index.js:emptyPrivateQuery",
-      returns: { type: "null" },
-      visibility: { kind: "internal" },
-    },
-    {
-      args: { type: "object", value: {} },
-      functionType: "Action",
-      identifier: "index.js:emptyPublicAction",
-      returns: { type: "null" },
-      visibility: { kind: "public" },
-    },
-    {
-      args: { type: "object", value: {} },
-      functionType: "Mutation",
-      identifier: "index.js:emptyPublicMutation",
-      returns: { type: "null" },
-      visibility: { kind: "public" },
-    },
-    {
-      args: { type: "object", value: {} },
-      functionType: "Query",
-      identifier: "index.js:emptyPublicQuery",
-      returns: { type: "null" },
-      visibility: { kind: "public" },
-    },
-  ]);
+test("compare function spec", async () => {
+  await compareFunctionSpec();
 });
 
 test("empty public query", async () => {

@@ -26,6 +26,7 @@ def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
 
 
 def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str):
+    test_dir = os.path.join(evals_dir, category, test)
     report_entry = {
         "category": category,
         "test": test,
@@ -61,6 +62,9 @@ def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str
     backend_dir = os.path.join(test_output_dir, "backend")
     os.makedirs(backend_dir, exist_ok=True)
 
+    answer_backend_dir = os.path.join(test_dir, "backend")
+    os.makedirs(answer_backend_dir, exist_ok=True)
+
     with convex_backend(backend_dir) as backend:
         project_dir = os.path.join(test_output_dir, "project")
         try:
@@ -71,14 +75,18 @@ def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str
             report_entry["deploy"] = error_status(e)
             return report_entry, False
 
-        test_file = os.path.abspath(os.path.join(evals_dir, category, test, "grader.test.ts"))
-        if os.path.exists(test_file):
-            try:
-                run_tests(backend, test_file)
-                report_entry["tests"] = {"status": "ok"}
-            except Exception as e:
-                print(f"Error running tests: {e}")
-                report_entry["tests"] = error_status(e)
+        with convex_backend(answer_backend_dir) as answer_backend:
+            answer_dir = os.path.join(test_dir, "answer")
+            deploy(answer_backend, answer_dir)
+
+            test_file = os.path.abspath(os.path.join(test_dir, "grader.test.ts"))
+            if os.path.exists(test_file):
+                try:
+                    run_tests(backend, answer_backend, test_file)
+                    report_entry["tests"] = {"status": "ok"}
+                except Exception as e:
+                    print(f"Error running tests: {e}")
+                    report_entry["tests"] = error_status(e)
 
     all_ok = all(v["status"] != "error" for k, v in report_entry.items() if "status" in v)
     return report_entry, all_ok

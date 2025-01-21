@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { checkSchemaExport, checkFunctionSpec } from "../../../grader";
+import { checkSchemaExport, compareFunctionSpec } from "../../../grader";
 import schema from "./answer/convex/schema";
 
 test("check schema", async () => {
@@ -7,5 +7,5 @@ test("check schema", async () => {
 });
 
 test("check function spec", async () => {
-  await checkFunctionSpec([]);
+  await compareFunctionSpec();
 });

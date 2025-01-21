@@ -3,7 +3,7 @@ import {
   adminClient,
   client,
   checkSchemaExport,
-  checkFunctionSpec,
+  compareFunctionSpec,
 } from "../../../grader";
 import { anyApi } from "convex/server";
 import schema from "./answer/convex/schema";
@@ -13,5 +13,5 @@ test("check schema", async () => {
 });
 
 test("check function spec", async () => {
-  await checkFunctionSpec([]);
+  await compareFunctionSpec();
 });

@@ -3,7 +3,7 @@ import {
   adminClient,
   client,
   checkSchemaJson,
-  checkFunctionSpec,
+  compareFunctionSpec,
 } from "../../../grader";
 import { anyApi } from "convex/server";
 
@@ -12,5 +12,5 @@ test("check schema", async () => {
 });
 
 test("check function spec", async () => {
-  await checkFunctionSpec([]);
+  await compareFunctionSpec();
 });

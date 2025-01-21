@@ -6,6 +6,11 @@ if (!port) {
   throw new Error("CONVEX_PORT is not set");
 }
 
+const answerPort = process.env.CONVEX_ANSWER_PORT;
+if (!answerPort) {
+  throw new Error("CONVEX_ANSWER_PORT is not set");
+}
+
 export const client = new ConvexClient(`http://0.0.0.0:${port}`);
 
 const adminKey =
@@ -13,11 +18,26 @@ const adminKey =
 export const adminClient = new ConvexClient(`http://0.0.0.0:${port}`);
 (adminClient as any).setAdminAuth(adminKey);
 
+const answerAdminClient = new ConvexClient(`http://0.0.0.0:${answerPort}`);
+(answerAdminClient as any).setAdminAuth(adminKey);
+
+/**
+ * Check that the deployment's schema matches the schema module imported from the answer.
+ * ```
+ * import schema from "./answer/convex/schema";
+ * await checkSchemaExport(schema);
+ * ```
+ * Pass `null` if we expect there to not be a schema.
+ */
 export async function checkSchemaExport(schemaModule: any) {
   const schemaJson = schemaModule && JSON.parse(schemaModule.export());
   await checkSchemaJson(schemaJson);
 }
 
+/**
+ * Check that the deployment's schema matches the schema JSON, passing `null` if
+ * we expect there to not be a schema.
+ */
 export async function checkSchemaJson(expected: any) {
   const result = await adminClient.query("_system/frontend/getSchemas" as any, {
     componentId: null,
@@ -38,12 +58,16 @@ export async function checkSchemaJson(expected: any) {
   expect(schema).toEqual(expected);
 }
 
-export async function checkFunctionSpec(expected: any) {
+async function getFunctionSpec(adminClient: any) {
   const result = await adminClient.query(
     "_system/cli/modules:apiSpec" as any,
     {},
   );
-  expected.sort((a: any, b: any) => a.identifier.localeCompare(b.identifier));
-  result.sort((a: any, b: any) => a.identifier.localeCompare(b.identifier));
-  expect(result).toEqual(expected);
+  return result;
+}
+
+export async function compareFunctionSpec() {
+  const generatedFunctionSpec = await getFunctionSpec(adminClient);
+  const answerFunctionSpec = await getFunctionSpec(answerAdminClient);
+  expect(generatedFunctionSpec).toEqual(answerFunctionSpec);
 }
