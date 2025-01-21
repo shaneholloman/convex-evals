@@ -1,12 +1,10 @@
 import { expect, test } from "vitest";
-import { compareFunctionSpec, checkSchemaExport } from "../../../grader";
-import { anyApi } from "convex/server";
-import schema from "./answer/convex/schema";
+import { compareFunctionSpec, compareSchema } from "../../../grader";
 
-test("check schema", async () => {
-  await checkSchemaExport(schema);
+test("compare schema", async () => {
+  await compareSchema();
 });
 
-test("check function spec", async () => {
+test("compare function spec", async () => {
   await compareFunctionSpec();
 });

@@ -21,41 +21,24 @@ export const adminClient = new ConvexClient(`http://0.0.0.0:${port}`);
 const answerAdminClient = new ConvexClient(`http://0.0.0.0:${answerPort}`);
 (answerAdminClient as any).setAdminAuth(adminKey);
 
-/**
- * Check that the deployment's schema matches the schema module imported from the answer.
- * ```
- * import schema from "./answer/convex/schema";
- * await checkSchemaExport(schema);
- * ```
- * Pass `null` if we expect there to not be a schema.
- */
-export async function checkSchemaExport(schemaModule: any) {
-  const schemaJson = schemaModule && JSON.parse(schemaModule.export());
-  await checkSchemaJson(schemaJson);
-}
-
-/**
- * Check that the deployment's schema matches the schema JSON, passing `null` if
- * we expect there to not be a schema.
- */
-export async function checkSchemaJson(expected: any) {
+export async function getSchema(expected: any) {
   const result = await adminClient.query("_system/frontend/getSchemas" as any, {
     componentId: null,
   });
   if (!result.active) {
-    expect(expected).toEqual(null);
-    return;
+    return null;
   }
   const schema = JSON.parse(result.active);
   schema.tables.sort((a: any, b: any) =>
     a.tableName.localeCompare(b.tableName),
   );
-  if (expected && expected.tables) {
-    expected.tables.sort((a: any, b: any) =>
-      a.tableName.localeCompare(b.tableName),
-    );
-  }
-  expect(schema).toEqual(expected);
+  return schema;
+}
+
+export async function compareSchema() {
+  const generatedSchema = await getSchema(null);
+  const answerSchema = await getSchema(null);
+  expect(generatedSchema).toEqual(answerSchema);
 }
 
 async function getFunctionSpec(adminClient: any) {

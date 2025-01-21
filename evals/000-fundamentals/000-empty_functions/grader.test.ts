@@ -2,13 +2,13 @@ import { expect, test } from "vitest";
 import {
   adminClient,
   client,
-  checkSchemaJson,
+  compareSchema,
   compareFunctionSpec,
 } from "../../../grader";
 import { anyApi } from "convex/server";
 
-test("check schema", async () => {
-  await checkSchemaJson(null);
+test("compare schema", async () => {
+  await compareSchema();
 });
 
 test("compare function spec", async () => {

@@ -63,7 +63,7 @@ test("check schema", async () => {
   await checkActiveSchema(null);
 })
 
-test("check function spec", async () => {
+test("compare function spec", async () => {
   await checkFunctionSpec([]);
 })
 """
