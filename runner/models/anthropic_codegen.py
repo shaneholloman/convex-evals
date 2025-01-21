@@ -1,7 +1,9 @@
 from anthropic import Anthropic
 import os
 from bs4 import BeautifulSoup
+from typing import Union
 from . import ConvexCodegenModel, SYSTEM_PROMPT
+from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
 
 
 class AnthropicModel(ConvexCodegenModel):
@@ -78,110 +80,17 @@ After your analysis, generate the necessary files for a Convex backend that impl
 Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.
 """
 
-CONVEX_GUIDELINES = """
-<convex_guidelines>
-  <function_guidelines>
-      <new_function_syntax>
-          ALWAYS use the new function syntax for Convex functions. For example:
-          ```typescript
-          import { query } from "./_generated/server";
-          import { v } from "convex/values";
-          export const f = query({
-              args: {},
-              returns: v.null(),
-              handler: async (ctx, args) => {
-              // Function body
-              },
-          });
-          ```
-      </new_function_syntax>
-      <http_endpoint_syntax>
-          HTTP endpoints are defined in `convex/http.ts` and require an `httpAction` decorator. For example:
-          ```typescript
-          import { httpRouter } from "convex/server";
-          import { httpAction } from "./_generated/server";
-          const http = httpRouter();
-          http.route({
-              path: "/echo",
-              method: "POST",
-              handler: httpAction(async (ctx, req) => {
-              const body = await req.bytes();
-              return new Response(body, { status: 200 });
-              }),
-          });
-          ```
-          For simple HTTP routes, define the handler directly within the route definition.
-      </http_endpoint_syntax>
-      <function_registration>
-          - Use `internalQuery`, `internalMutation`, and `internalAction` to register internal functions.
-          - Use `query`, `mutation`, and `action` to register public functions.
-          - You CANNOT register a function through the `api` or `internal` objects.
-          - ALWAYS include argument and return validators for all registered functions.
-          - If the JavaScript implementation of a Convex function doesn't have a return value, it
-            implicitly returns `null`.
-      </function_registration>
-      <function_calling>
-          - Use `ctx.runQuery` to call a query from a query, mutation, or action. This subquery
-            will run in a subtransaction, which has some additional overhead but is safe.
-          - Use `ctx.runMutation` to call a mutation from a mutation or action. This submutation
-            will run in a subtransaction, which has some additional overhead but is safe.
-          - Use `ctx.runAction` to call an action from an action. ONLY call an action from another
-            action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the
-            shared code into a helper async function and call that directly instead.
-          - Try to use as few calls from actions to queries and mutations as possible. Queries
-            and mutations are transactions, so splitting logic up into multiple calls introduces
-            the risk of race conditions.
-          - All of these calls take in a `FunctionReference`. Do NOT try to pass the callee
-            function directly into one of these calls.
-      </function_calling>
-      <function_references>
-          - Function references are pointers to registered Convex functions.
-          - Use the `api` object defined by the framework in `convex/_generated/api.ts` to call public functions
-            registered with `query`, `mutation`, or `action`.
-          - Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal
-            (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.
-          - Convex uses file-based routing, so a public function defined in `convex/example.ts` named `f` has
-            a function reference of `api.example.f`.
-          - A private function defined in `convex/example.ts` named `g` has a function reference of
-            `internal.example.g`.
-          - Functions can also registered within directories nested within the `convex/` folder. For example,
-            a public function `h` defined in `convex/messages/access.ts` has a function reference of
-            `api.messages.access.h`.
-      </function_references>
-      <api_design>
-          - Convex uses file-based routing, so thoughtfully organize files with public query, mutation,
-              or action functions within the `convex/` directory.
-          - Use `query`, `mutation`, and `action` to define public functions.
-          - Use `internalQuery`, `internalMutation`, and `internalAction` to define private, internal functions.
-      </api_design>
-  </function_guidelines>
-  <validator_guidelines>
-      - `v.bigint()` is deprecated for representing signed 64-bit integers. Use `v.int64()` instead.
-      - Use `v.record()` for defining a record type. `v.map()` and `v.set()` are not supported.
-  </validator_guidelines>
-  <schema_guidelines>
-      - Always define your schema in `convex/schema.ts`.
-      - Always import the schema definition functions from `convex/server`:
-        ```typescript
-        import { defineSchema, defineTable } from "convex/server";
-        import { v } from "convex/values";
 
-        export default defineSchema({
-          exampleTable: defineTable({
-            exampleField: v.string(),
-          }),
-        });
-        ```
-      - Database indexes defined with `.index()` do not support uniqueness constraints. Enforce these in the mutation
-        functions instead. This is safe since mutations are always serializable.
-  </schema_guidelines>
-  <query_guidelines>
-      - Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
-      - Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(row._id)` on each result.
-  </query_guidelines>
-  <mutation_guidelines>
-      - Use `ctx.db.replace` to fully replace an existing document. This method will throw an error if the document does not exist.
-      - Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist.
-  </mutation_guidelines>
-</convex_guidelines>
-"""
+def render_guidelines(node: Union[GuidelineSection, Guideline], indentation=""):
+    if isinstance(node, Guideline):
+        yield indentation + "- "
+        yield node.content
+        yield "\n"
+    else:
+        yield indentation + f"<{node.name}>\n"
+        for child in node.children:
+            yield from render_guidelines(child, indentation + "  ")
+        yield indentation + f"</{node.name}>\n"
+
+
+ANTHROPIC_CONVEX_GUIDELINES = "".join(render_guidelines(CONVEX_GUIDELINES))
