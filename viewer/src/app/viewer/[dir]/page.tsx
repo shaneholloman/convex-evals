@@ -303,7 +303,7 @@ export default async function OutputPage({
                                 </div>
                                 {status.error && (
                                   <pre className="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg overflow-auto whitespace-pre-wrap break-words">
-                                    {status.error}
+                                    {JSON.stringify(status.error, null, 2)}
                                   </pre>
                                 )}
                               </div>

@@ -10,7 +10,6 @@ import contextlib
 import zipfile
 import json
 from errors import VerificationError
-
 port_lock = threading.Lock()
 
 instance_name = "carnitas"
@@ -85,6 +84,8 @@ def run_tests(backend: dict, test_file: str):
             "vitest",
             "run",
             test_file,
+            "--reporter",
+            "json",
         ],
         env=dict(os.environ, CONVEX_PORT=str(backend["port"])),
         stdout=subprocess.PIPE,
@@ -92,7 +93,10 @@ def run_tests(backend: dict, test_file: str):
         encoding="utf-8",
     )
     if done.returncode != 0:
-        raise VerificationError("Tests failed", done.stdout.splitlines())
+        _, _, report = done.stdout.partition('{')
+        report, _, _ = report.rpartition('}')
+        report = json.loads('{' + report + '}')
+        raise VerificationError("Tests failed", report)
     print("Tests OK!")
 
 
