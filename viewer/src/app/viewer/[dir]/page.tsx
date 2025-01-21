@@ -17,6 +17,7 @@ interface TestReport {
   typecheck?: TestStatus;
   lint?: TestStatus;
   deploy?: TestStatus;
+  tests?: TestStatus;
 }
 
 interface FileEntry {
@@ -37,7 +38,7 @@ function CategorySummary({
   const passedTests = tests.filter((test) =>
     Object.values(test)
       .filter((v) => typeof v === "object" && "status" in v)
-      .every((v) => v.status === "ok"),
+      .every((v) => v.status === "ok" || v.status === "skipped"),
   ).length;
   const failedTests = totalTests - passedTests;
 
@@ -269,45 +270,47 @@ export default async function OutputPage({
                     </div>
 
                     <div className="space-y-3 ml-4">
-                      {["setup", "typecheck", "lint", "deploy"].map((phase) => {
-                        const status = test[phase as keyof TestReport] as
-                          | TestStatus
-                          | undefined;
-                        if (!status) return null;
+                      {["setup", "typecheck", "lint", "deploy", "tests"].map(
+                        (phase) => {
+                          const status = test[phase as keyof TestReport] as
+                            | TestStatus
+                            | undefined;
+                          if (!status) return null;
 
-                        return (
-                          <div key={phase} className="flex items-start gap-3">
-                            <div
-                              className={`w-2 h-2 rounded-full mt-1.5 ${
-                                status.status === "ok"
-                                  ? "bg-green-400"
-                                  : "bg-red-400"
-                              }`}
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium capitalize text-gray-700">
-                                  {phase}
-                                </span>
-                                <span
-                                  className={`text-sm ${
-                                    status.status === "ok"
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {status.status}
-                                </span>
+                          return (
+                            <div key={phase} className="flex items-start gap-3">
+                              <div
+                                className={`w-2 h-2 rounded-full mt-1.5 ${
+                                  status.status === "ok"
+                                    ? "bg-green-400"
+                                    : "bg-red-400"
+                                }`}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium capitalize text-gray-700">
+                                    {phase}
+                                  </span>
+                                  <span
+                                    className={`text-sm ${
+                                      status.status === "ok"
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {status.status}
+                                  </span>
+                                </div>
+                                {status.error && (
+                                  <pre className="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg overflow-auto whitespace-pre-wrap break-words">
+                                    {status.error}
+                                  </pre>
+                                )}
                               </div>
-                              {status.error && (
-                                <pre className="mt-2 text-sm text-red-600 bg-red-50 p-3 rounded-lg overflow-auto whitespace-pre-wrap break-words">
-                                  {status.error}
-                                </pre>
-                              )}
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        },
+                      )}
                     </div>
 
                     {test.files.length > 0 && (

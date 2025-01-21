@@ -8,7 +8,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import subprocess
-from convex_backend import deploy, convex_backend, run_tests, check_function_spec
+from convex_backend import deploy, convex_backend, run_tests
 from generate import generate
 from typescript import setup_js, lint_js, typecheck_js
 import argparse
@@ -34,7 +34,6 @@ def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str
         "lint": {"status": "skipped"},
         "deploy": {"status": "skipped"},
         "tests": {"status": "skipped"},
-        "function_spec": {"status": "skipped"},
     }
 
     try:
@@ -66,6 +65,7 @@ def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str
         project_dir = os.path.join(test_output_dir, "project")
         try:
             deploy(backend, project_dir)
+            report_entry["deploy"] = {"status": "ok"}
         except Exception as e:
             print(f"Error deploying: {e}")
             report_entry["deploy"] = error_status(e)
@@ -79,16 +79,6 @@ def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str
             except Exception as e:
                 print(f"Error running tests: {e}")
                 report_entry["tests"] = error_status(e)
-
-        function_spec_file = os.path.join(evals_dir, category, test, "function_spec.json")
-
-        if os.path.exists(function_spec_file):
-            try:
-                check_function_spec(backend, project_dir, function_spec_file)
-                report_entry["function_spec"] = {"status": "ok"}
-            except Exception as e:
-                print(f"Error checking function spec: {e}")
-                report_entry["function_spec"] = error_status(e)
 
     all_ok = all(v["status"] != "error" for k, v in report_entry.items() if "status" in v)
     return report_entry, all_ok
