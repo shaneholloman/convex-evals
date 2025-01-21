@@ -1,8 +1,16 @@
 import { expect, test } from "vitest";
-import { adminClient, client, getActiveSchema } from "../../../grader";
+import {
+  adminClient,
+  client,
+  checkSchemaJson,
+  checkFunctionSpec,
+} from "../../../grader";
 import { anyApi } from "convex/server";
 
-test("get schema", async () => {
-  const schema = await getActiveSchema();
-  expect(schema).toBeNull();
+test("check schema", async () => {
+  await checkSchemaJson(null);
+});
+
+test("check function spec", async () => {
+  await checkFunctionSpec([]);
 });

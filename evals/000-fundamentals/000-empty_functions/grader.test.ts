@@ -1,10 +1,61 @@
 import { expect, test } from "vitest";
-import { adminClient, client, getActiveSchema } from "../../../grader";
+import {
+  adminClient,
+  client,
+  checkSchemaJson,
+  checkFunctionSpec,
+} from "../../../grader";
 import { anyApi } from "convex/server";
 
-test("get schema", async () => {
-  const schema = await getActiveSchema();
-  expect(schema).toBeNull();
+test("check schema", async () => {
+  await checkSchemaJson(null);
+});
+
+test("check function spec", async () => {
+  await checkFunctionSpec([
+    {
+      args: { type: "object", value: {} },
+      functionType: "Action",
+      identifier: "index.js:emptyPrivateAction",
+      returns: { type: "null" },
+      visibility: { kind: "internal" },
+    },
+    {
+      args: { type: "object", value: {} },
+      functionType: "Mutation",
+      identifier: "index.js:emptyPrivateMutation",
+      returns: { type: "null" },
+      visibility: { kind: "internal" },
+    },
+    {
+      args: { type: "object", value: {} },
+      functionType: "Query",
+      identifier: "index.js:emptyPrivateQuery",
+      returns: { type: "null" },
+      visibility: { kind: "internal" },
+    },
+    {
+      args: { type: "object", value: {} },
+      functionType: "Action",
+      identifier: "index.js:emptyPublicAction",
+      returns: { type: "null" },
+      visibility: { kind: "public" },
+    },
+    {
+      args: { type: "object", value: {} },
+      functionType: "Mutation",
+      identifier: "index.js:emptyPublicMutation",
+      returns: { type: "null" },
+      visibility: { kind: "public" },
+    },
+    {
+      args: { type: "object", value: {} },
+      functionType: "Query",
+      identifier: "index.js:emptyPublicQuery",
+      returns: { type: "null" },
+      visibility: { kind: "public" },
+    },
+  ]);
 });
 
 test("empty public query", async () => {

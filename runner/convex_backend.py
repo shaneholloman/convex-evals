@@ -76,6 +76,7 @@ def deploy(backend: dict, project_dir: str):
     )
     print("Deploy OK!")
 
+
 def run_tests(backend: dict, test_file: str):
     subprocess.check_call(
         [
@@ -87,6 +88,7 @@ def run_tests(backend: dict, test_file: str):
         env=dict(os.environ, CONVEX_PORT=str(backend["port"])),
     )
     print("Tests OK!")
+
 
 def check_function_spec(backend: dict, project_dir: str, function_spec_file: str):
     result = subprocess.check_output(
@@ -101,16 +103,17 @@ def check_function_spec(backend: dict, project_dir: str, function_spec_file: str
         ],
         cwd=project_dir,
     )
-    function_spec = json.loads(result.decode("utf-8"))['functions']
-    function_spec.sort(key = lambda f: f['identifier'])
+    function_spec = json.loads(result.decode("utf-8"))["functions"]
+    function_spec.sort(key=lambda f: f["identifier"])
 
     expected_function_spec = json.load(open(function_spec_file, "r"))
-    expected_function_spec.sort(key = lambda f: f['identifier'])
+    expected_function_spec.sort(key=lambda f: f["identifier"])
 
     if function_spec != expected_function_spec:
         raise ValueError(f"Function spec mismatch: {function_spec} != {expected_function_spec}")
 
     print("Function spec OK!")
+
 
 def health_check(port: int):
     deadline = time.time() + 10

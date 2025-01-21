@@ -1,4 +1,5 @@
 import { ConvexClient } from "convex/browser";
+import { expect } from "vitest";
 
 const port = process.env.CONVEX_PORT;
 if (!port) {
@@ -12,12 +13,37 @@ const adminKey =
 export const adminClient = new ConvexClient(`http://0.0.0.0:${port}`);
 (adminClient as any).setAdminAuth(adminKey);
 
-export async function getActiveSchema() {
+export async function checkSchemaExport(schemaModule: any) {
+  const schemaJson = schemaModule && JSON.parse(schemaModule.export());
+  await checkSchemaJson(schemaJson);
+}
+
+export async function checkSchemaJson(expected: any) {
   const result = await adminClient.query("_system/frontend/getSchemas" as any, {
     componentId: null,
   });
   if (!result.active) {
-    return null;
+    expect(expected).toEqual(null);
+    return;
   }
-  return JSON.parse(result.active);
+  const schema = JSON.parse(result.active);
+  schema.tables.sort((a: any, b: any) =>
+    a.tableName.localeCompare(b.tableName),
+  );
+  if (expected && expected.tables) {
+    expected.tables.sort((a: any, b: any) =>
+      a.tableName.localeCompare(b.tableName),
+    );
+  }
+  expect(schema).toEqual(expected);
+}
+
+export async function checkFunctionSpec(expected: any) {
+  const result = await adminClient.query(
+    "_system/cli/modules:apiSpec" as any,
+    {},
+  );
+  expected.sort((a: any, b: any) => a.identifier.localeCompare(b.identifier));
+  result.sort((a: any, b: any) => a.identifier.localeCompare(b.identifier));
+  expect(result).toEqual(expected);
 }

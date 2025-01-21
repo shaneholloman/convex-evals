@@ -18,6 +18,7 @@ from models.anthropic_codegen import AnthropicModel
 from models.openai_codegen import OpenAIModel
 from models import ConvexCodegenModel
 
+
 def generate_test(input_dir: str, output_root: str, model: ConvexCodegenModel):
     output_dir = os.path.join(output_root, input_dir)
     os.makedirs(output_dir, exist_ok=True)
@@ -89,7 +90,7 @@ def evaluate_test(evals_dir: str, category: str, test: str, test_output_dir: str
                 print(f"Error checking function spec: {e}")
                 report_entry["function_spec"] = error_status(e)
 
-    all_ok = all(v["status"] != "error" for k, v in report_entry.items() if 'status' in v)
+    all_ok = all(v["status"] != "error" for k, v in report_entry.items() if "status" in v)
     return report_entry, all_ok
 
 
