@@ -1,7 +1,7 @@
 Create a cron job demo for Convex that demonstrates all available scheduling patterns.
 
-Start by implementing a single `emptyAction` internal action that takes in an 
-optional `scheduleDescription` string and logs it to the console.
+Start by implementing a single `emptyAction` internal action in `crons.ts` that takes
+in an  optional `scheduleDescription` string and logs it to the console.
 
 Call this action every second using the `interval` syntax and omitting the argument.
 Label this cron job "run every second".
@@ -11,18 +11,6 @@ Label this cron job "run every minute", and pass that in as an argument.
 
 Next, call this action every hour using the `interval` syntax.
 Label this cron job "run every hour", and pass that in as an argument.
-
-Next, call this action every hour at 10 minutes using the `hourly` syntax.
-Label this cron job "run every hour at 10 minutes", and pass that in as an argument.
-
-Next, call this action every day at 7:30am UTC using the `daily` syntax.
-Label this cron job "run every day at 7:30am UTC", and pass that in as an argument.
-
-Next, call this action every week on Monday at 10:17pm UTC using the `weekly` syntax.
-Label this cron job "run every week on Monday at 10:17pm UTC", and pass that in as an argument.
-
-Next, call this action every month on the 23rd day at 11:30am UTC using the `monthly` syntax.
-Label this cron job "run every month on the 23rd day at 11:30am UTC", and pass that in as an argument.
 
 Finally, call this action every month on the 11th day at 1pm UTC using the `cron` syntax.
 Label this cron job "run every month on the 11th day at 1pm UTC", and pass that in as an argument.

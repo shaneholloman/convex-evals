@@ -16,7 +16,7 @@ class AnthropicModel(ConvexCodegenModel):
         self.model = model
 
     def generate(self, prompt: str):
-        user_prompt = USER_PROMPT_TEMPLATE % (prompt, CONVEX_GUIDELINES)
+        user_prompt = USER_PROMPT_TEMPLATE % (prompt, ANTHROPIC_CONVEX_GUIDELINES)
         message = self.client.messages.create(
             model=self.model,
             system=SYSTEM_PROMPT,

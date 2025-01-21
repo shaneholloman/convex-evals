@@ -179,5 +179,24 @@ CONVEX_GUIDELINES = GuidelineSection(
                 ),
             ],
         ),
+        GuidelineSection(
+            "scheduling_guidelines",
+            [
+                GuidelineSection(
+                    "cron_guidelines",
+                    [
+                        Guideline(
+                            "Only use the `crons.interval` or `crons.cron` methods to schedule cron jobs. Do NOT use the `crons.hourly`, `crons.daily`, or `crons.weekly` helpers."
+                        ),
+                        Guideline(
+                            "The `crons.interval` method schedules a function to run periodically, starting when the cron job is first deployed to Convex."
+                        ),
+                        Guideline(
+                            "The `crons.cron` method schedules a function to run at a specific time in UTC."
+                        ),
+                    ],
+                ),
+            ],
+        ),
     ],
 )

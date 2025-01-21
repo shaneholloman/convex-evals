@@ -78,6 +78,7 @@ Your task is to generate a Convex backend based on the following task descriptio
 ```
 """
 
+
 def render_guidelines(node: Union[GuidelineSection, Guideline], header="#"):
     if isinstance(node, Guideline):
         yield "- "
@@ -93,6 +94,7 @@ def render_guidelines(node: Union[GuidelineSection, Guideline], header="#"):
 
 
 OPENAI_CONVEX_GUIDELINES = "".join(render_guidelines(CONVEX_GUIDELINES))
+
 
 def chain_of_thought_prompt(prompt: str):
     yield TASK_INSTRUCTION % prompt
