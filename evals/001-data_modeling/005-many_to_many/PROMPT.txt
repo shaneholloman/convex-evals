@@ -12,6 +12,6 @@ Create a backend for a course enrollment system where:
 Requirements:
 - Design the schema to efficiently support these queries with indexes:
   - List all courses a student is enrolled in
-  - List all students enrolled in a course  
+  - List all students enrolled in a course
 
-Only write the `schema.ts` file.
+Only create the `package.json` and `convex/schema.ts` files. Do NOT create any functions.

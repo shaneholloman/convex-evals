@@ -7,4 +7,4 @@ contains fields with the following types:
 - e: A discriminated union of `{ type: "a", value: number }` and `{ type: "b", value: string }`
 - f: A union of strings and numbers
 
-Only create the `convex/schema.ts` file. Do NOT create any functions.
+Only create the `package.json` and `convex/schema.ts` files. Do NOT create any functions.

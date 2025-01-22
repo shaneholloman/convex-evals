@@ -6,4 +6,4 @@ Create a schema file that has a single table `messages` with:
 Add an index so I can efficiently query all of the messages for a given author that were
 sent in a given time range.
 
-Only create the `convex/schema.ts` file. Do NOT create any functions.
+Only create the `package.json` and `convex/schema.ts` files. Do NOT create any functions.
