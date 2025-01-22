@@ -47,7 +47,7 @@ with open(os.path.join(answer_dir, "package.json"), "w") as f:
 convex_dir = os.path.join(answer_dir, "convex")
 os.makedirs(convex_dir)
 
-with open(os.path.join(convex_dir, "public.ts"), "w") as f:
+with open(os.path.join(convex_dir, "index.ts"), "w") as f:
     f.write('import { v } from "convex/values"\n')
     f.write('import { query } from "./_generated/server"\n')
 
