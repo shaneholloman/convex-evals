@@ -1,6 +1,8 @@
-Assuming this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   temperatures: defineTable({
     sensorId: v.string(),
@@ -10,7 +12,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getSensorReadingsInRange` in `public.ts` that:
+Write a query named `getSensorReadingsInRange` in `convex/public.ts` that:
 - Takes sensorId, startTime, and endTime as arguments
 - Efficiently gets all readings where:
   * sensorId matches (equality)

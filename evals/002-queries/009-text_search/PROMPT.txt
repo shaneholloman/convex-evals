@@ -1,6 +1,8 @@
-Given this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   articles: defineTable({
     title: v.string(),
@@ -8,14 +10,14 @@ export default defineSchema({
     author: v.string(),
     tags: v.array(v.string()),
     isPublished: v.boolean(),
-  }).searchIndex("search_articles", { 
+  }).searchIndex("search_articles", {
     searchField: "content",
     filterFields: ["author", "isPublished"]
   }),
-}); 
+});
 ```
 
-Write a query named `searchArticles` in `public.ts` that:
+Write a query named `searchArticles` in `convex/public.ts` that:
 - Takes a searchTerm and author as arguments
 - Searches for all published articles that match the search term
 - Returns the top 10 matching articles with:

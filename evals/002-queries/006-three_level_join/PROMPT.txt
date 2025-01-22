@@ -1,10 +1,12 @@
-Assuming this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   // Organizations have many teams
   organizations: defineTable({
-    name: v.string(),    
+    name: v.string(),
   }),
 
   // Teams belong to organizations and have many members
@@ -27,10 +29,10 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getProAdminsByOrg` in `public.ts` that:
+Write a query named `getProAdminsByOrg` in `convex/public.ts` that:
 - Takes an organizationId as an argument
-- Returns the unique set of all admins within that organization as a record 
+- Returns the unique set of all admins within that organization as a record
   mapping `Id<"users">` to their profileUrl.
 - This query should be efficient, assuming that there are many organizations,
-  but it can also assume that the number of rows for the queried organization 
-  is small.  
+  but it can also assume that the number of rows for the queried organization
+  is small.

@@ -1,6 +1,8 @@
-Assuming this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   users: defineTable({
     email: v.string(),
@@ -10,7 +12,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getUserByEmail` in `public.ts` that:
+Write a query named `getUserByEmail` in `convex/public.ts` that:
 - Takes an email address as an argument
 - Efficiently looks up the user by email
 - Returns null if no user is found with that email

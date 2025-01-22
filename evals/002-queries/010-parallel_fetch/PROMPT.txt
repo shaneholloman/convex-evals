@@ -1,6 +1,8 @@
-Given this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   // Users and their preferences
   users: defineTable({
@@ -18,7 +20,7 @@ export default defineSchema({
     authorId: v.id("users"),
     title: v.string(),
     content: v.string(),
-  }).index("by_author", ["authorId"]),  
+  }).index("by_author", ["authorId"]),
   reactions: defineTable({
     postId: v.id("posts"),
     userId: v.id("users"),
@@ -27,7 +29,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getAuthorDashboard` in `public.ts` that:
+Write a query named `getAuthorDashboard` in `convex/public.ts` that:
 - Takes a user's email as an argument
 - Returns an object containing:
   * user: the user's name, email, theme, and notifications

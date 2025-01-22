@@ -1,6 +1,8 @@
-Assuming this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   orders: defineTable({
     customerId: v.string(),
@@ -11,7 +13,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getCustomerStats` in `public.ts` that:
+Write a query named `getCustomerStats` in `convex/public.ts` that:
 - Takes a customerId as an argument
 - Returns an object with:
   * totalOrders: number of orders

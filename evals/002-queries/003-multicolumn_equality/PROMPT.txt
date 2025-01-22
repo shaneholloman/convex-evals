@@ -1,6 +1,8 @@
-Given this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   tasks: defineTable({
     projectId: v.string(),
@@ -12,7 +14,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getProjectTasksByStatus` in `public.ts` that:
+Write a query named `getProjectTasksByStatus` in `convex/public.ts` that:
 - Takes projectId and status as arguments
 - Efficiently finds all tasks with the given projectId and status
 - Efficiently sorts the results in ascending priority order

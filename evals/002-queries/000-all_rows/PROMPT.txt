@@ -1,6 +1,8 @@
-Assuming this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   products: defineTable({
     name: v.string(),
@@ -10,4 +12,4 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getAllProducts` in `public.ts` that returns all products in the table.
+Write a query named `getAllProducts` in `convex/public.ts` that returns all products in the table.

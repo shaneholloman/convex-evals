@@ -1,6 +1,8 @@
-Given this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   messages: defineTable({
     author: v.string(),
@@ -11,7 +13,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getPopularPinnedMessages` in `public.ts` that:
+Write a query named `getPopularPinnedMessages` in `convex/public.ts` that:
 - Takes an author name and a minimum likes threshold as arguments
 - Loads all of the messages by the author into memory.
 - Filters IN JAVASCRIPT (not in the database) to find messages that are:

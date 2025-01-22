@@ -1,6 +1,8 @@
-Assuming this schema:
+Write this schema to `convex/schema.ts`:
+```
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-```typescript
 export default defineSchema({
   sales: defineTable({
     region: v.string(),
@@ -12,7 +14,7 @@ export default defineSchema({
 });
 ```
 
-Write a query named `getMonthlySalesByCategory` in `public.ts` that:
+Write a query named `getMonthlySalesByCategory` in `convex/public.ts` that:
 - Takes a region and month (YYYY-MM) as arguments
 - Returns an array of objects, each containing:
   * category: string
