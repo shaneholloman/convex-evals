@@ -20,6 +20,11 @@ echo "OPENAI_API_KEY=<your OPENAI_API_KEY>" >> .env
 pdm run python runner/main.py --model=claude-3-5-sonnet-latest --generate-concurrency=1
 ```
 
+You can also specify a test filter regex:
+```
+pdm run python runner/main.py --model=claude-3-5-sonnet-latest --generate-concurrency=1 --test-filter='.*data_modeling.*'
+```
+
 If you'd like to grade the evaluations again without regenerating them, run:
 
 ```
