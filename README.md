@@ -17,7 +17,7 @@ bun install
 echo "ANTHROPIC_API_KEY=<your ANTHROPIC_API_KEY>" > .env
 echo "OPENAI_API_KEY=<your OPENAI_API_KEY>" >> .env
 
-pdm run python runner/main.py --model=claude-3-5-sonnet-latest
+pdm run python runner/main.py --model=claude-3-5-sonnet-latest --generate-concurrency=1
 ```
 
 If you'd like to grade the evaluations again without regenerating them, run:
@@ -33,6 +33,13 @@ You can also pretty print the report:
 ```
 pdm run python runner/main.py --output-dir=output
 pdm run python print_report.py output/report.json
+```
+
+There's also a Next app for viewing the report:
+```
+cd viewer
+bun install
+bun dev
 ```
 
 ## Creating a new evaluation
