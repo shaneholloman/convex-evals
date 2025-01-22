@@ -113,15 +113,6 @@ def render_examples():
 
 def render_guidelines():
     yield """<guidelines>
-  <file_structure>
-   - You can write to `package.json` and any files within the `convex/` folder.
-   - Do NOT write to the `convex/_generated` folder. You can assume that `npx convex dev` will populate this folder.
-   - Use <file path="file_path" /> syntax to output each file.
-   - It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.
-   - Always start with a `package.json` file.
-   - Use Convex version "^1.17.4".
-  </file_structure>
-
   <general_coding_standards>
     - Use 2 spaces for code indentation.
     - Ensure your code is clear, efficient, concise, and innovative.
@@ -129,6 +120,15 @@ def render_guidelines():
   </general_coding_standards>
     """
     yield from render_convex_guidelines(CONVEX_GUIDELINES)
+    yield """<file_structure>
+   - You can write to `package.json` and any files within the `convex/` folder.
+   - Do NOT write to the `convex/_generated` folder. You can assume that `npx convex dev` will populate this folder.
+   - Use <file path="file_path" /> syntax to output each file.
+   - It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.
+   - Always start with a `package.json` file.
+   - Use Convex version "^1.17.4".
+  </file_structure>
+    """
     yield "</guidelines>"
 
 
