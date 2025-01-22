@@ -51,20 +51,17 @@ with open(os.path.join(convex_dir, "public.ts"), "w") as f:
     f.write('import { v } from "convex/values"\n')
     f.write('import { query } from "./_generated/server"\n')
 
-with open(os.path.join(testdir, "function_spec.json"), "w") as f:
-    f.write("[]")
-
 grader_ts = """
 import { expect, test } from "vitest";
-import { adminClient, client, checkActiveSchema, checkFunctionSpec } from "../../../grader";
+import { adminClient, client, compareSchema, compareFunctionSpec } from "../../../grader";
 import { anyApi } from "convex/server"
 
-test("check schema", async () => {
-  await checkActiveSchema(null);
+test("compare schema", async () => {
+  await compareSchema();
 })
 
 test("compare function spec", async () => {
-  await checkFunctionSpec([]);
+  await compareFunctionSpec();
 })
 """
 
