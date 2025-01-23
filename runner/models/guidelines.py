@@ -181,6 +181,28 @@ CONVEX_GUIDELINES = GuidelineSection(
             ],
         ),
         GuidelineSection(
+            "typescript_guidelines",
+            [               
+                Guideline(
+                    "You can use the helper typescript type 'Id' from the _generated/dataModel import to get the type of the id for a given table. For example if there is a table called 'users' you can use Id<'users'> to get the type of the id for that table."
+                ),
+                Guideline(
+                    "If you need to define a Record make sure that you correctly provide the type of the key and value in the type. For example a validator `v.record(v.id('users'), v.string())` would have the type `Record<Id<'users'>, string>`"
+                ),      
+                Guideline(
+                    "You should always prefer to be strict with the types particularly around id's of documents. So for example instead of a function taking in a string as an argument you should prefer to take in an Id<T> where T is the name of the table."
+                ),         
+            ],
+        ),
+        GuidelineSection(
+            "full_text_search_guidelines",
+            [
+                Guideline(
+                    "A query for \"10 messages in channel '#general' that best match the query 'hello hi' in their body\" would look like:\n\nconst messages = await ctx.db\n  .query(\"messages\")\n  .withSearchIndex(\"search_body\", (q) =>\n    q.search(\"body\", \"hello hi\").eq(\"channel\", \"#general\"),\n  )\n  .take(10);"
+                ),                            
+            ],
+        ),
+        GuidelineSection(
             "query_guidelines",
             [
                 Guideline(
@@ -188,6 +210,20 @@ CONVEX_GUIDELINES = GuidelineSection(
                 ),
                 Guideline(
                     "Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(row._id)` on each result."
+                ),
+                GuidelineSection(
+                    "ordering",
+                    [
+                        Guideline(
+                            "By default Convex always returns documents ordered by _creationTime."
+                        ), 
+                        Guideline(
+                            "You can use .order(`asc` | `desc`) to pick whether the order is ascending or descending. If the order isn't specified, it defaults to ascending."
+                        ), 
+                        Guideline(
+                            "Document queries that use indexes will be ordered based on the columns in the index and can avoid slow table scans."
+                        ),                  
+                    ],
                 ),
             ],
         ),
@@ -216,7 +252,7 @@ CONVEX_GUIDELINES = GuidelineSection(
                         ),
                         Guideline(
                             """Define crons by declaring the top-level `crons` object, calling some methods on it, and then exporting it as default. For example,
-                            ```
+                            ```ts
                             import { cronJobs } from "convex/server";
                             import { internal } from "./_generated/api";
 
@@ -231,6 +267,9 @@ CONVEX_GUIDELINES = GuidelineSection(
                         ),
                         Guideline(
                             "You can register Convex functions within `crons.ts` just like any other file."
+                        ),
+                        Guideline(
+                            "If the function that crons calls is internal even if its in the same file you should mport the internal object from `_generated/api`."
                         ),
                     ],
                 ),

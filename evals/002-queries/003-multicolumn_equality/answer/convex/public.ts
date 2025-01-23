@@ -13,13 +13,15 @@ export const getProjectTasksByStatus = query({
       projectId: v.string(),
       status: v.string(),
       priority: v.number(),
-    }),
+      title: v.string(),
+      assignee: v.string(),
+    })
   ),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("tasks")
       .withIndex("by_project_status_priority", (q) =>
-        q.eq("projectId", args.projectId).eq("status", args.status),
+        q.eq("projectId", args.projectId).eq("status", args.status)
       )
       .take(5);
   },
