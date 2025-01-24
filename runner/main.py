@@ -133,13 +133,16 @@ if __name__ == "__main__":
         output_dir = f"output-{args.model}-{git_rev}"
 
     if os.path.exists(output_dir) and not args.force:
-        response = input(f"Output directory '{output_dir}' already exists. Would you like to replace it? [y/N] ").strip()
-        if not response or response.lower() != 'y':
+        response = input(
+            f"Output directory '{output_dir}' already exists. Would you like to replace it? [y/N] "
+        ).strip()
+        if not response or response.lower() != "y":
             print("Aborting...")
             sys.exit(1)
         import shutil
+
         shutil.rmtree(output_dir)
-        
+
     generate_concurrency = int(args.generate_concurrency)
     evaluate_concurrency = int(args.evaluate_concurrency)
     report_path = os.path.join(output_dir, "report.json")
@@ -200,27 +203,31 @@ if __name__ == "__main__":
         if any_failed:
             failed_tests = []
             for r in report:
-                category = r['category']
-                test = r['test']
+                category = r["category"]
+                test = r["test"]
                 failures = []
-                
+
                 for k, v in r.items():
-                    if k not in ['category', 'test'] and isinstance(v, dict):
-                        if v.get('status') not in ['ok', 'skipped']:
-                            if 'error' in v and isinstance(v['error'], list):
+                    if k not in ["category", "test"] and isinstance(v, dict):
+                        if v.get("status") not in ["ok", "skipped"]:
+                            if "error" in v and isinstance(v["error"], list):
                                 # For typescript errors, just show count
                                 failures.append(f"{k} failed ({len(v['error'])} errors)")
-                            elif 'error' in v and isinstance(v['error'], dict) and 'testResults' in v['error']:
+                            elif (
+                                "error" in v
+                                and isinstance(v["error"], dict)
+                                and "testResults" in v["error"]
+                            ):
                                 # For test failures, show failed test names
-                                failed_tests_count = v['error'].get('numFailedTests', 0)
+                                failed_tests_count = v["error"].get("numFailedTests", 0)
                                 failures.append(f"{k} failed ({failed_tests_count} tests)")
-                            elif 'error' in v:
+                            elif "error" in v:
                                 failures.append(f"{k} failed")
                             else:
                                 failures.append(f"{k} failed")
-                
+
                 if failures:
                     failed_tests.append(f"{category}/{test}: {', '.join(failures)}")
-            
+
             error_msg = "Evaluation failed:\n" + "\n".join(failed_tests)
             raise Exception(error_msg)

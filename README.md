@@ -21,6 +21,7 @@ pdm run python runner/main.py --model=claude-3-5-sonnet-latest --generate-concur
 ```
 
 You can also specify a test filter regex:
+
 ```bash
 pdm run python runner/main.py --model=claude-3-5-sonnet-latest --generate-concurrency=1 --test-filter='.*data_modeling.*'
 ```
@@ -55,4 +56,4 @@ Note that test or category names cannot contain dashes.
 
 # Outstanding Evals
 
-+ [ordering](https://docs.convex.dev/database/reading-data#ordering)
+- [ordering](https://docs.convex.dev/database/reading-data#ordering)

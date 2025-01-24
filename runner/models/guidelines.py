@@ -182,24 +182,24 @@ CONVEX_GUIDELINES = GuidelineSection(
         ),
         GuidelineSection(
             "typescript_guidelines",
-            [               
+            [
                 Guideline(
-                    "You can use the helper typescript type 'Id' from the _generated/dataModel import to get the type of the id for a given table. For example if there is a table called 'users' you can use Id<'users'> to get the type of the id for that table."
+                    "You can use the helper typescript type `Id` imported from './_generated/dataModel' to get the type of the id for a given table. For example if there is a table called 'users' you can use `Id<'users'>` to get the type of the id for that table."
                 ),
                 Guideline(
-                    "If you need to define a Record make sure that you correctly provide the type of the key and value in the type. For example a validator `v.record(v.id('users'), v.string())` would have the type `Record<Id<'users'>, string>`"
-                ),      
+                    "If you need to define a `Record` make sure that you correctly provide the type of the key and value in the type. For example a validator `v.record(v.id('users'), v.string())` would have the type `Record<Id<'users'>, string>`."
+                ),
                 Guideline(
-                    "You should always prefer to be strict with the types particularly around id's of documents. So for example instead of a function taking in a string as an argument you should prefer to take in an Id<T> where T is the name of the table."
-                ),         
+                    "Be strict with types, particularly around id's of documents. For example, if a function takes in an id for a document in the 'users' table, take in `Id<'users'>` rather than `string`."
+                ),
             ],
         ),
         GuidelineSection(
             "full_text_search_guidelines",
             [
                 Guideline(
-                    "A query for \"10 messages in channel '#general' that best match the query 'hello hi' in their body\" would look like:\n\nconst messages = await ctx.db\n  .query(\"messages\")\n  .withSearchIndex(\"search_body\", (q) =>\n    q.search(\"body\", \"hello hi\").eq(\"channel\", \"#general\"),\n  )\n  .take(10);"
-                ),                            
+                    'A query for "10 messages in channel \'#general\' that best match the query \'hello hi\' in their body" would look like:\n\nconst messages = await ctx.db\n  .query("messages")\n  .withSearchIndex("search_body", (q) =>\n    q.search("body", "hello hi").eq("channel", "#general"),\n  )\n  .take(10);'
+                ),
             ],
         ),
         GuidelineSection(
@@ -215,14 +215,14 @@ CONVEX_GUIDELINES = GuidelineSection(
                     "ordering",
                     [
                         Guideline(
-                            "By default Convex always returns documents ordered by _creationTime."
-                        ), 
+                            "By default Convex always returns documents in ascending `_creationTime` order."
+                        ),
                         Guideline(
-                            "You can use .order(`asc` | `desc`) to pick whether the order is ascending or descending. If the order isn't specified, it defaults to ascending."
-                        ), 
+                            "You can use `.order('asc')` or `.order('desc')` to pick whether a query is in ascending or descending order. If the order isn't specified, it defaults to ascending."
+                        ),
                         Guideline(
                             "Document queries that use indexes will be ordered based on the columns in the index and can avoid slow table scans."
-                        ),                  
+                        ),
                     ],
                 ),
             ],
@@ -269,7 +269,7 @@ CONVEX_GUIDELINES = GuidelineSection(
                             "You can register Convex functions within `crons.ts` just like any other file."
                         ),
                         Guideline(
-                            "If the function that crons calls is internal even if its in the same file you should mport the internal object from `_generated/api`."
+                            "If a cron calls an internal function, always import the `internal` object from '_generated/api`, even if the internal function is registered in the same file."
                         ),
                     ],
                 ),

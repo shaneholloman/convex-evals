@@ -30,7 +30,7 @@ export async function getSchema(adminClient: any) {
   }
   const schema = JSON.parse(result.active);
   schema.tables.sort((a: any, b: any) =>
-    a.tableName.localeCompare(b.tableName)
+    a.tableName.localeCompare(b.tableName),
   );
   return schema;
 }
@@ -44,7 +44,7 @@ export async function compareSchema() {
 async function getFunctionSpec(adminClient: any) {
   const result = await adminClient.query(
     "_system/cli/modules:apiSpec" as any,
-    {}
+    {},
   );
   return result;
 }
