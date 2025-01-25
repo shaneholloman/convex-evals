@@ -24,20 +24,20 @@ Then, get a Braintrust API key from [the dashboard](https://www.braintrust.dev/a
 You can run the `eval_convex_coding.py` evals with the `braintrust` CLI:
 
 ```bash
-BRAINTRUST_API_KEY=<your BRAINTRUST_API_KEY> braintrust run runner/eval_convex_coding.py
+BRAINTRUST_API_KEY=<your BRAINTRUST_API_KEY> pdm run braintrust run runner/eval_convex_coding.py
 ```
 
 It'll print out a URL for viewing the report online. You can specify a test filter regex via an environment variable:
 
 ```bash
-TEST_FILTER='data_modeling' braintrust run runner/eval_convex_coding.py
+TEST_FILTER='data_modeling' pdm run braintrust run runner/eval_convex_coding.py
 ```
 
 The test will also print out what temporary directory it's using for storing the generated files. You can override this
 with the `OUTPUT_TEMPDIR` environment variable.
 
 ```bash
-OUTPUT_TEMPDIR=/tmp/convex-codegen-evals braintrust run runner/eval_convex_coding.py
+OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust run runner/eval_convex_coding.py
 ```
 
 ## Rerunning grading
