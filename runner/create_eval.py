@@ -2,19 +2,22 @@ import os
 import sys
 import subprocess
 
-name = sys.argv[1]
-category = sys.argv[2]
+category = sys.argv[1]
+name = sys.argv[2]
 
 evals_dir = "evals"
 categories = os.listdir(evals_dir)
-assert category in categories
+
+if category not in categories:
+    print(f"Creating new category {category}")
+    os.makedirs(os.path.join(evals_dir, category))
 
 category_dir = os.path.join(evals_dir, category)
 
 if not os.path.exists(category_dir):
     os.makedirs(category_dir)
 
-existing = [int(l.split("-")[0]) for l in os.listdir(category_dir)]
+existing = [int(existing_name.split("-")[0]) for existing_name in os.listdir(category_dir)]
 
 if existing:
     next_id = max(existing) + 1
@@ -56,12 +59,12 @@ import { expect, test } from "vitest";
 import { adminClient, client, compareSchema, compareFunctionSpec } from "../../../grader";
 import { anyApi } from "convex/server"
 
-test("compare schema", async () => {
-  await compareSchema();
+test("compare schema", async ({ skip }) => {
+  await compareSchema(skip);
 })
 
-test("compare function spec", async () => {
-  await compareFunctionSpec();
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
 })
 """
 

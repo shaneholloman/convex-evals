@@ -1,9 +1,10 @@
-from anthropic import Anthropic
 import os
 from bs4 import BeautifulSoup
 from typing import Union
 from . import ConvexCodegenModel, SYSTEM_PROMPT
 from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
+from braintrust import wrap_openai
+from openai import OpenAI
 
 
 class AnthropicModel(ConvexCodegenModel):
@@ -12,14 +13,23 @@ class AnthropicModel(ConvexCodegenModel):
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY is not set")
-        self.client = Anthropic(api_key=api_key)
+        # Use OpenAI's client + Braintrust's caching proxy.
+        self.client = wrap_openai(
+            OpenAI(
+                base_url="https://api.braintrust.dev/v1/proxy",
+                api_key=api_key,
+            )
+        )
         self.model = model
 
     def generate(self, prompt: str):
-        message = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=self.model,
-            system=SYSTEM_PROMPT,
             messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
                 {
                     "role": "user",
                     "content": [{"type": "text", "text": "".join(render_prompt(prompt))}],
@@ -27,11 +37,10 @@ class AnthropicModel(ConvexCodegenModel):
                 {"role": "assistant", "content": [{"type": "text", "text": "<analysis>"}]},
             ],
             max_tokens=8192,
+            seed=1,
         )
-        if len(message.content) != 1 or message.content[0].type != "text":
-            raise ValueError("Message content is not text: %s" % message.content)
-
-        soup = BeautifulSoup("<analysis>" + message.content[0].text, "html.parser")
+        text = response.choices[0].message.content
+        soup = BeautifulSoup("<analysis>" + text, "html.parser")
         out = {}
 
         for file_tag in soup.find_all("file"):
@@ -93,21 +102,22 @@ def render_examples():
         file_paths.sort(key=lambda x: (x.count("/"), x))
 
         yield f'<example name="{example}">\n'
-        yield f"  <task>\n"
+        yield "  <task>\n"
         yield f"    {task_description}\n"
-        yield f"  </task>\n"
-        yield f"  <response>\n"
-        yield f"    <analysis>\n"
+        yield "  </task>\n"
+        yield "  <response>\n"
+        yield "    <analysis>\n"
         yield f"      {analysis}\n"
-        yield f"    </analysis>\n"
+        yield "    </analysis>\n"
         for file_path in file_paths:
             rel_path = os.path.relpath(file_path, example_path)
             file_content = open(file_path, "r").read().strip()
             yield f'    <file path="{rel_path}">\n'
             yield f"      {file_content}\n"
-            yield f"    </file>\n"
-        yield f"  </response>\n"
-        yield f"</example>\n"
+            yield "    </file>\n"
+        yield "  </response>\n"
+        yield "</example>\n"
+
     yield "</examples>\n"
 
 

@@ -1,11 +1,10 @@
 import openai
 import os
 from . import ConvexCodegenModel, SYSTEM_PROMPT
-import re
 from markdown_it import MarkdownIt
-from markdown_it.token import Token
 from typing import Union
 from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
+from braintrust import wrap_openai
 
 
 class OpenAIModel(ConvexCodegenModel):
@@ -16,7 +15,12 @@ class OpenAIModel(ConvexCodegenModel):
         if not api_key:
             raise ValueError("OPENAI_API_KEY is not set")
 
-        self.client = openai.OpenAI(api_key=api_key)
+        self.client = wrap_openai(
+            openai.OpenAI(
+                base_url="https://api.braintrust.dev/v1/proxy",
+                api_key=api_key,
+            )
+        )
         self.model = model
 
     def generate(self, prompt: str):
@@ -28,6 +32,7 @@ class OpenAIModel(ConvexCodegenModel):
                     {"role": "user", "content": user_prompt(prompt, self.chain_of_thought)},
                 ],
                 max_tokens=16384,
+                seed=1,
             )
             return self._parse_response(response.choices[0].message.content)
         else:
@@ -38,6 +43,7 @@ class OpenAIModel(ConvexCodegenModel):
                     {"role": "user", "content": user_prompt(prompt, self.chain_of_thought)},
                 ],
                 max_completion_tokens=16384,
+                seed=1,
             )
             return self._parse_response(response.choices[0].message.content)
 
@@ -48,7 +54,6 @@ class OpenAIModel(ConvexCodegenModel):
         files = {}
         current_file = None
         in_files_section = False
-        code_lang = None
 
         for i, token in enumerate(tokens):
             if token.type == "heading_open" and token.tag == "h1":
@@ -64,7 +69,6 @@ class OpenAIModel(ConvexCodegenModel):
                 title_token = tokens[i + 1]
                 current_file = title_token.content.strip()
             elif token.type == "fence" and current_file:
-                code_lang = token.info
                 files[current_file] = token.content.strip()
                 current_file = None
 
