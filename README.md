@@ -30,14 +30,14 @@ BRAINTRUST_API_KEY=<your BRAINTRUST_API_KEY> pdm run braintrust eval runner/eval
 It'll print out a URL for viewing the report online. You can specify a test filter regex via an environment variable:
 
 ```bash
-TEST_FILTER='data_modeling' pdm run braintrust run runner/eval_convex_coding.py
+TEST_FILTER='data_modeling' pdm run braintrust eval runner/eval_convex_coding.py
 ```
 
 The test will also print out what temporary directory it's using for storing the generated files. You can override this
 with the `OUTPUT_TEMPDIR` environment variable.
 
 ```bash
-OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust run runner/eval_convex_coding.py
+OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust eval runner/eval_convex_coding.py
 ```
 
 ## Rerunning grading
@@ -45,13 +45,13 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust run runner/eval_conv
 After running the evals, you may want to dig into a particular test failure. You can use the `run_grader.py` script to grade the evaluations again without regenerating them:
 
 ```bash
-pdm run python runner/run_grader.py /tmp/convex-codegen-evals
+pdm run python -m runner.run_grader /tmp/convex-codegen-evals
 ```
 
 You can also pass in a path to a specific evaluation.
 
 ```bash
-pdm run python runner/run_grader.py /tmp/convex-codegen-evals/output/claude-3-5-sonnet-latest/000-fundamentals/000-http_actions_file_storage
+pdm run python -m runner.run_grader /tmp/convex-codegen-evals/output/claude-3-5-sonnet-latest/000-fundamentals/000-http_actions_file_storage
 ```
 
 ## Adding a new evaluation
