@@ -6,6 +6,7 @@ from runner.scorer import install_dependencies, generate_code, typecheck_code, l
 from runner.convex_backend import convex_backend
 
 
+
 def is_tempdir(directory: str):
     return {"answer", "backends", "output"} <= set(os.listdir(directory))
 
