@@ -134,19 +134,16 @@ def main():
     def should_run_step(step_num):
         return step_num >= start_step
 
-    print(f"\nStep 1: Creating eval directory for category '{category}' and name '{name}'")
-
     evals_dir = "evals"
     categories = os.listdir(evals_dir)
 
     category_by_name = {category.split("-")[1]: category for category in categories}
     next_category_number = max(int(category.split("-")[0]) for category in categories) + 1
 
-    if category not in category_by_name:
+    new_category = category not in category_by_name
+    if new_category:
         print(f"Creating new category {category}")
         category_dir = os.path.join(evals_dir, f"{next_category_number:03d}-{category}")
-        if should_run_step(1):
-            os.makedirs(category_dir)
     else:
         category_dir = os.path.join(evals_dir, category_by_name[category])
 
@@ -156,6 +153,7 @@ def main():
     assert "-" not in name
     testdir_name = f"{next_id:03d}-{name}"
     testdir = os.path.join(category_dir, testdir_name)
+    print(f"\nStep 1: Creating eval directory for category '{category}' and name '{name}'")
     if should_run_step(1):
         os.makedirs(testdir)
 
@@ -174,17 +172,13 @@ def main():
         task_description = generate_task_description(one_line_desc, example_tasks)
         with open(task_file, "w") as f:
             f.write(task_description)
-
-    # Step 4: Edit TASK.txt
-    print("\nStep 4: Opening TASK.txt for editing")
-    if should_run_step(4):
         open_in_cursor(task_file)
 
-    # Step 5: Create answer directory and package.json
-    print("\nStep 5: Creating answer directory and package.json")
+    # Step 4: Create answer directory and package.json
+    print("\nStep 4: Creating answer directory and package.json")
     answer_dir = os.path.join(testdir, "answer")
     convex_dir = os.path.join(answer_dir, "convex")
-    if should_run_step(5):
+    if should_run_step(4):
         os.makedirs(answer_dir)
         os.makedirs(convex_dir)
 
@@ -203,9 +197,9 @@ def main():
         subprocess.run(["bun", "install"], cwd=answer_dir, check=True)
         subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
 
-    # Step 6: Generate answer files
-    print("\nStep 6: Generating answer files")
-    if should_run_step(6):
+    # Step 5: Generate answer files
+    print("\nStep 5: Generating answer files and editing index.ts")
+    if should_run_step(5):
         model = AnthropicModel("claude-3-5-sonnet-latest")
         with open(task_file, "r") as f:
             task_content = f.read()
@@ -216,16 +210,12 @@ def main():
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             with open(full_path, "w") as f:
                 f.write(content)
-
-    # Step 7: Edit index.ts
-    print("\nStep 7: Opening index.ts for editing")
-    if should_run_step(7):
         open_in_cursor(os.path.join(convex_dir, "index.ts"))
 
-    # Step 8: Generate and edit grader.test.ts
-    print("\nStep 8: Generating grader.test.ts")
+    # Step 6: Generate and edit grader.test.ts
+    print("\nStep 6: Generating grader.test.ts")
     grader_file = os.path.join(testdir, "grader.test.ts")
-    if should_run_step(8):
+    if should_run_step(6):
         # Get implementation files
         files = {}
         for root, _, filenames in os.walk(os.path.join(testdir, "answer")):
@@ -266,17 +256,14 @@ def main():
             check=False
         )
 
-    # Step 10: Create and edit GAPS.txt
-    print("\nStep 10: Creating GAPS.txt")
-    gaps_file = os.path.join(testdir, "GAPS.txt")
-    if should_run_step(10):
+        gaps_file = os.path.join(testdir, "GAPS.txt")
         with open(gaps_file, "w") as f:
             f.write(f"{category}, {name}:\n")
         open_in_cursor(gaps_file)
 
-    # Step 11: Git commit
-    print("\nStep 11: Committing to git")
-    if should_run_step(11):
+    # Step 10: Git commit
+    print("\nStep 10: Committing to git")
+    if should_run_step(10):
         subprocess.run(["git", "add", testdir], check=True)
         subprocess.run(["git", "commit", "-m", f"eval: {category} {name}"], check=True)
 
