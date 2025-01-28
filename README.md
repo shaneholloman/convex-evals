@@ -45,13 +45,13 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust eval runner/eval_con
 After running the evals, you may want to dig into a particular test failure. You can use the `run_grader.py` script to grade the evaluations again without regenerating them:
 
 ```bash
-pdm run python -m runner/run_grader.py /tmp/convex-codegen-evals
+pdm run python -m runner.run_grader /tmp/convex-codegen-evals
 ```
 
 You can also pass in a path to a specific evaluation.
 
 ```bash
-pdm run python -m runner/run_grader.py /tmp/convex-codegen-evals/output/claude-3-5-sonnet-latest/000-fundamentals/000-http_actions_file_storage
+pdm run python -m runner.run_grader /tmp/convex-codegen-evals/output/claude-3-5-sonnet-latest/000-fundamentals/000-http_actions_file_storage
 ```
 
 ## Adding a new evaluation
