@@ -3,6 +3,7 @@ import sys
 import subprocess
 from runner.models.anthropic_codegen import AnthropicModel
 import glob
+from .convex_backend import convex_backend, admin_key
 
 def input_continue(message="Press enter to continue..."):
     input(message)
@@ -242,11 +243,49 @@ def main():
         print("\nOpening grader.test.ts for editing")
         open_in_cursor(grader_file)
 
-    # Step 9: Run tests
-    print("\nStep 9: Running tests")
-    if should_run_step(9):
+    env = os.environ.copy()
+    # Step 7: Run tests interactively
+    print("\nStep 7: Running tests interactively")
+    if should_run_step(7):
+        with convex_backend(answer_dir) as backend:
+            subprocess.run(
+                [
+                    "bunx",
+                    "convex",
+                    "dev",
+                    "--once",
+                    "--admin-key",
+                    admin_key,
+                    "--url",
+                    f"http://localhost:{backend['port']}",
+                ],
+                cwd=answer_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                check=True
+            )
+
+            subprocess.run(
+                [
+                    "bunx",
+                    "vitest",
+                    "run",
+                    grader_file,
+                    # "--no-color",
+                ],
+                env=env,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                check=False,
+            )
+
+    # Step 8: Run eval
+    print("\nStep 8: Running eval and reporting gaps")
+    if should_run_step(8):
         test_filter = f"{category}/{testdir_name}"
-        env = os.environ.copy()
         env["TEST_FILTER"] = test_filter
         env["OUTPUT_TEMPDIR"] = "/tmp/convex-codegen-evals"
 
