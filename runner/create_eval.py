@@ -292,7 +292,7 @@ def main():
     if should_run_step(8):
         test_filter = f"{category}/{testdir_name}"
         env["TEST_FILTER"] = test_filter
-        env["OUTPUT_TEMPDIR"] = testdir
+        env["OUTPUT_TEMPDIR"] = output_tempdir
 
         subprocess.run(
             ["pdm", "run", "braintrust", "eval", "runner/eval_convex_coding.py"],
