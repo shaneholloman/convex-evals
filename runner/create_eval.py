@@ -113,12 +113,6 @@ Generate vitest test file contents for the current task."""
         [{"role": "user", "content": format_prompt(example["task"], example["files"])}, {"role": "assistant", "content": example["grader_test"]}]
         for example in examples
     ]
-    print("user:")
-    print(example_messages[0][0]["content"])
-    print("answer:")
-    print(example_messages[0][1]["content"])
-    print("prompt:")
-    print(format_prompt(task, files))
     response = model.client.chat.completions.create(
         model="claude-3-5-sonnet-latest",
         messages=[
