@@ -1,0 +1,28 @@
+Create a backend that demonstrates a schema using discriminated unions to model different types of notifications.
+
+Create a schema in "convex/schema.ts" that models the following typescript types in a convex schema:
+```ts
+type MessageNotification = {
+  kind: "message";
+  senderId: string;
+  messageText: string;
+} | {
+  kind: "friendRequest";
+  requesterId: string;
+} | {
+  kind: "achievement";
+  achievementName: string;
+  points: number;
+};
+```
+
+This should be the schema for the "notifications" table.
+
+The schema should demonstrate:
+1. A discriminated union using the `kind` field as the discriminator
+2. Three different notification types with different fields:
+   - Message notifications with sender and text
+   - Friend request notifications with requester
+   - Achievement notifications with name and points
+
+No functions need to be implemented - this task is for the schema only.
