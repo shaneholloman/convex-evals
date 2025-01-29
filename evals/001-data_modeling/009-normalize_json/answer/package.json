@@ -1,0 +1,8 @@
+{
+  "name": "org-schema",
+  "version": "1.0.0",
+  "description": "Normalized organizational schema",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
