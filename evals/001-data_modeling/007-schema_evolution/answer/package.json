@@ -1,0 +1,8 @@
+{
+  "name": "convex-migrations-demo",
+  "version": "1.0.0",
+  "description": "Demonstration of different types of schema migrations in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
