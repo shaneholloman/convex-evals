@@ -8,6 +8,11 @@ from .convex_backend import convex_backend, admin_key
 
 load_dotenv()
 
+api_key = os.getenv("ANTHROPIC_API_KEY")
+if not api_key:
+    raise ValueError("ANTHROPIC_API_KEY is not set")
+model = AnthropicModel(str(api_key), "claude-3-5-sonnet-latest")
+
 output_tempdir = os.getenv("OUTPUT_TEMPDIR")
 if not output_tempdir:
     output_tempdir = "/tmp/convex-codegen-evals"
@@ -69,7 +74,6 @@ def get_example_evals(before_dir, n=5):
 
 
 def generate_task_description(one_line_desc, example_tasks):
-    model = AnthropicModel("claude-3-5-sonnet-latest")
     prompt = f"""Given this one line description of a task:
 {one_line_desc}
 
@@ -93,7 +97,6 @@ Generate a similar style TASK.txt for the given one-line description:
 
 
 def generate_task_test(task, files, examples):
-    model = AnthropicModel("claude-3-5-sonnet-latest")
 
     def format_prompt(task, files):
         return f"""Given a task description and implementation files, generate a grader.test.ts file to test the implementation.
@@ -208,7 +211,6 @@ def main():
 
     print("\nStep 5: Generating answer/convex files and editing index.ts")
     if should_run_step(5):
-        model = AnthropicModel("claude-3-5-sonnet-latest")
         with open(task_file, "r") as f:
             task_content = f.read()
 
