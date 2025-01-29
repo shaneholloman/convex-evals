@@ -174,3 +174,5 @@ def render_guidelines(node: Union[GuidelineSection, Guideline], header="#"):
         for child in node.children:
             yield from render_guidelines(child, header + "#")
         yield "\n"
+
+OPENAI_CONVEX_GUIDELINES = "".join(render_guidelines(CONVEX_GUIDELINES))

@@ -73,6 +73,14 @@ Be sure that your answer passes tests:
 pdm run runner/run_grader.py evals/<category>/<name>/answer
 ```
 
+# Generating guidelines
+
+```bash
+pdm run python -m runner.models.guidelines <outdir>
+```
+
+This will generate guidelines for Anthropic and OpenAI in the specified directory.
+
 # Outstanding Evals
 
 - [ordering](https://docs.convex.dev/database/reading-data#ordering)
