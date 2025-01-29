@@ -1,0 +1,30 @@
+Create a backend that demonstrates various ways to use literals and unions in a Convex schema.
+
+Given this schema.ts file starter code:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+
+export default defineSchema({
+  configurations: defineTable({
+    // Add fields here
+  })
+});
+```
+
+Generate a "convex/schema.ts" file that adds the following fields to the `configurations` table:
+- Simple literal
+  - environment: "production" string literal
+- Union of string literals
+  - logLevel: "debug" | "info" | "warn" | "error"
+- Union of number literals
+  - priority: 1 | 2 | 3
+- Union of number literal and boolean
+  - enabled: 0 | 1 | false
+- Union of different types
+  - status: "active" | "inactive" | 0 | 1 | null
+- Nested union structure
+  - feature: { type: "basic" | "advanced", allowed: boolean }
+
+The goal is to showcase different ways to use literals and unions in Convex schemas and how to properly type functions that interact with these complex types.
+
+Only generate the "convex/schema.ts" file.
