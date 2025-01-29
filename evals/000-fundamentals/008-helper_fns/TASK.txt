@@ -1,0 +1,46 @@
+Create a backend that demonstrates sharing a pure TypeScript helper function between query and mutation functions.
+
+Create this structure in the `convex` directory:
+
+1. Create a schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  items: defineTable({
+    name: v.string(),
+    quantity: v.number(),
+    lastModified: v.number(),
+  }),
+});
+```
+
+2. Create a helper function `getItemData` in `convex/index.ts` that takes in an item ID, fetches it from the database, and returns a document like:
+
+```ts
+{
+  name: item.name,
+  quantity: item.quantity,
+  lastModified: new Date(item.lastModified).toISOString(),
+}
+```
+Return null if item not found, otherwise returns the formatted data
+
+3. Create these functions in `convex/items.ts`:
+
+a. Create a query `getItem` that:
+   - Takes an item ID as an argument
+   - Uses the shared helper function to retrieve and transform the item from the database
+   - Throws an error if item not found
+
+b. Create a mutation `updateItem` that:
+   - Takes an item ID and new quantity as arguments
+   - Updates the item's quantity and lastModified timestamp
+   - Retrieves the item via the shared helper function
+   - Throws an error if item not found
+   - Returns the updated item
+
+Both functions should use the same `getItemData` helper function
+
+The goal is to demonstrate how pure TypeScript helper functions can be shared between different Convex functions while maintaining type safety and consistent data formatting.

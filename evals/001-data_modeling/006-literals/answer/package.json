@@ -1,0 +1,8 @@
+{
+  "name": "convex-literals-demo",
+  "version": "1.0.0",
+  "description": "Demonstration of literals and unions in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

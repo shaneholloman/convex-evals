@@ -1,0 +1,3 @@
+data_modeling, schema_evolution:
+
+- Was returning a value from the `migrateProduct` mutation, maybe the only issue
