@@ -40,10 +40,12 @@ def get_answer_convex_files(eval_dir):
                 files[rel_path] = f.read().strip()
     return files
 
-def get_example_evals(n=5):
+def get_example_evals(before_dir, n=5):
     """Get the latest evals with their task, files and grader test"""
     evals = []
     for task_file in sorted(glob.glob("evals/**/TASK.txt", recursive=True), reverse=True):
+        if task_file > before_dir:
+            continue
         eval_dir = os.path.dirname(task_file)
 
         # Read task
@@ -230,8 +232,8 @@ def main():
         with open(task_file, "r") as f:
             task_content = f.read().strip()
 
-        # Get example evals
-        examples = get_example_evals()
+        # Get example evals (before the current testdir)
+        examples = get_example_evals(testdir)
 
         # Generate test file
         grader_test = generate_task_test(task_content, files, examples)
