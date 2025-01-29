@@ -251,22 +251,20 @@ def main():
     if should_run_step(7):
         backend_dir = os.path.join(testdir, "backend")
         with convex_backend(backend_dir) as backend:
-            subprocess.run(
+            convex_dev_process = subprocess.Popen(
                 [
                     "bunx",
                     "convex",
                     "dev",
-                    "--once",
                     "--admin-key",
                     admin_key,
                     "--url",
                     f"http://localhost:{backend['port']}",
                 ],
                 cwd=answer_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
                 encoding="utf-8",
-                check=True,
             )
 
             # copy env and add CONVEX_PORT
@@ -287,6 +285,7 @@ def main():
                 encoding="utf-8",
                 check=False,
             )
+            convex_dev_process.kill()
 
     print("\nStep 8: Running eval and reporting gaps")
     if should_run_step(8):
