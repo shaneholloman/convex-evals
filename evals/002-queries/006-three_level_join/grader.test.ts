@@ -7,7 +7,7 @@ import {
   addDocuments,
   listTable,
 } from "../../../grader";
-import { anyApi } from "convex/server";
+import { api } from "./answer/convex/_generated/api";
 
 test("compare schema", async ({ skip }) => {
   await compareSchema(skip);
@@ -25,7 +25,7 @@ test("get pro admins by org returns empty object when no admins exist", async ()
   const orgs = await listTable(responseAdminClient, "organizations");
   const orgId = orgs[0]._id;
 
-  const admins = await responseClient.query(anyApi.public.getProAdminsByOrg, {
+  const admins = await responseClient.query(api.public.getProAdminsByOrg, {
     organizationId: orgId,
   });
   expect(admins).toEqual({});
@@ -73,7 +73,7 @@ test("get pro admins by org returns correct admin mapping", async () => {
 
   // Test getting admins for org1
   const org1Admins = await responseClient.query(
-    anyApi.public.getProAdminsByOrg,
+    api.public.getProAdminsByOrg,
     {
       organizationId: org1Id._id,
     },
@@ -88,7 +88,7 @@ test("get pro admins by org returns correct admin mapping", async () => {
 
   // Test getting admins for org2
   const org2Admins = await responseClient.query(
-    anyApi.public.getProAdminsByOrg,
+    api.public.getProAdminsByOrg,
     {
       organizationId: org2Id._id,
     },
