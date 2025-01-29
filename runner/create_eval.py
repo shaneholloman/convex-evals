@@ -152,7 +152,7 @@ def main():
 
     print(f"\nStep 1: Creating eval directory for category '{category}' and name '{name}'")
     if should_run_step(1):
-        os.makedirs(category_dir)
+        os.makedirs(category_dir, exist_ok=True)
 
     existing_by_name = {name.split("-")[1]: name for name in os.listdir(category_dir)}
 
