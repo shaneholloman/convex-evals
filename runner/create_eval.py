@@ -305,7 +305,7 @@ def main():
             f.write(f"{category}, {name}:\n")
         open_in_cursor(gaps_file)
 
-    print("\nStep 10: Committing to git")
+    print("\nStep 9: Committing to git")
     if should_run_step(10):
         subprocess.run(["git", "add", testdir], check=True)
         subprocess.run(["git", "commit", "-m", f"eval: {category} {name}"], check=True)
