@@ -167,7 +167,7 @@ def main():
         testdir_name = f"{next_id:03d}-{name}"
     testdir = os.path.join(category_dir, testdir_name)
     if should_run_step(1):
-        os.makedirs(testdir)
+        os.makedirs(testdir, exist_ok=True)
 
     print("\nStep 2: Enter a one-line description of the task")
     if should_run_step(2):
@@ -188,8 +188,8 @@ def main():
     answer_dir = os.path.join(testdir, "answer")
     convex_dir = os.path.join(answer_dir, "convex")
     if should_run_step(4):
-        os.makedirs(answer_dir)
-        os.makedirs(convex_dir)
+        os.makedirs(answer_dir, exist_ok=True)
+        os.makedirs(convex_dir, exist_ok=True)
 
         package_json = """{
   "name": "convexbot",
