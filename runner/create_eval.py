@@ -115,7 +115,10 @@ Implementation files:
 Generate vitest test file contents for the current task."""
 
     example_messages = [
-        [{"role": "user", "content": format_prompt(example["task"], example["files"])}, {"role": "assistant", "content": example["grader_test"]}]
+        [
+            {"role": "user", "content": format_prompt(example["task"], example["files"])},
+            {"role": "assistant", "content": example["grader_test"]},
+        ]
         for example in examples
     ]
     response = model.client.chat.completions.create(
