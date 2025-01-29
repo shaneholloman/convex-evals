@@ -17,7 +17,7 @@ def is_project_dir(directory: str):
 
 test_filter = None
 if os.getenv("TEST_FILTER") is not None:
-    test_filter = re.compile(os.getenv("TEST_FILTER"))
+    test_filter = re.compile(str(os.getenv("TEST_FILTER")))
 
 
 def run_grader(category: str, name: str, project_dir: str):
