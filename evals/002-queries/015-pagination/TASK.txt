@@ -1,0 +1,22 @@
+Create a backend that demonstrates pagination over documents in Convex.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  documents: defineTable({
+    title: v.string(),
+    content: v.string(),
+    createdAt: v.number(),
+  }),
+});
+```
+
+Create a query function `paginateDocuments` in `convex/index.ts` that:
+- Returns paginated documents by creation time in descending order (newest first)
+- Don't specify a `returns` validator for this example.
+
+Only generate the `paginateDocuments` function in `convex/index.ts`. Do not generate any other functions.
+Also generate the `package.json` and `convex/schema.ts` files.

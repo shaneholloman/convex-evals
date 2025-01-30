@@ -1,0 +1,4 @@
+queries, pagination:
+
+- It tries to make a bespoke cursor type with createdAt.
+- It tries to do .order.take for pagination, with a filter on createdAt.

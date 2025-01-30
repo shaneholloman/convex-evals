@@ -1,0 +1,8 @@
+{
+  "name": "convex-pagination-example",
+  "version": "1.0.0",
+  "description": "Example of pagination in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
