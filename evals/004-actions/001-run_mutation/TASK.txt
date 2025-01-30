@@ -1,0 +1,41 @@
+Create a backend that fetches external data and saves it to the database.
+
+Create this schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  fetchResults: defineTable({
+    url: v.string(),
+    data: v.any(),
+  }),
+});
+```
+
+Implement these functions in `convex/index.ts`:
+
+1. Create a mutation `saveFetchResult` that:
+   - Takes a url (string) and data (any) as arguments
+   - Inserts a new record into the fetchResults table
+   - Returns the ID of the new record
+
+2. Create an action `fetchAndSave` that:
+   - Takes a url string as an argument
+   - Makes a fetch request to the provided URL
+   - Parses the response as JSON
+   - It's not important to handle errors here
+   - Calls the saveFetchResult mutation with the url and parsed data
+   - Returns the ID of the new record
+
+The implementation should demonstrate:
+- Proper use of Convex actions for external API calls
+- Proper mutation usage from within an action
+- Type safety with `any` data using appropriate ESLint directives:
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
+Create only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
+Add return type annotations to the handler functions of `saveFetchResult` and `fetchAndSave` with `Promise<Id<"fetchResults">>`.
+
+Do not export any functions from `convex/index.ts` other than `saveFetchResult` and `fetchAndSave`.

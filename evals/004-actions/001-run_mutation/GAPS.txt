@@ -1,0 +1,5 @@
+actions, run_mutation:
+
+- It's struggling to type the return value of `saveFetchResult` and `fetchAndSave`, necessary to break the type cycle.
+  - It's typing it as `Promise>` for some reason.
+- The `any` eslint directives are not being added correctly, but that's just a distraction I think.

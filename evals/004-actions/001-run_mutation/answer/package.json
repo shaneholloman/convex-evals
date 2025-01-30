@@ -1,0 +1,8 @@
+{
+  "name": "fetch-and-save",
+  "version": "1.0.0",
+  "description": "Backend for fetching and saving external data",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
