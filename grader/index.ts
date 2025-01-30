@@ -83,6 +83,19 @@ export async function listTable(
   return result;
 }
 
+export async function deleteAllDocuments(adminClient: any, tables: string[]) {
+  const totalDeleted: Record<string, number> = {};
+  for (const tableName of tables) {
+    let { deleted, continueCursor, hasMore } = await adminClient.mutation("_system/frontend/clearTablePage", { tableName, cursor: null });
+    totalDeleted[tableName] = deleted;
+    while (hasMore) {
+      ({ deleted, continueCursor, hasMore } = await adminClient.mutation("_system/frontend/clearTablePage", { tableName, cursor: continueCursor }));
+      totalDeleted[tableName] += deleted;
+    }
+  }
+  return totalDeleted;
+}
+
 export async function compareSchema(skip: (note?: string) => void) {
   if (!answerAdminClient) {
     skip("Answer backend not available");
