@@ -1,0 +1,8 @@
+{
+  "name": "denormalization-demo",
+  "version": "1.0.0",
+  "description": "Demonstrates denormalization patterns in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

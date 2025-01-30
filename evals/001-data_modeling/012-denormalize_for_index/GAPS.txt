@@ -1,0 +1,3 @@
+data_modeling, denormalize_for_index:
+
+- None 🎉
