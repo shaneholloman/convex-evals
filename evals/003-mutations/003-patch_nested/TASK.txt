@@ -1,0 +1,58 @@
+Create a backend that tests patching a deep nested object in a document.
+
+Start by creating this schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  documents: defineTable({
+    metadata: v.object({
+      title: v.string(),
+      author: v.object({
+        name: v.string(),
+        contact: v.object({
+          email: v.string(),
+          phone: v.optional(v.string()),
+        }),
+      }),
+      tags: v.array(v.string()),
+    }),
+    content: v.string(),
+  }),
+});
+```
+
+Implement the following functions in `convex/index.ts`:
+
+1. Create a mutation `createDocument` that:
+   - Takes a complete document object matching the schema
+   - Inserts it into the database
+   - Returns the new document's ID
+
+2. Create a mutation `patchDocumentMetadata` that:
+   - Takes a document ID and a complete new metadata object
+   - Replaces the entire metadata object while preserving content
+   - Throws an error if document doesn't exist
+   - Returns nothin
+
+3. Create a mutation `patchAuthorInfo` that:
+   - Takes a document ID and a complete new author object
+   - Updates only the metadata.author portion of the document
+   - Throws an error if document doesn't exist
+   - Returns nothing
+
+4. Create a query `getDocument` that:
+   - Takes a document ID
+   - Returns the complete document with all nested fields
+   - Returns null if document not found
+
+These functions will demonstrate how to:
+- Create documents with deeply nested objects
+- Replace entire nested objects while preserving siblings
+- Update specific nested objects within the document structure
+- Retrieve and verify the nested object modifications
+
+The schema and functions should maintain type safety throughout all operations with the nested object structure.
+
+Only generate the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
