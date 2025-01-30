@@ -1,0 +1,37 @@
+Create a backend that joins user data while paginating messages.
+
+Required files:
+
+1. `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  messages: defineTable({
+    authorId: v.id("users"),
+    content: v.string(),
+  }),
+
+  users: defineTable({
+    name: v.string(),
+  }),
+});
+```
+
+2. Create a query function `paginateMessagesWithAuthors` in `convex/index.ts` that:
+   - Takes standard pagination parameters
+   - Paginates messages in descending order (newest first)
+   - Adds the author's name for each message
+   - Returns the pagination result to be used with usePaginatedQuery.
+   - Should be compatible with usePaginatedQuery hook
+   - Don't provide a returns validator for this example
+
+Only implement the `paginateMessagesWithAuthors` function in `convex/index.ts`. Do not generate any other functions.
+
+The goal is to demonstrate efficient pagination while joining related data from another table.
+
+Files to create:
+- `convex/schema.ts` with the schema above
+- `convex/index.ts` with the pagination query
+- `package.json` with necessary dependencies
