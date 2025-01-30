@@ -175,4 +175,11 @@ def render_guidelines(node: Union[GuidelineSection, Guideline], header="#"):
             yield from render_guidelines(child, header + "#")
         yield "\n"
 
+# Used by the eval system
 OPENAI_CONVEX_GUIDELINES = "".join(render_guidelines(CONVEX_GUIDELINES))
+
+def build_release_rules() -> str:
+    return (
+        "".join(render_guidelines(CONVEX_GUIDELINES)) +
+        "".join(render_examples())
+    )
