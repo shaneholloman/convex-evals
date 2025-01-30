@@ -1,0 +1,14 @@
+Create a backend function that makes HTTP requests to httpbin.org to demonstrate external API calls from Convex.
+
+Export a single public API function `fetchFromHttpBin` in `convex/index.ts` that:
+   - Takes no arguments
+   - Makes a GET request to https://httpbin.org/get using the global `fetch` API
+   - Parses the JSON response
+   - Returns the parsed response data as any, with any necessary `// eslint-disable-next-line` directives like:
+     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
+Notes:
+- No schema is required since this demo doesn't interact with the database
+
+Only create the `package.json` and `convex/index.ts` files. Do not generate any other files.

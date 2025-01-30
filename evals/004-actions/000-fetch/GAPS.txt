@@ -1,0 +1,3 @@
+actions, fetch:
+
+- It got it! It didn't even need to be told to use an action
