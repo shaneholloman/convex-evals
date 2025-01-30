@@ -21,9 +21,9 @@ def input_continue(message="Press enter to continue..."):
     input(message)
 
 
-def open_in_cursor(filepath):
-    subprocess.run(["cursor", filepath], check=False)
-    input_continue(f"Opened {filepath} in Cursor. Press enter when done editing...")
+def open_in_cursor(filepaths):
+    subprocess.run(["cursor", *filepaths], check=False)
+    input_continue(f"Opened {filepaths} in Cursor. Press enter when done editing...")
 
 
 def get_example_tasks():
@@ -184,7 +184,7 @@ def main():
         task_description = generate_task_description(one_line_desc, example_tasks)
         with open(task_file, "w") as f:
             f.write(task_description)
-        open_in_cursor(task_file)
+        open_in_cursor([task_file])
 
     print("\nStep 3: Creating answer directory and package.json")
     answer_dir = os.path.join(testdir, "answer")
@@ -221,7 +221,7 @@ def main():
                 f.write(content)
         # Re-run codegen to generate the _generated files for the schema
         subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=False)
-        open_in_cursor(os.path.join(convex_dir, "index.ts"))
+        open_in_cursor([os.path.join(convex_dir, "index.ts"), os.path.join(convex_dir, "schema.ts")])
 
     print("\nStep 5: Generating grader.test.ts")
     grader_file = os.path.join(testdir, "grader.test.ts")
@@ -243,7 +243,7 @@ def main():
             f.write(grader_test)
 
         print("\nOpening grader.test.ts for editing")
-        open_in_cursor(grader_file)
+        open_in_cursor([grader_file])
 
     env = os.environ.copy()
     print("\nStep 6: Running tests interactively")
@@ -301,7 +301,7 @@ def main():
         gaps_file = os.path.join(testdir, "GAPS.txt")
         with open(gaps_file, "w") as f:
             f.write(f"{category}, {name}:\n")
-        open_in_cursor(gaps_file)
+        open_in_cursor([gaps_file])
 
     print("\nStep 8: Committing to git")
     if should_run_step(8):
