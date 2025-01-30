@@ -1,0 +1,34 @@
+Create a backend that demonstrates pagination over a denormalized index.
+
+Define the following schema in `convex/schema.ts`:
+```ts
+import { v } from "convex/values";
+import { defineSchema, defineTable } from "convex/server";
+
+export default defineSchema({
+  // Main owners table
+  owners: defineTable({
+    name: v.string(),
+    age: v.number(),
+  }),
+
+  // Dogs table with denormalized owner name for efficient lookups
+  dogs: defineTable({
+    name: v.string(),
+    breed: v.string(),
+    ownerId: v.id("owners"),
+    ownerAge: v.number(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_owner_age", ["ownerAge"]),
+});
+```
+
+Create a query `paginateDogsByOwnerAge` in `convex/index.ts` that:
+- Takes `cursor` (string | null) and `numItems` (number) arguments
+- Paginates over the dogs table by the owner's age
+- Returns `{ continueCursor, dogs }` where `continueCursor` is a string and `dogs` is an array of dog records { name, breed }
+
+The goal is to demonstrate how denormalization can be used to create efficient lookups on fields from related tables
+
+Only generate the `paginateDogsByOwnerAge` function in `convex/index.ts`. Do not generate any other functions.

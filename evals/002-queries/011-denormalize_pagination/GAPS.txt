@@ -1,0 +1,6 @@
+data_modeling, denormalize_pagination:
+
+- Pagination is not working at all.
+- It's trying to make a cursor manually.
+- It's trying to use filter.
+- It's trying to use `take` with `numItems` like it's an offset.
