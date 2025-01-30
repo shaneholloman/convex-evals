@@ -1,0 +1,8 @@
+{
+  "name": "indexed-filtering-demo",
+  "version": "1.0.0",
+  "description": "Demonstrates efficient database querying with indexes and additional filtering",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

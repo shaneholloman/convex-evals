@@ -1,0 +1,30 @@
+Create a backend that demonstrates using database indexes efficiently while filtering on additional fields.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.string(),
+    age: v.number(),
+    isDeleted: v.boolean(),
+  }).index("by_age", ["age"]),
+});
+```
+
+Implement the following function in `convex/index.ts`:
+
+1. Create a query `getActiveAdults` that:
+   - Takes an age (number) as an argument
+   - Uses the "by_age" index to efficiently query all users >= the given age
+   - Filters out users where isDeleted is true
+   - Returns an array of user names
+   - Uses proper typing for the return value
+
+The goal is to show how to apply additional filtering criteria on non-indexed fields
+
+Make sure to use TypeScript types appropriately and include clear error handling if needed.
+Only generate the `getActiveAdults` function in `convex/index.ts`. Do not generate any other functions.
+Also generate the `package.json` and `convex/schema.ts` files.
