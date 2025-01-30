@@ -1,0 +1,29 @@
+Create a backend that paginates messages within a chat channel using an index.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  messages: defineTable({
+    channelId: v.string(),
+    content: v.string(),
+    author: v.string(),
+  }).index("by_channel", ["channelId"]),
+  channels: defineTable({
+    name: v.string(),
+  }),
+});
+```
+
+Create a query function `paginateChannelMessages` in `convex/index.ts` that:
+- Takes a channelId argument along with regular pagination options
+- Uses the "by_channel" index to efficiently paginate messages in the given channel
+- Orders messages in descending order (newest first)
+- Returns the pagination result to be used with usePaginatedQuery, but don't provide a returns validator for it.
+
+Only generate the `paginateChannelMessages` function in `convex/index.ts`. Do not generate any other functions.
+Also generate the `package.json` and `convex/schema.ts` files.
+
+The goal is to demonstrate efficient pagination over messages within a specific channel using an appropriate index.
