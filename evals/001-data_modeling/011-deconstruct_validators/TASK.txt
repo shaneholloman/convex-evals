@@ -1,0 +1,41 @@
+Create a backend that demonstrates type reuse in a Convex schema. Place all code in `convex/schema.ts`.
+
+Create a schema with exactly two tables that share a common "result" type:
+```ts
+type Result = {
+  success: true;
+  value: string;
+} | {
+  success: false;
+  error: string;
+}
+```
+Table 1 should be named "llm_calls" and store documents like:
+```json
+{
+  "prompt": "What is the capital of France?",
+  "result": {
+    "success": true,
+    "value": "Paris"
+  }
+}
+```
+Table 2 should be named "api_calls" and store documents like:
+```json
+{
+  "url": "https://api.example.com/data",
+  "result": {
+    "success": true,
+    "value": "foobar"
+  }
+}
+```
+
+Requirements:
+   - Both tables must share the same "result" definition.
+   - Export the shared value as "resultValidator" from the "convex/schema.ts" file.
+   - All code must be in a single file: `convex/schema.ts`
+
+The goal is to show how to extract common field definitions into reusable variables when defining Convex schemas, avoiding duplication of complex type definitions.
+
+Only create the `package.json` and `convex/schema.ts` files. Do NOT create any functions.
