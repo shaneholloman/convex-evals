@@ -26,11 +26,15 @@ def open_in_cursor(filepaths):
     input_continue(f"Opened {filepaths} in Cursor. Press enter when done editing...")
 
 
-def get_example_tasks():
+def get_example_tasks(before_dir, n=5):
     tasks = []
-    for task_file in glob.glob("evals/**/TASK.txt", recursive=True):
+    for task_file in sorted(glob.glob("evals/**/TASK.txt", recursive=True), reverse=True):
+        if task_file > before_dir:
+            continue
         with open(task_file, "r") as f:
             tasks.append(f.read().strip())
+        if len(tasks) >= n:
+            break
     return tasks
 
 def get_answer_convex_files(eval_dir):
@@ -79,18 +83,16 @@ def generate_task_description(one_line_desc, example_tasks):
 
 Please generate a detailed TASK.txt file describing what needs to be implemented. The task should be clear and specific about what Convex backend files and functions need to be created.
 
-Here are some example TASK.txt files for reference:
-
-{chr(10).join(f'=== EXAMPLE {i+1} ==={chr(10)}{task}{chr(10)}' for i, task in enumerate(example_tasks[-10:]))}
-=== END EXAMPLES ===
-
 Generate a similar style TASK.txt for the given one-line description:
 {one_line_desc}"""
 
     primer = "Create a backend that"
     response = model.client.chat.completions.create(
         model="claude-3-5-sonnet-latest",
-        messages=[{"role": "user", "content": prompt}, {"role": "assistant", "content": primer}],
+        messages=[
+            {"role": "system", "content": "You generate TASK.txt files for Convex coding evals. Here are some examples of TASK.txt files:"},
+            *[{"role": "assistant", "content": task} for task in example_tasks],
+            {"role": "user", "content": prompt}, {"role": "assistant", "content": primer}],
         max_tokens=1000,
     )
     return primer + " " + response.choices[0].message.content.strip()
@@ -180,7 +182,7 @@ def main():
     if should_run_step(2):
         one_line_desc = input("Description: ")
 
-        example_tasks = get_example_tasks()
+        example_tasks = get_example_tasks(testdir)
         task_description = generate_task_description(one_line_desc, example_tasks)
         with open(task_file, "w") as f:
             f.write(task_description)
