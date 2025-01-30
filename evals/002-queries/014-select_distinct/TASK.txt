@@ -1,0 +1,29 @@
+Create a backend that implements efficient distinct value selection using index range queries.
+
+Create this structure in the `convex` directory:
+
+1. Create a schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.string(),
+    age: v.number(),
+  }).index("by_age", ["age"]),
+});
+```
+
+2. Create a query function `getDistinctAges` in `convex/index.ts` that:
+   - Takes no arguments
+   - Uses the "by_age" index to efficiently find distinct age values
+   - It should not read every record in the table, but instead skip ahead using the index.
+   - Returns an array of numbers representing all distinct age values
+   - Should be more efficient than fetching all records and using Set
+   - The solution should scale well with large numbers of duplicate age values
+
+The goal is to demonstrate how to efficiently implement DISTINCT-like functionality using Convex's index range queries rather than fetching all records into memory.
+
+Only generate the `getDistinctAges` function in `convex/index.ts`. Do not generate any other functions.
+Also generate the `package.json` and `convex/schema.ts` files.

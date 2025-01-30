@@ -1,0 +1,8 @@
+{
+  "name": "distinct-values-demo",
+  "version": "1.0.0",
+  "description": "Demonstration of efficient distinct value selection using Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
