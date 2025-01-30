@@ -2,6 +2,9 @@
   "name": "evals-convex",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "bun": ">=1.2"
+  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.19.1",
