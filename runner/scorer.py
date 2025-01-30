@@ -171,6 +171,7 @@ def setup_answer_backend(tempdir, eval_path, model, category, name):
     os.makedirs(answer_project_dir, exist_ok=True)
 
     answer_dir = f"{eval_path}/answer"
+    generate_code(answer_dir)
 
     for source_path in walk_answer(answer_dir):
         relative_path = os.path.relpath(source_path, answer_dir)
