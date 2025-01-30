@@ -1,0 +1,8 @@
+{
+  "name": "paginated-posts",
+  "version": "1.0.0",
+  "description": "Paginated posts example with proper type safety",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

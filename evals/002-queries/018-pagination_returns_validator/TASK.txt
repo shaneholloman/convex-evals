@@ -1,0 +1,29 @@
+Create a backend that implements paginated queries with proper type safety using pagination returns validators.
+
+Required files:
+
+`convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  posts: defineTable({
+    title: v.string(),
+    content: v.string(),
+  }),
+});
+```
+
+Create a query function `paginatePosts` in `convex/index.ts` that:
+- Takes standard pagination parameters
+- Paginates posts in the default order
+- Must include a proper returns validator that accurately types the pagination result
+- Should be compatible with the usePaginatedQuery hook
+
+Files to create:
+- `convex/schema.ts` with the schema above
+- `convex/index.ts` with the paginated query including returns validator
+- `package.json` with necessary dependencies
+
+The focus should be on implementing correct typing and runtime validation for the pagination result structure while maintaining efficient database access patterns.

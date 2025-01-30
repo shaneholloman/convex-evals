@@ -1,0 +1,3 @@
+queries, pagination_returns_validator:
+
+- Beyond regular pagination struggles, the returns validator doesn't include the `splitCursor` or `pageStatus` fields.
