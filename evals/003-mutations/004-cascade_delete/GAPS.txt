@@ -1,0 +1,3 @@
+mutations, cascade_delete:
+
+- It does a good job, but lint is aggressive in saying .map((doc) -> ctx.db.delete(doc._id)) needs to be .map(async (doc) => ctx.db.delete(doc._id))

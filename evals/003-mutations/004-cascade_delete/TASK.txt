@@ -1,0 +1,33 @@
+Create a backend that enables deletion of users and their associated documents.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+  }).index("by_email", ["email"]),
+
+  documents: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    content: v.string(),
+  }).index("by_author", ["authorId"]),
+});
+```
+
+Create a mutation `deleteUserAndDocuments` in `convex/index.ts` that deletes a user and all their documents, returning nothing.
+
+The implementation should demonstrate:
+- Proper use of database indexes
+- Parallel operations for better performance
+- Proper error handling
+- Transaction handling to ensure data consistency
+
+Type all arguments and return values appropriately using TypeScript.
+
+Only generate the `deleteUserAndDocuments` function in `convex/index.ts`. Do not generate any other functions.
+Generate only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
