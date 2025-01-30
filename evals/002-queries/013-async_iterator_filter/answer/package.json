@@ -1,0 +1,8 @@
+{
+  "name": "teams-deleted-admins",
+  "version": "1.0.0",
+  "description": "Backend to find teams with deleted admins",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

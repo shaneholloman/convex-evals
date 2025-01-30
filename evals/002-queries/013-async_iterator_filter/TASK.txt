@@ -1,0 +1,30 @@
+Create a backend that finds teams with deleted admins using async iteration.
+
+1. Create this schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  teams: defineTable({
+    name: v.string(),
+    adminId: v.id("users"),
+  }),
+
+  users: defineTable({
+    name: v.string(),
+    deleted: v.boolean(),
+  }),
+});
+```
+
+2. Create a query `getTeamsWithDeletedAdmins` in `convex/index.ts` that:
+   - Takes no arguments
+   - Uses an async iterator to loop through all teams, checking if the admin user is deleted
+   - Returns an array of team IDs that match the criteria.
+
+The implementation should focus on efficient database access patterns and proper
+handling of large result sets through async iteration.
+
+Only generate the `getTeamsWithDeletedAdmins` function in `convex/index.ts`. Do not generate any other functions.
+Also generate the `package.json` and `convex/schema.ts` files.
