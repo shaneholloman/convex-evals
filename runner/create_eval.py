@@ -160,7 +160,7 @@ def main():
     else:
         category_dir = os.path.join(evals_dir, category_by_name[category])
 
-    # os.makedirs(category_dir, exist_ok=True)
+    os.makedirs(category_dir, exist_ok=True)
 
     existing_by_name = {name.split("-")[1]: name for name in os.listdir(category_dir)}
 
