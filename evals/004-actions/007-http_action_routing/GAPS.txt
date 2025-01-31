@@ -1,0 +1,3 @@
+actions, http_action_routing:
+
+- It doesn't do prefix path matching correctly. It wants `path: "/api/*"` instead of `prefixPath: "/api/"`

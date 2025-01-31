@@ -1,0 +1,16 @@
+Create a backend that implements three HTTP endpoints with different methods.
+
+Implement these HTTP handlers in `convex/http.ts`:
+
+1. Create a GET endpoint `/getFoo` that:
+2. Create a POST endpoint `/postBar` that:
+3. Create a PUT endpoint `/putBaz` that:
+4. Create a GET handler for all paths under `/api/*` that:
+
+They should all return a JSON response: `{ ok: true }` and only accept the specified methods.
+
+Also create a query `getSiteURL` that takes no arguments and returns `process.env.CONVEX_SITE_URL!`.
+This will require the @types/node npm dev dependency.
+
+Create only the `convex/http.ts` and `package.json` files. Do not generate any other files.
+No schema is required since this demo doesn't use the database.

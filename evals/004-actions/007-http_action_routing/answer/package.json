@@ -1,0 +1,11 @@
+{
+  "name": "http-endpoints-demo",
+  "version": "1.0.0",
+  "description": "Demo of HTTP endpoints in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18"
+  }
+}
