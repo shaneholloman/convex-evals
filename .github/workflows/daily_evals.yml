@@ -12,6 +12,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Bun
+      run: npm install -g bun@1.2.1
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
