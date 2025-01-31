@@ -160,9 +160,7 @@ def main():
     else:
         category_dir = os.path.join(evals_dir, category_by_name[category])
 
-    print(f"\nStep 1: Creating eval directory for category '{category}' and name '{name}'")
-    if should_run_step(1):
-        os.makedirs(category_dir, exist_ok=True)
+    # os.makedirs(category_dir, exist_ok=True)
 
     existing_by_name = {name.split("-")[1]: name for name in os.listdir(category_dir)}
 
@@ -174,12 +172,12 @@ def main():
         next_id = max(existing) + 1 if existing else 0
         testdir_name = f"{next_id:03d}-{name}"
     testdir = os.path.join(category_dir, testdir_name)
-    if should_run_step(1):
-        os.makedirs(testdir, exist_ok=True)
+    print(f"\nCreating eval for category '{category}' and name '{name}': {testdir}")
+    os.makedirs(testdir, exist_ok=True)
 
     task_file = os.path.join(testdir, "TASK.txt")
-    print("\nStep 2: Generate TASK.txt with a one-line description")
-    if should_run_step(2):
+    print("\nStep 1: Generate TASK.txt with a one-line description")
+    if should_run_step(1):
         one_line_desc = input("Description: ")
 
         example_tasks = get_example_tasks(testdir)
@@ -188,10 +186,10 @@ def main():
             f.write(task_description)
         open_in_cursor([task_file])
 
-    print("\nStep 3: Creating answer directory and package.json")
+    print("\nStep 2: Creating answer based on task description")
     answer_dir = os.path.join(testdir, "answer")
     convex_dir = os.path.join(answer_dir, "convex")
-    if should_run_step(3):
+    if should_run_step(2):
         os.makedirs(answer_dir, exist_ok=True)
         os.makedirs(convex_dir, exist_ok=True)
 
@@ -210,8 +208,6 @@ def main():
         subprocess.run(["bun", "install"], cwd=answer_dir, check=True)
         subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
 
-    print("\nStep 4: Generating answer/convex files and editing index.ts")
-    if should_run_step(4):
         with open(task_file, "r") as f:
             task_content = f.read()
 
@@ -225,9 +221,9 @@ def main():
         subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=False)
         open_in_cursor([os.path.join(convex_dir, "index.ts"), os.path.join(convex_dir, "schema.ts")])
 
-    print("\nStep 5: Generating grader.test.ts")
+    print("\nStep 3: Generating grader.test.ts")
     grader_file = os.path.join(testdir, "grader.test.ts")
-    if should_run_step(5):
+    if should_run_step(3):
         # Get implementation files
         files = get_answer_convex_files(testdir)
 
@@ -248,8 +244,8 @@ def main():
         open_in_cursor([grader_file])
 
     env = os.environ.copy()
-    print("\nStep 6: Running tests interactively")
-    if should_run_step(6):
+    print("\nStep 4: Running tests interactively")
+    if should_run_step(4):
         backend_dir = os.path.join(testdir, "backend")
         with convex_backend(backend_dir) as backend:
             convex_dev_process = subprocess.Popen(
@@ -288,8 +284,8 @@ def main():
             )
             convex_dev_process.kill()
 
-    print("\nStep 7: Running eval and reporting gaps")
-    if should_run_step(7):
+    print("\nStep 5: Running eval and reporting gaps")
+    if should_run_step(5):
         test_filter = f"{category}/{testdir_name}"
         env["TEST_FILTER"] = test_filter
         env["OUTPUT_TEMPDIR"] = output_tempdir
@@ -305,8 +301,8 @@ def main():
             f.write(f"{category}, {name}:\n")
         open_in_cursor([gaps_file])
 
-    print("\nStep 8: Committing to git")
-    if should_run_step(8):
+    print("\nStep 6: Committing to git")
+    if should_run_step(6):
         subprocess.run(["git", "add", testdir], check=True)
         subprocess.run(["git", "commit", "-m", f"eval: {category} {name}"], check=True)
 
