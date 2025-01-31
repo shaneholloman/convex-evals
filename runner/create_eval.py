@@ -219,7 +219,13 @@ def main():
                 f.write(content)
         # Re-run codegen to generate the _generated files for the schema
         subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=False)
-        open_in_cursor([os.path.join(convex_dir, "index.ts"), os.path.join(convex_dir, "schema.ts")])
+        # find the non-generated .ts files to open
+        files_to_open = []
+        for filename in os.listdir(convex_dir):
+            if not filename.endswith(".ts"):
+                continue
+            files_to_open.append(os.path.join(convex_dir, filename))
+        open_in_cursor(files_to_open)
 
     print("\nStep 3: Generating grader.test.ts")
     grader_file = os.path.join(testdir, "grader.test.ts")
