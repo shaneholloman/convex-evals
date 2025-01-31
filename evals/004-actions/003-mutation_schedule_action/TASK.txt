@@ -1,0 +1,42 @@
+Create a backend that writes data and triggers an async HTTP request.
+
+Create this schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  requests: defineTable({
+    url: v.string(),
+    status: v.union(v.literal("pending"), v.literal("completed")),
+    requestedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_url", ["url"]),
+});
+```
+
+Implement these functions in `convex/index.ts`:
+
+1. Create a mutation `initiateRequest` that:
+   - Takes a URL as argument
+   - Checks if the URL already exists in the requests table
+   - If it does, return the existing record ID
+   - If it doesn't, inserts a pending record into requests table
+   - Starts an asynchronous action to fetch the URL
+   - Returns the ID of the new record
+
+2. Create an internal action `performHttpbinFetch` that:
+   - Takes a URL and request ID as arguments
+   - Makes a POST request to the URL
+   - Updates the requests record with an internal function `updateRequest`
+     - Pass the completed status and timestamp as parameters
+   - Returns nothing
+
+The implementation should demonstrate:
+- Proper scheduling of async work using actions
+- Proper state management in the database
+- Using mutations and actions together
+
+Create only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
+
+Do not export any functions from `convex/index.ts` other than `initiateRequest`, `updateRequest`, and `performHttpbinFetch`.

@@ -1,0 +1,9 @@
+{
+  "name": "async-http-backend",
+  "version": "1.0.0",
+  "description": "Backend for handling async HTTP requests",
+  "dependencies": {
+    "convex": "^1.17.4",
+    "node-fetch": "^3.3.2"
+  }
+}
