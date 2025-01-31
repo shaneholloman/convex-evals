@@ -1,0 +1,41 @@
+Create a backend that demonstrates code reuse patterns in Convex by implementing functions to read users and posts.
+
+Required files:
+- convex/schema.ts
+- convex/users.ts
+- convex/posts.ts
+
+Schema should define:
+```ts
+users: {
+  name: string,
+  email: string
+}
+posts: {
+  userId: Id<"users">,
+  content: string
+}
+```
+With only an index on posts `by_user` and users `by_email`.
+
+Implement these functions:
+
+1. In convex/users.ts:
+   - Create an internal query `getUserByEmail` that:
+     - Takes email (string) as argument
+     - Returns the user document or null
+
+2. In convex/posts.ts:
+   - Create an internal query `getPostsByUserId` that:
+     - Takes userId (Id<"users">) as argument
+     - Returns array of post documents
+   - Create a query `getUserAndPosts` that:
+     - Takes an argument of an email.
+     - Fetches the user and their posts
+     - Returns an object with the user and their posts
+
+Don't specify returns validators for query/mutations.
+Create any helper functions you need to avoid duplicating code.
+DO NOT duplicate the code between `getUserByEmail`, `getPostsByUserId`, and `getUserAndPosts`.
+The data fetched should be transactionally consistent.
+Avoid creating subtransactions when possible, for efficiency.
