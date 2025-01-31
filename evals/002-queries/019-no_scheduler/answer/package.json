@@ -1,0 +1,8 @@
+{
+  "name": "document-access-logger",
+  "version": "1.0.0",
+  "description": "Document access system with async logging",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

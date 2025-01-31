@@ -1,0 +1,29 @@
+Create a backend that demonstrates reading data and asynchronous logging.
+
+Required files:
+
+`convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  documents: defineTable({
+    title: v.string(),
+    content: v.string(),
+  }),
+
+  accessLogs: defineTable({
+    documentId: v.id("documents"),
+    action: v.string(),
+  }),
+});
+```
+
+Create an internal function that logs access to a document by writing to the `accessLogs` table.
+Create a function that queries the `documents` table for some document by ID and logs access to the document asynchronously.
+
+Files to create:
+- `convex/schema.ts` with the schema above
+- `convex/index.ts` with both functions
+- `package.json` with necessary dependencies

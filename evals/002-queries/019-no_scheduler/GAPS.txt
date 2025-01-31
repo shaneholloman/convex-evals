@@ -1,0 +1,3 @@
+queries, no_scheduler:
+
+- It uses the scheduler from an action
