@@ -1,0 +1,8 @@
+{
+  "name": "file-storage-api",
+  "version": "1.0.0",
+  "description": "HTTP API for storing files in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
