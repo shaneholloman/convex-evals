@@ -1,0 +1,8 @@
+{
+  "name": "users-posts-backend",
+  "version": "1.0.0",
+  "description": "Backend for querying active users and their published posts",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

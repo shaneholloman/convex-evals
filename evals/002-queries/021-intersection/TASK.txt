@@ -1,0 +1,41 @@
+Create a backend that queries active users and their published posts.
+
+Required files:
+
+`convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.string(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+  }).index("by_status", ["status"]),
+
+  posts: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    published: v.boolean(),
+  }).index("by_published", ["authorId", "published"]),
+});
+```
+
+Create a query function `getActiveUsersWithPosts` in `convex/index.ts` that:
+- Returns an array of users with their published posts included
+
+Files to create:
+- `convex/schema.ts` with the schema above
+- `convex/index.ts` with the query function
+- `package.json` with necessary dependencies
+
+Expected result structure should be:
+```ts
+{
+  userId: Id<"users">,
+  name: string,
+  posts: {
+    title: string,
+  }[]
+}[]
+```
