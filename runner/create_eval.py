@@ -254,6 +254,25 @@ def main():
     if should_run_step(4):
         backend_dir = os.path.join(testdir, "backend")
         with convex_backend(backend_dir) as backend:
+            # Do an initial deploy synchronously
+            subprocess.call(
+                [
+                    "bunx",
+                    "convex",
+                    "dev",
+                    "--once",
+                    "--admin-key",
+                    admin_key,
+                    "--url",
+                    f"http://localhost:{backend['port']}",
+                ],
+                cwd=answer_dir,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+                encoding="utf-8",
+                check=False,
+            )
+            # Continue running in background while we run tests
             convex_dev_process = subprocess.Popen(
                 [
                     "bunx",
