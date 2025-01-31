@@ -1,0 +1,8 @@
+{
+  "name": "node-runtime-demo",
+  "version": "1.0.0",
+  "description": "Demo of Node.js runtime in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}

@@ -1,0 +1,17 @@
+Create a backend that demonstrates using the "node" runtime within a Convex action.
+
+Implement this function in `convex/index.ts`:
+
+1. Create an action `processWithNode` that:
+   - Takes data (string) as argument
+   - Uses Node.js 'crypto' module to generate a hash of the input
+   - Uses Node.js 'path' module to manipulate file paths
+   - Returns an object containing:
+     - hash: The SHA-256 hash of the input string
+     - normalizedPath: A normalized version of "/some/test/path"
+
+This function should assume it needs libraries not available with the default Convex runtime.
+Create only the `convex/index.ts` and `package.json` files. Do not generate any other files.
+No schema is required for this demo since it doesn't use the database.
+
+Do not export any functions from `convex/index.ts` other than `processWithNode`.
