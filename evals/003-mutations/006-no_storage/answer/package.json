@@ -1,0 +1,8 @@
+{
+  "name": "file-storage-backend",
+  "version": "1.0.0",
+  "description": "File storage system with metadata tracking",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
