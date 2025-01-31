@@ -1,0 +1,47 @@
+Create a backend that conditionally fetches and caches external data.
+
+Create this schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  fetchRequests: defineTable({
+    url: v.string(),
+    data: v.any(),
+  }).index("by_url", ["url"]),
+});
+```
+
+Implement these functions in `convex/index.ts`:
+
+1. Create a query `getFetchResult` that:
+   - Takes a url string as argument
+   - Uses the "by_url" index to look up any existing fetch result
+   - Returns the ID of the record if found, null if not found
+
+2. Create a mutation `saveFetchResult` that:
+   - Takes url (string) and data (any) as arguments
+   - Inserts a new record with the current timestamp, or updates an existing record if the URL already exists
+   - Has the handler return type of `Promise<Id<"fetchResults">>`
+   - Returns the ID of the new record
+
+3. Create an action `fetchIfNeeded` that uses the query and mutation to:
+   - Takes a url string as argument
+   - Makes a fetch request to the URL, if the result is not already cached in fetchResults.
+   - If it isn't cached, write the JSON response to the fetchResults table
+   - Has the handler return type of `Promise<Id<"fetchResults">>`
+   - Returns the newly created record ID
+
+Add appropriate ESLint directives for any type handling:
+- `// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment`
+- `// eslint-disable-next-line @typescript-eslint/no-unsafe-return`
+
+The implementation should demonstrate:
+- Proper use of indexes for efficient lookups
+- Coordination between query, mutation and action
+- Proper type handling for external data
+
+Create only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
+
+Do not export any functions from `convex/index.ts` other than `getFetchResult`, `saveFetchResult`, and `fetchIfNeeded`.
