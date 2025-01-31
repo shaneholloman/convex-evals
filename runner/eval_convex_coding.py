@@ -62,7 +62,6 @@ def convex_coding_evals(model: ModelTemplate):
                     "category": category,
                     "name": name,
                     "model": model.name,
-                    "environment": environment,
                 },
             }
         )
@@ -75,6 +74,7 @@ def convex_coding_evals(model: ModelTemplate):
         metadata={
             "model": model.name,
             "tempdir": tempdir,
+            "environment": environment,
         },
         max_concurrency=model.max_concurrency,
     )
