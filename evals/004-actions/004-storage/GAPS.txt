@@ -1,0 +1,3 @@
+actions, storage:
+
+- Trying to use TextEncoder and TextDecoder instead of Blob.
