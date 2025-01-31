@@ -1,0 +1,33 @@
+Create a backend that demonstrates different types of Convex functions with varying visibility and access patterns.
+
+Implement these functions in `convex/index.ts`:
+
+1. Create a query `getPublicStats` that:
+   - Takes no arguments
+   - Returns a static object containing { totalUsers: 100, version: "1.0.0" }
+   - Should be accessible to client applications
+
+2. Create a mutation `logClientEvent` that:
+   - Takes eventName (string) and data (any) as arguments
+   - Logs the event to the console
+   - Returns the current timestamp
+   - Should be accessible to client applications
+
+3. Create an action `dailyCleanup` that:
+   - Takes no arguments
+   - Is meant to be run from the dashboard
+   - Logs "Running daily cleanup" to console
+   - Does nothing else
+   - Returns nothing
+   - Should NOT be accessible to clients
+
+4. Create a mutation `resetCounter` that:
+   - Takes no arguments
+   - Is meant to be called from CLI or scheduled asynchronously from another function
+   - Does nothing but logs "Resetting counter" to console
+   - Returns nothing
+   - Should NOT be accessible to clients
+
+
+Create only the `convex/index.ts` and `package.json` files. Do not generate any other files.
+No schema is required since this demo doesn't use the database.
