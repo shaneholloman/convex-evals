@@ -255,7 +255,7 @@ def main():
         backend_dir = os.path.join(testdir, "backend")
         with convex_backend(backend_dir) as backend:
             # Do an initial deploy synchronously
-            subprocess.call(
+            subprocess.run(
                 [
                     "bunx",
                     "convex",
