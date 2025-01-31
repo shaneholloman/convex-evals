@@ -1,0 +1,19 @@
+Create a backend that implements organized CRUD operations for users and posts using this schema in `convex/schema.ts`:
+
+```ts
+users: {
+  name: string
+  email: string
+}
+posts: {
+  userId: Id<"users">
+  title: string
+  content: string
+}
+```
+Posts should have an index to look up posts by userId and user by email.
+
+Each set of operations should be organized into a separate file.
+For each table, export a public function called `get`, `create`, and `destroy`.
+Only the `get` and `create` functions return anything (the full document, or the id of the created document).
+You don't need to specify a returns validator for any function.

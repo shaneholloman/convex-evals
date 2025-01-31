@@ -1,0 +1,8 @@
+{
+  "name": "crud-backend",
+  "version": "1.0.0",
+  "description": "CRUD operations for users and posts",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
