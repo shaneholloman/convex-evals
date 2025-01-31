@@ -1,0 +1,3 @@
+fundamentals, returns_validator:
+
+- not returning "as const" for discriminated union types

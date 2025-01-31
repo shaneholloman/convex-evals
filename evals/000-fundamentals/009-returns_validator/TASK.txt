@@ -1,0 +1,42 @@
+Create a backend that demonstrates defining return data types for Convex queries.
+
+Create this structure in the `convex` directory:
+
+1. Create a schema in `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  posts: defineTable({
+    title: v.string(),
+    content: v.string(),
+    authorId: v.id("users"),
+  }),
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+  }),
+});
+```
+
+2. Create three query functions in `convex/index.ts`:
+
+a. Create a query `getPost` that:
+   - Takes a post ID as an argument
+   - Returns the raw document from the "posts" table
+
+b. Create a query `getPostWithStatus` that:
+   - Takes a post ID as an argument
+   - Returns a discriminated union type:
+     ```ts
+     { success: true, post: Doc<"posts"> } |
+     { success: false, error: string }
+     ```
+   - Return an error if the title is ""
+
+c. Create a query `getPostWithAuthor` that:
+   - Takes a post ID as an argument
+   - Returns [Doc<"users">, Doc<"posts">]
+
+Define a return validator for each of them.

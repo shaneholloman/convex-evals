@@ -1,0 +1,8 @@
+{
+  "name": "convex-return-types-demo",
+  "version": "1.0.0",
+  "description": "Demonstrates different return type patterns in Convex",
+  "dependencies": {
+    "convex": "^1.17.4"
+  }
+}
