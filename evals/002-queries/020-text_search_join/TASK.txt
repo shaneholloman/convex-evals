@@ -1,0 +1,48 @@
+Create a backend that demonstrates text search with joined data from related tables.
+
+Required files:
+
+`convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  posts: defineTable({
+    title: v.string(),
+    content: v.string(),
+    authorId: v.id("authors"),
+  }).searchIndex("search", {
+    searchField: "content",
+    filterFields: ["title"],
+  }),
+
+  authors: defineTable({
+    name: v.string(),
+    email: v.string(),
+  }),
+});
+```
+
+Create a query function `searchPostsWithAuthors` in `convex/index.ts` that:
+- Takes a search query string parameter
+- Performs a text search on the posts table using the "search" index
+- Joins each result with the corresponding author information
+- Returns an array of posts with author details included
+- If the author is not found, return "Unknown Author"
+
+Files to create:
+- `convex/schema.ts` with the schema above
+- `convex/index.ts` with the search query function
+- `package.json` with necessary dependencies
+
+The focus should be on implementing efficient text search while correctly joining related author data for each matching post.
+
+Expected result structure should be:
+```ts
+{
+  title: string,
+  content: string,
+  author: string, # author name
+}[]
+```
