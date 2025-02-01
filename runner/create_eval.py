@@ -5,13 +5,14 @@ from runner.models.anthropic_codegen import AnthropicModel
 import glob
 from dotenv import load_dotenv
 from .convex_backend import convex_backend, admin_key
+from .models import MODELS_BY_NAME
 
 load_dotenv()
 
 api_key = os.getenv("ANTHROPIC_API_KEY")
 if not api_key:
     raise ValueError("ANTHROPIC_API_KEY is not set")
-model = AnthropicModel(str(api_key), "claude-3-5-sonnet-latest")
+model = AnthropicModel(str(api_key), MODELS_BY_NAME["claude-3-5-sonnet-latest"])
 
 output_tempdir = os.getenv("OUTPUT_TEMPDIR")
 if not output_tempdir:
