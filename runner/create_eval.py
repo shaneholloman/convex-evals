@@ -225,8 +225,7 @@ def main():
 
         # Run bun install and codegen
         subprocess.run(["bun", "install"], cwd=answer_dir, check=True)
-        subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
-
+        # subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
         with open(task_file, "r") as f:
             task_content = f.read()
 
@@ -237,7 +236,7 @@ def main():
             with open(full_path, "w") as f:
                 f.write(content)
         # Re-run codegen to generate the _generated files for the schema
-        subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=False)
+        subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
         # find the non-generated .ts files to open
         files_to_open = []
         for filename in os.listdir(convex_dir):
