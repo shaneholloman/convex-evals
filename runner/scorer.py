@@ -128,6 +128,18 @@ def typecheck_code(project_dir):
     if done.returncode != 0:
         raise Exception(f"Failed to typecheck code:\n{done.stdout}")
 
+    src_dir = os.path.abspath(os.path.join(project_dir, "src"))
+    if os.path.exists(src_dir):
+        done = subprocess.run(
+            ["bunx", "tsc", "-noEmit", "-p", "."],
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+        )
+        if done.returncode != 0:
+            raise Exception(f"Failed to typecheck code:\n{done.stdout}")
+
 
 @traced
 def lint_code(project_dir):
@@ -141,6 +153,19 @@ def lint_code(project_dir):
     )
     if done.returncode != 0:
         raise Exception(f"Failed to lint code:\n{done.stdout}")
+
+    src_eslint_config = os.path.abspath("src.eslint.config.mjs")
+    src_dir = os.path.join(project_dir, "src")
+    if os.path.exists(src_dir):
+        done = subprocess.run(
+            ["bunx", "eslint", "-c", src_eslint_config, "src"],
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+        )
+        if done.returncode != 0:
+            raise Exception(f"Failed to lint code:\n{done.stdout}")
 
 
 @traced
