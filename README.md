@@ -59,18 +59,27 @@ pdm run python -m runner.run_grader /tmp/convex-codegen-evals/output/claude-3-5-
 Use the `create_eval.py` script to create a new evaluation.
 
 ```bash
-pdm run python runner/create_eval.py <category> <name>
+pdm run python -m runner.create_eval <category> <name>
 ```
 
 Note that test or category names cannot contain dashes.
 
-Then, fill out the `TASK.txt` and the human-curated answer within the `answer`
-directory. Fill out unit tests within the `grader.test.ts` file.
+It will walk you through things step by step. You can start at a given step by passing a 3rd argument of the step number to start from.
+At each step, it will generate some content and have you edit it.
+It will generally open the files to review automatically with `cursor`,
+meaning you should have that utility installed in your shell.
+
+1. Generates a `TASK.txt` file for what the LLM should do.
+2. Generates an `answer/` directory with the human-curated answer.
+3. Generates a `grader.test.ts` file with unit tests.
+4. Interactively runs the backend and tests
+5. Runs the eval with braintrust. At this point edit `GAPS.txt` to capture what needs improvement.
+6. Commits it to git.
 
 Be sure that your answer passes tests:
 
 ```bash
-pdm run runner/run_grader.py evals/<category>/<name>/answer
+pdm run python -m runner.run_grader evals/<category>/<name>/answer
 ```
 
 # Generating guidelines
