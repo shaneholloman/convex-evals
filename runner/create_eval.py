@@ -1,7 +1,9 @@
 import os
 import sys
 import subprocess
-from runner.models.anthropic_codegen import AnthropicModel
+
+# from runner.models.anthropic_codegen import AnthropicModel
+from runner.models.openai_codegen import OpenAIModel
 import glob
 from dotenv import load_dotenv
 from .convex_backend import convex_backend, admin_key
@@ -9,10 +11,12 @@ from .models import MODELS_BY_NAME
 
 load_dotenv()
 
-api_key = os.getenv("ANTHROPIC_API_KEY")
+key_name = "OPENAI_API_KEY"
+# key_name = "ANTHROPIC_API_KEY"
+api_key = os.getenv(key_name)
 if not api_key:
-    raise ValueError("ANTHROPIC_API_KEY is not set")
-model = AnthropicModel(str(api_key), MODELS_BY_NAME["claude-3-5-sonnet-latest"])
+    raise ValueError(f"{key_name} is not set")
+model = OpenAIModel(str(api_key), MODELS_BY_NAME["o1-mini"])
 
 output_tempdir = os.getenv("OUTPUT_TEMPDIR")
 if not output_tempdir:
@@ -92,7 +96,7 @@ Generate a similar style TASK.txt for the given one-line description:
 
     primer = "Create a backend that"
     response = model.client.chat.completions.create(
-        model="claude-3-5-sonnet-latest",
+        model=model.model.name,
         messages=[
             {
                 "role": "system",
@@ -102,7 +106,7 @@ Generate a similar style TASK.txt for the given one-line description:
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": primer},
         ],
-        max_tokens=1000,
+        max_tokens=10000,
     )
     return primer + " " + response.choices[0].message.content.strip()
 
@@ -133,12 +137,12 @@ Generate vitest test file contents for the current task."""
         for example in examples
     ]
     response = model.client.chat.completions.create(
-        model="claude-3-5-sonnet-latest",
+        model=model.model.name,
         messages=[
             *[message for example in example_messages for message in example],
             {"role": "user", "content": format_prompt(task, files)},
         ],
-        max_tokens=2000,
+        max_tokens=10000,
     )
     return response.choices[0].message.content.strip()
 
@@ -236,13 +240,13 @@ def main():
             with open(full_path, "w") as f:
                 f.write(content)
         # Re-run codegen to generate the _generated files for the schema
-        subprocess.run(["bunx", "convex", "codegen"], cwd=answer_dir, check=True)
+        subprocess.run(["bunx", "convex", "codegen", "--init"], cwd=answer_dir, check=True)
         # find the non-generated .ts files to open
         files_to_open = []
-        for filename in os.listdir(convex_dir):
-            if not filename.endswith(".ts"):
-                continue
-            files_to_open.append(os.path.join(convex_dir, filename))
+        for root, _, files in os.walk(convex_dir):
+            for file in files:
+                if file.endswith(".ts") or file.endswith(".tsx"):
+                    files_to_open.append(os.path.join(root, file))
         open_in_cursor(files_to_open)
 
     print("\nStep 3: Generating grader.test.ts")
