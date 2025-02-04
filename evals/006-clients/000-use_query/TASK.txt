@@ -1,0 +1,42 @@
+Create a backend that implements message listing functionality with a React frontend component.
+
+Required files:
+- convex/schema.ts
+```ts
+messages: {
+  author: string,
+  body: string,
+}
+```
+No indexes are required.
+
+- convex/messages.ts
+```ts
+export const getAllMessages = query({
+  args: {},
+  returns: v.object({
+    _id: v.id("messages"),
+    _creationTime: v.number(),
+    author: v.string(),
+    body: v.string(),
+  }),
+  handler: async (ctx) => {
+    return ctx.db.query("messages").order("desc").collect();
+  }
+});
+```
+
+- src/App.tsx
+  - Create a React component that:
+    - Uses a hook to fetch messages from `getAllMessages`
+    - Handles loading state by showing "Loading..."
+    - Handles empty state by showing "No messages yet"
+    - Renders messages in a `<ul>` list with "author: body" in `<li>` elements.
+
+- package.json
+  Include convex and React dependencies, including typescript types.
+
+- tsconfig.json
+  - Only include `src` in the `include` field.
+
+Don't add any message creation functionality - focus only on listing existing messages.
