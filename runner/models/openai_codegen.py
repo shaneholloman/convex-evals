@@ -120,6 +120,7 @@ def render_prompt(chain_of_thought: bool, task_description: str):
     yield "- It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.\n"
     yield "- Always start with `package.json` and `tsconfig.json` files.\n"
     yield '- Use Convex version "^1.17.4".\n\n'
+    yield '- Use Typescript version "^5.7.3".\n\n'
 
     if chain_of_thought:
         yield "Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.\n"
