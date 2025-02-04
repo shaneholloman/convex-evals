@@ -209,7 +209,14 @@ def main():
   "name": "convexbot",
   "version": "1.0.0",
   "dependencies": {
-    "convex": "^1.17.4"
+    "convex": "^1.17.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0"
   }
 }""".strip()
 
