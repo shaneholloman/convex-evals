@@ -1,0 +1,38 @@
+Create a backend that supports paginated retrieval of items and a React frontend component that paginates through the data in `App.tsx`.
+
+Create these files:
+
+1. `convex/schema.ts`
+```ts
+export default {
+  items: {
+    name: string,
+    description: string,
+  },
+};
+```
+No indexes are required.
+
+2. `convex/items.ts`
+```ts
+export const paginateItems = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    return ctx.db.query("items").order("desc").paginate(args.paginationOpts);
+  },
+});
+```
+- DO NOT add a `returns` validator.
+
+Then for `src/App.tsx`, create a React component that lists the paginated items and has a load more button.
+It should use the `usePaginatedQuery` hook.
+
+Only create these files:
+
+1. `src/App.tsx`
+2. `package.json`
+3. `tsconfig.json` that only includes the `src` directory
+4. `convex/schema.ts`
+5. `convex/items.ts`
