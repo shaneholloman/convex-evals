@@ -1,0 +1,45 @@
+Create a backend that implements message sending functionality with a React frontend component.
+
+Required files:
+- convex/schema.ts
+```ts
+messages: {
+  author: string,
+  body: string,
+}
+```
+No indexes are required.
+
+- convex/messages.ts
+```ts
+export const sendMessage = mutation({
+  args: {
+    author: v.string(),
+    body: v.string()
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("messages", {
+      author: args.author,
+      body: args.body
+    });
+  }
+});
+```
+
+- src/App.tsx
+  - Create a React component that:
+    - Uses a form with two text inputs:
+      - Author name input
+      - Message body input
+    - Sends a message using the sendMessage mutation when the form is submitted
+    - Assume it's inside of a ConvexProvider already
+    - Shows "Sending..." while the mutation is in progress
+
+- package.json
+  Include convex and React dependencies, including typescript types.
+
+- tsconfig.json
+  - Only include `src` in the `include` field.
+
+Focus only on implementing the message sending functionality.
+Don't implement any message listing or retrieval features.
