@@ -171,13 +171,16 @@ def main():
 
     os.makedirs(category_dir, exist_ok=True)
 
-    existing_by_name = {name.split("-")[1]: name for name in os.listdir(category_dir)}
-
+    existing_by_name = {
+        name.split("-")[1]: name
+        for name in os.listdir(category_dir)
+        if os.path.isdir(os.path.join(category_dir, name))
+    }
     assert "-" not in name
     if name in existing_by_name:
         testdir_name = existing_by_name[name]
     else:
-        existing = [int(existing_name.split("-")[0]) for existing_name in os.listdir(category_dir)]
+        existing = [int(existing_name.split("-")[0]) for existing_name in existing_by_name.values()]
         next_id = max(existing) + 1 if existing else 0
         testdir_name = f"{next_id:03d}-{name}"
     testdir = os.path.join(category_dir, testdir_name)
