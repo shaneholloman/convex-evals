@@ -18,6 +18,7 @@ output_tempdir = os.getenv("OUTPUT_TEMPDIR")
 if not output_tempdir:
     output_tempdir = "/tmp/convex-codegen-evals"
 
+
 def input_continue(message="Press enter to continue..."):
     input(message)
 
@@ -38,6 +39,7 @@ def get_example_tasks(before_dir, n=5):
             break
     return tasks
 
+
 def get_answer_convex_files(eval_dir):
     files = {}
     answer_dir = os.path.join(eval_dir, "answer")
@@ -49,6 +51,7 @@ def get_answer_convex_files(eval_dir):
             with open(file_path, "r") as f:
                 files[rel_path] = f.read().strip()
     return files
+
 
 def get_example_evals(before_dir, n=5):
     """Get the latest evals with their task, files and grader test"""
@@ -91,9 +94,14 @@ Generate a similar style TASK.txt for the given one-line description:
     response = model.client.chat.completions.create(
         model="claude-3-5-sonnet-latest",
         messages=[
-            {"role": "system", "content": "You generate TASK.txt files for Convex coding evals. Here are some examples of TASK.txt files:"},
+            {
+                "role": "system",
+                "content": "You generate TASK.txt files for Convex coding evals. Here are some examples of TASK.txt files:",
+            },
             *[{"role": "assistant", "content": task} for task in example_tasks],
-            {"role": "user", "content": prompt}, {"role": "assistant", "content": primer}],
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": primer},
+        ],
         max_tokens=1000,
     )
     return primer + " " + response.choices[0].message.content.strip()
