@@ -6,6 +6,7 @@ from typing import Union
 from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
 from braintrust import wrap_openai
 
+
 class OpenAIModel(ConvexCodegenModel):
     def __init__(self, api_key: str, model: ModelTemplate):
         self.model = model
@@ -55,6 +56,7 @@ class OpenAIModel(ConvexCodegenModel):
                 current_file = None
 
         return files
+
 
 def render_prompt(chain_of_thought: bool, task_description: str):
     yield "Your task is to generate a Convex backend from a task description.\n"
@@ -163,6 +165,7 @@ def render_examples():
             yield f"#### {rel_path}\n"
             yield f"```typescript\n{file_content}\n```\n\n"
 
+
 def render_guidelines(node: Union[GuidelineSection, Guideline], header="#"):
     if isinstance(node, Guideline):
         yield "- "
@@ -176,11 +179,10 @@ def render_guidelines(node: Union[GuidelineSection, Guideline], header="#"):
             yield from render_guidelines(child, header + "#")
         yield "\n"
 
+
 # Used by the eval system
 OPENAI_CONVEX_GUIDELINES = "".join(render_guidelines(CONVEX_GUIDELINES))
 
+
 def build_release_rules() -> str:
-    return (
-        "".join(render_guidelines(CONVEX_GUIDELINES)) +
-        "".join(render_examples())
-    )
+    return "".join(render_guidelines(CONVEX_GUIDELINES)) + "".join(render_examples())

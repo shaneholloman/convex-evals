@@ -161,9 +161,8 @@ def render_convex_guidelines(node: Union[GuidelineSection, Guideline], indentati
 # Used by the eval system
 ANTHROPIC_CONVEX_GUIDELINES = "".join(render_convex_guidelines(CONVEX_GUIDELINES))
 
+
 def build_release_rules() -> str:
     return (
-        "".join(render_convex_guidelines(CONVEX_GUIDELINES)) +
-        "\n\n" +
-        "".join(render_examples())
+        "".join(render_convex_guidelines(CONVEX_GUIDELINES)) + "\n\n" + "".join(render_examples())
     )
