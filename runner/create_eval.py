@@ -2,8 +2,9 @@ import os
 import sys
 import subprocess
 
-# from runner.models.anthropic_codegen import AnthropicModel
-from runner.models.openai_codegen import OpenAIModel
+from runner.models.anthropic_codegen import AnthropicModel
+
+# from runner.models.openai_codegen import OpenAIModel
 import glob
 from dotenv import load_dotenv
 from .convex_backend import convex_backend, admin_key
@@ -11,12 +12,13 @@ from .models import MODELS_BY_NAME
 
 load_dotenv()
 
-key_name = "OPENAI_API_KEY"
-# key_name = "ANTHROPIC_API_KEY"
+# key_name = "OPENAI_API_KEY"
+key_name = "ANTHROPIC_API_KEY"
 api_key = os.getenv(key_name)
 if not api_key:
     raise ValueError(f"{key_name} is not set")
-model = OpenAIModel(str(api_key), MODELS_BY_NAME["o1-mini"])
+# model = OpenAIModel(str(api_key), MODELS_BY_NAME["o1-mini"])
+model = AnthropicModel(str(api_key), MODELS_BY_NAME["claude-3-5-sonnet-latest"])
 
 output_tempdir = os.getenv("OUTPUT_TEMPDIR")
 if not output_tempdir:
