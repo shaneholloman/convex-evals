@@ -8,17 +8,17 @@ import { expect } from "vitest";
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-
 const responsePort = process.env.CONVEX_PORT;
 if (!responsePort) {
   throw new Error("CONVEX_PORT is not set");
 }
 
+export const cloudUrl = `http://0.0.0.0:${responsePort}`;
+export const siteUrl = `http://0.0.0.0:${responsePort + 1}`;
+
 const answerPort = process.env.CONVEX_ANSWER_PORT;
 
-export const responseClient = new ConvexClient(
-  `http://0.0.0.0:${responsePort}`,
-);
+export const responseClient = new ConvexClient(cloudUrl);
 
 const adminKey =
   "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd";
