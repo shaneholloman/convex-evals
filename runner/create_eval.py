@@ -243,10 +243,12 @@ def main():
         subprocess.run(["bunx", "convex", "codegen", "--init"], cwd=answer_dir, check=True)
         # find the non-generated .ts files to open
         files_to_open = []
-        for root, _, files in os.walk(convex_dir):
-            for file in files:
-                if file.endswith(".ts") or file.endswith(".tsx"):
-                    files_to_open.append(os.path.join(root, file))
+        for file in os.listdir(convex_dir):
+            if file.endswith(".ts"):
+                files_to_open.append(os.path.join(convex_dir, file))
+        for file in os.listdir(os.path.join(answer_dir, "src")):
+            if file.endswith(".ts") or file.endswith(".tsx"):
+                files_to_open.append(os.path.join(answer_dir, "src", file))
         open_in_cursor(files_to_open)
 
     print("\nStep 3: Generating grader.test.ts")
