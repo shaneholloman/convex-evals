@@ -95,7 +95,12 @@ def render_examples():
             if "node_modules" in dirpath or "_generated" in dirpath:
                 continue
             for file_name in file_names:
-                if file_name == "package.json" or file_name.endswith(".ts"):
+                if (
+                    file_name == "package.json"
+                    or file_name == "tsconfig.json"
+                    or file_name.endswith(".ts")
+                    or file_name.endswith(".tsx")
+                ):
                     file_paths.append(os.path.join(dirpath, file_name))
 
         file_paths.sort(key=lambda x: (x.count("/"), x))
@@ -130,11 +135,11 @@ def render_guidelines():
     """
     yield from render_convex_guidelines(CONVEX_GUIDELINES)
     yield """<file_structure>
-   - You can write to `package.json` and any files within the `convex/` folder.
+   - You can write to `package.json`, `tsconfig.json`, and any files within the `convex/` folder.
    - Do NOT write to the `convex/_generated` folder. You can assume that `npx convex dev` will populate this folder.
    - Use <file path="file_path" /> syntax to output each file.
    - It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.
-   - Always start with a `package.json` file.
+   - Always start with a `package.json` and `tsconfig.json` file.
    - Use Convex version "^1.17.4".
   </file_structure>
     """

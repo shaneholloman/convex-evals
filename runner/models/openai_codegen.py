@@ -76,6 +76,10 @@ def render_prompt(chain_of_thought: bool, task_description: str):
         yield "```\n"
         yield "...\n"
         yield "```\n"
+        yield "## tsconfig.json\n"
+        yield "```\n"
+        yield "...\n"
+        yield "```\n"
         yield "## convex/schema.ts\n"
         yield "```\n"
         yield "...\n"
@@ -85,6 +89,10 @@ def render_prompt(chain_of_thought: bool, task_description: str):
         yield "For example, correct output looks like\n"
         yield "# Files\n"
         yield "## package.json\n"
+        yield "```\n"
+        yield "...\n"
+        yield "```\n"
+        yield "## tsconfig.json\n"
         yield "```\n"
         yield "...\n"
         yield "```\n"
@@ -105,11 +113,11 @@ def render_prompt(chain_of_thought: bool, task_description: str):
     yield "\n"
 
     yield "\n# File Structure\n"
-    yield "- You can write to `package.json` and any files within the `convex/` folder.\n"
+    yield "- You can write to `package.json`, `tsconfig.json`, and any files within the `convex/` folder.\n"
     yield "- Do NOT write to the `convex/_generated` folder. You can assume that `npx convex dev` will populate this folder.\n"
     yield "- It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.\n"
-    yield "- Always start with a `package.json` file.\n"
-    yield "- Use Convex version \"^1.17.4\".\n\n"
+    yield "- Always start with `package.json` and `tsconfig.json` files.\n"
+    yield '- Use Convex version "^1.17.4".\n\n'
 
     if chain_of_thought:
         yield "Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.\n"
@@ -133,7 +141,12 @@ def render_examples():
             if "node_modules" in dirpath or "_generated" in dirpath:
                 continue
             for file_name in file_names:
-                if file_name == "package.json" or file_name.endswith(".ts"):
+                if (
+                    file_name == "package.json"
+                    or file_name == "tsconfig.json"
+                    or file_name.endswith(".ts")
+                    or file_name.endswith(".tsx")
+                ):
                     file_paths.append(os.path.join(dirpath, file_name))
 
         file_paths.sort(key=lambda x: (x.count("/"), x))
