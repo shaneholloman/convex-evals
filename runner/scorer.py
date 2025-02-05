@@ -68,8 +68,8 @@ def convex_scorer(model, tempdir, *, args, expected, metadata, output):
             deploy(answer_backend, answer_project_dir)
             test_file = os.path.abspath(os.path.join(eval_path, "grader.test.ts"))
             try:
-                run_tests(output_backend, answer_backend, test_file)
-                scores.append(Score("Tests pass", 1))
+                pass_rate = run_tests(output_backend, answer_backend, test_file)
+                scores.append(Score("Tests pass", pass_rate))
             except Exception:
                 scores.append(Score("Tests pass", 0))
 
@@ -224,6 +224,7 @@ def run_tests(backend, answer_backend, test_file):
             "vitest",
             "run",
             test_file,
+            "--reporter=json",  # Change to JSON reporter
             "--no-color",
         ],
         env=env,
@@ -231,8 +232,25 @@ def run_tests(backend, answer_backend, test_file):
         stderr=subprocess.STDOUT,
         encoding="utf-8",
     )
-    if done.returncode != 0:
-        raise Exception(f"Failed to run tests:\n{done.stdout}")
+
+    try:
+        import json
+        import re
+
+        # Remove ANSI escape codes from stdout
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+        cleaned_stdout = ansi_escape.sub("", done.stdout).lstrip()
+        results = json.loads(cleaned_stdout)
+
+        total = results["numTotalTests"]
+        passed = results["numPassedTests"]
+        percent = (passed / total) if total > 0 else 0
+        return percent
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        print(f"Failed to parse tests results: {e}")
+        if done.returncode != 0:
+            raise Exception(f"Failed to run tests:\n{done.stdout}")
+        return 0
 
 
 def walk_answer(answer_dir):
