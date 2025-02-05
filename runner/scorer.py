@@ -226,7 +226,7 @@ def run_tests(backend, answer_backend, test_file):
             "vitest",
             "run",
             test_file,
-            "--reporter=json",  # Change to JSON reporter
+            "--reporter=json",
             "--no-color",
         ],
         env=env,
