@@ -63,6 +63,28 @@ CONVEX_GUIDELINES = GuidelineSection(
                     ],
                 ),
                 GuidelineSection(
+                    "validators",
+                    [
+                        Guideline(
+                            """Below is an example of an array validator:
+                            ```typescript
+                            import { mutation } from "./_generated/server";
+                            import { v } from "convex/values";
+
+                            export default mutation({
+                            args: {
+                                simpleArray: v.array(v.union(v.string(), v.number())),
+                            },
+                            handler: async (ctx, args) => {
+                                //...
+                            },
+                            });
+                            ```
+                            """
+                        )
+                    ],
+                ),
+                GuidelineSection(
                     "function_registration",
                     [
                         Guideline(
@@ -75,7 +97,7 @@ CONVEX_GUIDELINES = GuidelineSection(
                             "You CANNOT register a function through the `api` or `internal` objects."
                         ),
                         Guideline(
-                            "ALWAYS include argument and return validators for all Convex functions. If a function doesn't return anything, include `returns: v.null()` as its output validator."
+                            "ALWAYS include argument and return validators for all Convex functions. This includes all of `query`, `internalQuery`, `mutation`, `internalMutation`, `action`, and `internalAction`. If a function doesn't return anything, include `returns: v.null()` as its output validator."
                         ),
                         Guideline(
                             "If the JavaScript implementation of a Convex function doesn't have a return value, it implicitly returns `null`."
@@ -234,6 +256,7 @@ CONVEX_GUIDELINES = GuidelineSection(
                 Guideline(
                     "Be strict with types, particularly around id's of documents. For example, if a function takes in an id for a document in the 'users' table, take in `Id<'users'>` rather than `string`."
                 ),
+                Guideline("Always use `as const` for string literals in discriminated union types."),
             ],
         ),
         GuidelineSection(
