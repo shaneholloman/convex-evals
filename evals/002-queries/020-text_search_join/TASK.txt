@@ -36,7 +36,7 @@ Files to create:
 - `convex/index.ts` with the search query function
 - `package.json` with necessary dependencies
 
-The focus should be on implementing efficient text search while correctly joining related author data for each matching post.
+The focus should be on implementing efficient text search while correctly joining related author data for each matching post. There should be no extra functions except the ones provided above.
 
 Expected result structure should be:
 ```ts
