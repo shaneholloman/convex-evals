@@ -256,7 +256,7 @@ CONVEX_GUIDELINES = GuidelineSection(
                 Guideline(
                     "Be strict with types, particularly around id's of documents. For example, if a function takes in an id for a document in the 'users' table, take in `Id<'users'>` rather than `string`."
                 ),
-                Guideline("Must always use `as const` for discriminated union types."),
+                Guideline("Always use `as const` for string literals in discriminated union types."),
             ],
         ),
         GuidelineSection(
