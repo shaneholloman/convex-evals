@@ -1,6 +1,8 @@
 import os
 import shutil
 import subprocess
+import json
+import re
 from braintrust import traced, Score
 from runner.convex_backend import convex_backend, admin_key
 
@@ -234,9 +236,6 @@ def run_tests(backend, answer_backend, test_file):
     )
 
     try:
-        import json
-        import re
-
         # Remove ANSI escape codes from stdout
         ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
         cleaned_stdout = ansi_escape.sub("", done.stdout).lstrip()
@@ -246,11 +245,11 @@ def run_tests(backend, answer_backend, test_file):
         passed = results["numPassedTests"]
         percent = (passed / total) if total > 0 else 0
         return percent
-    except (json.JSONDecodeError, KeyError, IndexError) as e:
-        print(f"Failed to parse tests results: {e}")
+    except Exception as e:
         if done.returncode != 0:
             raise Exception(f"Failed to run tests:\n{done.stdout}")
-        return 0
+        else:
+            raise Exception(f"Failed to parse tests results: {e}")
 
 
 def walk_answer(answer_dir):
