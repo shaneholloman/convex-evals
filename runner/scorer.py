@@ -74,7 +74,6 @@ def convex_scorer(model, tempdir, *, args, expected, metadata, output):
                 scores.append(Score("Tests pass", pass_rate))
             except Exception as e:
                 if len(e.args) > 1:
-                    print("score: ", e.args[1])
                     scores.append(Score("Tests pass", e.args[1]))
                 else:
                     scores.append(Score("Tests pass", 0))
@@ -241,7 +240,7 @@ def run_tests(backend, answer_backend, test_file):
 
     try:
         # Removes all characters before the first `{` and after the last `}`
-        cleaned_stdout = re.sub(r'^.*?(\{.*\}).*$', r'\1', done.stdout, flags=re.DOTALL)
+        cleaned_stdout = re.sub(r"^.*?(\{.*\}).*$", r"\1", done.stdout, flags=re.DOTALL)
         results = json.loads(cleaned_stdout)
 
         total = results["numTotalTests"]
