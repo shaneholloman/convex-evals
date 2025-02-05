@@ -12,10 +12,10 @@ Create a backend for a course enrollment system where:
    - All students enrolled in a course
 6. For each enrollment, we also want to track:
    - The enrollment date, represented as a number (Unix timestamp)
-   - The student's final grade (if completed), represented as an optional string
+   - The student's grade (if completed), represented as an optional string
 
 Requirements:
-- Design the schema to efficiently support these queries with indexes (indexes should contain all fields they use in their name):
+- Design the schema to efficiently support these queries with indexes:
   - List a subset of courses a student is enrolled in based on a filter condition (for example: What are the courses that student A is enrolled in that aren't class A or class B?)
   - List a subset students enrolled in a course based on a filter condition (for example: Who are the students in class A that aren't student A or student B?)
 
