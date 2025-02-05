@@ -243,8 +243,8 @@ def run_tests(backend, answer_backend, test_file):
 
         total = results["numTotalTests"]
         passed = results["numPassedTests"]
-        percent = (passed / total) if total > 0 else 0
-        return percent
+        ratio = (passed / total) if total > 0 else 0
+        return ratio
     except Exception as e:
         if done.returncode != 0:
             raise Exception(f"Failed to run tests:\n{done.stdout}")
