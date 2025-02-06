@@ -73,12 +73,18 @@ def convex_scorer(model, tempdir, *, args, expected, metadata, output):
                 pass_rate = run_tests(output_backend, answer_backend, test_file)
                 scores.append(Score("Tests pass", pass_rate))
             except Exception as e:
-                if len(e.args) > 1:
-                    scores.append(Score("Tests pass", e.args[1]))
+                if isinstance(e, TestsFailedException):
+                    scores.append(Score("Tests pass", e.ratio))
                 else:
                     scores.append(Score("Tests pass", 0))
 
     return scores
+
+
+class TestsFailedException(Exception):
+    def __init__(self, message, ratio):
+        super().__init__(message)
+        self.ratio = ratio
 
 
 @traced
@@ -257,7 +263,7 @@ def run_tests(backend, answer_backend, test_file):
         for test in results["testResults"][0]["assertionResults"]:
             if test["status"] == "failed":
                 error_message += f"{test['title']}: {test['failureMessages']}\n"
-        raise Exception(f"Tests failed:\n{error_message}", ratio)
+        raise TestsFailedException(f"Tests failed:\n{error_message}", ratio)
     return ratio
 
 
