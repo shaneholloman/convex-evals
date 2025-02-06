@@ -96,12 +96,17 @@ def convex_coding_task(model: ModelTemplate, input: str):
         if not api_key:
             raise ValueError("TOGETHER_API_KEY is not set")
         model_impl = OpenAIModel(api_key, model)
+    elif model.provider == ModelProvider.GOOGLE:
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY is not set")
+        model_impl = OpenAIModel(api_key, model)
     else:
         raise ValueError(f"Unknown model provider: {model.provider}")
     return model_impl.generate(input)
 
-# Default to just running Claude and GPT-4o.
-model_names = ["claude-3-5-sonnet-latest", "gpt-4o"]
+# Default to just running Claude, GPT-4o, and Gemini 2.0 Flash Lite.
+model_names = ["claude-3-5-sonnet-latest", "gpt-4o", 'gemini-2.0-flash-lite-preview-02-05']
 
 if os.getenv("MODELS") is not None:
     model_names = os.getenv("MODELS").split(",")
