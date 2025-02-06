@@ -72,10 +72,19 @@ def convex_scorer(model, tempdir, *, args, expected, metadata, output):
             try:
                 pass_rate = run_tests(output_backend, answer_backend, test_file)
                 scores.append(Score("Tests pass", pass_rate))
-            except Exception:
-                scores.append(Score("Tests pass", 0))
+            except Exception as e:
+                if isinstance(e, TestsFailedException):
+                    scores.append(Score("Tests pass", e.ratio))
+                else:
+                    scores.append(Score("Tests pass", 0))
 
     return scores
+
+
+class TestsFailedException(Exception):
+    def __init__(self, message, ratio):
+        super().__init__(message)
+        self.ratio = ratio
 
 
 @traced
@@ -236,20 +245,26 @@ def run_tests(backend, answer_backend, test_file):
     )
 
     try:
-        # Remove ANSI escape codes from stdout
-        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-        cleaned_stdout = ansi_escape.sub("", done.stdout).lstrip()
+        # Removes all characters before the first `{` and after the last `}`
+        cleaned_stdout = re.sub(r"^.*?(\{.*\}).*$", r"\1", done.stdout, flags=re.DOTALL)
         results = json.loads(cleaned_stdout)
 
         total = results["numTotalTests"]
         passed = results["numPassedTests"]
         ratio = (passed / total) if total > 0 else 0
-        return ratio
     except Exception as e:
         if done.returncode != 0:
             raise Exception(f"Failed to run tests:\n{done.stdout}")
         else:
             raise Exception(f"Failed to parse tests results: {e}")
+
+    if ratio != 1:
+        error_message = ""
+        for test in results["testResults"][0]["assertionResults"]:
+            if test["status"] == "failed":
+                error_message += f"{test['title']}: {test['failureMessages']}\n"
+        raise TestsFailedException(f"Tests failed:\n{error_message}", ratio)
+    return ratio
 
 
 def walk_answer(answer_dir):

@@ -86,17 +86,22 @@ export async function listTable(
 export async function deleteAllDocuments(adminClient: any, tables: string[]) {
   const totalDeleted: Record<string, number> = {};
   for (const tableName of tables) {
-    let { deleted, continueCursor, hasMore } = await adminClient.mutation(
-      "_system/frontend/clearTablePage",
-      { tableName, cursor: null },
-    );
-    totalDeleted[tableName] = deleted;
-    while (hasMore) {
-      ({ deleted, continueCursor, hasMore } = await adminClient.mutation(
+    // We need to check if the table is empty before trying to delete it. It is possible for empty tables
+    // to not have the `by_create_time` index, which will cause the `clearTablePage` mutation to fail.
+    const docs = await listTable(responseAdminClient, tableName);
+    if (docs.length > 0) {
+      let { deleted, continueCursor, hasMore } = await adminClient.mutation(
         "_system/frontend/clearTablePage",
-        { tableName, cursor: continueCursor },
-      ));
-      totalDeleted[tableName] += deleted;
+        { tableName, cursor: null },
+      );
+      totalDeleted[tableName] = deleted;
+      while (hasMore) {
+        ({ deleted, continueCursor, hasMore } = await adminClient.mutation(
+          "_system/frontend/clearTablePage",
+          { tableName, cursor: continueCursor },
+        ));
+        totalDeleted[tableName] += deleted;
+      }
     }
   }
   return totalDeleted;
