@@ -45,6 +45,13 @@ ALL_MODELS = [
         provider=ModelProvider.OPENAI,
     ),
     ModelTemplate(
+        name="o3-mini",
+        max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.OPENAI,
+    ),
+    ModelTemplate(
         name="deepseek-ai/DeepSeek-V3",
         max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
         requires_chain_of_thought=True,
