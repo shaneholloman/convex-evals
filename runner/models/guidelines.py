@@ -315,6 +315,9 @@ CONVEX_GUIDELINES = GuidelineSection(
                 Guideline(
                     "When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`"
                 ),
+                Guideline(
+                    "Always add `@types/node` to your `package.json` when using any Node.js built-in modules."
+                ),
             ],
         ),
         GuidelineSection(
@@ -364,6 +367,17 @@ CONVEX_GUIDELINES = GuidelineSection(
                 ),
                 Guideline(
                     "Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist."
+                ),
+            ],
+        ),
+        GuidelineSection(
+            "action_guidelines",
+            [
+                Guideline(
+                    'Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.'
+                ),
+                Guideline(
+                    "Never use `ctx.db` inside of an action. Actions don't have access to the database."
                 ),
             ],
         ),
@@ -449,6 +463,9 @@ CONVEX_GUIDELINES = GuidelineSection(
                     });
                     ```
                     """
+                ),
+                Guideline(
+                    "Convex storage stores items as `Blob` objects. You must convert all items to/from a `Blob` when using Convex storage."
                 ),
             ],
         ),
