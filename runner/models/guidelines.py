@@ -105,6 +105,22 @@ CONVEX_GUIDELINES = GuidelineSection(
                             ```
                             """
                         ),
+                        Guideline(
+                            """Always use the `v.null()` validator when returning a null value. Below is an example query that returns a null value:
+                                  ```typescript
+                                  import { query } from "./_generated/server";
+                                  import { v } from "convex/values";
+
+                                  export const exampleQuery = query({
+                                    args: {},
+                                    returns: v.null(),
+                                    handler: async (ctx, args) => {
+                                        console.log("This query returns a null value");
+                                        return null;
+                                    },
+                                  });
+                                  ```"""
+                        ),
                     ],
                 ),
                 GuidelineSection(
@@ -379,6 +395,22 @@ CONVEX_GUIDELINES = GuidelineSection(
                 Guideline(
                     "Never use `ctx.db` inside of an action. Actions don't have access to the database."
                 ),
+                Guideline(
+                    """Below is an example of the syntax for an action:
+                    ```ts
+                    import { action } from "./_generated/server";
+
+                    export const exampleAction = action({
+                        args: {},
+                        returns: v.null(),
+                        handler: async (ctx, args) => {
+                            console.log("This action does not return anything");
+                            return null;
+                        },
+                    });
+                    ```
+                    """
+                ),
             ],
         ),
         GuidelineSection(
@@ -402,6 +434,7 @@ CONVEX_GUIDELINES = GuidelineSection(
 
                             const empty = internalAction({
                               args: {},
+                              returns: v.null(),
                               handler: async (ctx, args) => {
                                 console.log("empty");
                               },

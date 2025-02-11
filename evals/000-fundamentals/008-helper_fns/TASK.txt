@@ -41,6 +41,6 @@ b. Create a mutation `updateItem` that:
    - Throws an error if item not found
    - Returns the updated item
 
-Both functions should use the same `getItemData` helper function
+Both functions should use the same `getItemData` helper function. Do not create any more functions than the specified ones.
 
 The goal is to demonstrate how pure TypeScript helper functions can be shared between different Convex functions while maintaining type safety and consistent data formatting.
