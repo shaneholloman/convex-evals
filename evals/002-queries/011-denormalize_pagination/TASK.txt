@@ -31,4 +31,4 @@ Create a query `paginateDogsByOwnerAge` in `convex/index.ts` that:
 
 The goal is to demonstrate how denormalization can be used to create efficient lookups on fields from related tables
 
-Only generate the `paginateDogsByOwnerAge` function in `convex/index.ts`. Do not generate any other functions.
+Only generate the `paginateDogsByOwnerAge` function in `convex/index.ts`. Do not generate any other functions. Also generate the `package.json` and `convex/schema.ts` files.
