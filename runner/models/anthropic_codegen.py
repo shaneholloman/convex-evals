@@ -1,10 +1,11 @@
 import os
-from bs4 import BeautifulSoup
+from markdown_it import MarkdownIt
 from typing import Union
 from . import ConvexCodegenModel, SYSTEM_PROMPT, ModelTemplate
 from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
 from braintrust import wrap_openai
 from openai import OpenAI
+from .openai_codegen import render_prompt as render_openai_prompt
 
 
 class AnthropicModel(ConvexCodegenModel):
@@ -22,6 +23,7 @@ class AnthropicModel(ConvexCodegenModel):
     def generate(self, prompt: str):
         assert self.model.uses_system_prompt
         assert self.model.requires_chain_of_thought
+        print("Anthropic model: ", self.model.name)
         response = self.client.chat.completions.create(
             model=self.model.name,
             messages=[
@@ -31,25 +33,43 @@ class AnthropicModel(ConvexCodegenModel):
                 },
                 {
                     "role": "user",
-                    "content": [{"type": "text", "text": "".join(render_prompt(prompt))}],
+                    "content": [
+                        {"type": "text", "text": "".join(render_openai_prompt(False, prompt))}
+                    ],
                 },
-                {"role": "assistant", "content": [{"type": "text", "text": "<analysis>"}]},
+                # {"role": "assistant", "content": [{"type": "text", "text": "<analysis>"}]},
             ],
             max_tokens=8192,
             seed=1,
         )
-        text = response.choices[0].message.content
-        soup = BeautifulSoup("<analysis>" + text, "html.parser")
-        out = {}
 
-        for file_tag in soup.find_all("file"):
-            path = file_tag.attrs["path"]
-            if not path:
-                raise ValueError("File path is not set")
+        parsed_response = response.choices[0].message.content
 
-            out[path.strip()] = file_tag.text.strip()
+        md = MarkdownIt()
+        tokens = md.parse(parsed_response)
 
-        return out
+        files = {}
+        current_file = None
+        in_files_section = False
+
+        for i, token in enumerate(tokens):
+            if token.type == "heading_open" and token.tag == "h1":
+                title_token = tokens[i + 1]
+                if title_token.content == "Files":
+                    in_files_section = True
+                    continue
+
+            if not in_files_section:
+                continue
+
+            if token.type == "heading_open" and token.tag == "h2":
+                title_token = tokens[i + 1]
+                current_file = title_token.content.strip()
+            elif token.type == "fence" and current_file:
+                files[current_file] = token.content.strip()
+                current_file = None
+
+        return files
 
 
 def render_prompt(task_description: str):
