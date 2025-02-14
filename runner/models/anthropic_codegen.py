@@ -5,7 +5,7 @@ from . import ConvexCodegenModel, SYSTEM_PROMPT, ModelTemplate
 from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
 from braintrust import wrap_openai
 from openai import OpenAI
-from .openai_codegen import render_prompt as render_openai_prompt
+from .model_codegen import render_prompt as render_openai_prompt
 
 
 class AnthropicModel(ConvexCodegenModel):
