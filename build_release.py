@@ -14,7 +14,22 @@ globs: **/*.{ts,tsx,js,jsx}
 def main():
     os.makedirs("dist", exist_ok=True)
 
-    # Generate rules using a very specific filename here to make it clear for AI usage what this is.
+    with open("dist/anthropic_convex_rules.txt", "w") as f:
+        f.write(build_release_rules())
+
+    with open("dist/openai_convex_rules.txt", "w") as f:
+        f.write(build_release_rules)
+
+    # Generate MDC files with frontmatter
+    with open("dist/anthropic_convex_rules.mdc", "w") as f:
+        f.write(MDC_FRONTMATTER)
+        f.write(build_release_rules())
+
+    with open("dist/openai_convex_rules.mdc", "w") as f:
+        f.write(MDC_FRONTMATTER)
+        f.write(build_release_rules())
+
+    # Generic rules for all models
     with open("dist/convex_rules.txt", "w") as f:
         f.write(build_release_rules())
 

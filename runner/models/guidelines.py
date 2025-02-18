@@ -508,7 +508,7 @@ CONVEX_GUIDELINES = GuidelineSection(
 if __name__ == "__main__":
     import sys
     import os
-    from .model_codegen import OPENAI_CONVEX_GUIDELINES, render_examples as openai_render_examples
+    from .model_codegen import OPENAI_CONVEX_GUIDELINES, render_examples
 
     outdir = sys.argv[1]
 
@@ -518,4 +518,4 @@ if __name__ == "__main__":
         f.write(OPENAI_CONVEX_GUIDELINES)
 
     with open(os.path.join(outdir, "examples.md"), "w") as f:
-        f.write("".join(openai_render_examples()))
+        f.write("".join(render_examples()))
