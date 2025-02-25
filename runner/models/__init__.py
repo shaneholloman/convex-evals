@@ -2,11 +2,13 @@ import os
 from pydantic import BaseModel
 from enum import Enum
 
+
 class ModelProvider(Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     TOGETHER = "together"
     GOOGLE = "google"
+
 
 class ModelTemplate(BaseModel):
     name: str
@@ -14,6 +16,7 @@ class ModelTemplate(BaseModel):
     requires_chain_of_thought: bool
     uses_system_prompt: bool
     provider: ModelProvider
+
 
 ALL_MODELS = [
     ModelTemplate(
@@ -71,13 +74,14 @@ ALL_MODELS = [
         requires_chain_of_thought=True,
         uses_system_prompt=False,
         provider=ModelProvider.GOOGLE,
-    )
+    ),
 ]
 MODELS_BY_NAME = {model.name: model for model in ALL_MODELS}
+
 
 class ConvexCodegenModel:
     def generate(self, user_prompt: str) -> dict[str, str]:
         raise NotImplementedError()
 
 
-SYSTEM_PROMPT = "You are convexbot, a highly advanced AI programmer specialized in creating backend systems using Convex."
+SYSTEM_PROMPT = "You are convexbot, a highly advanced software engineer specialized in creating applications using Convex and TypeScript."
