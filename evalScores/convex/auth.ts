@@ -1,17 +1,11 @@
-import {
-  mutation,
-  query,
-  internalMutation,
-  internalQuery,
-} from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 
 /**
  * Create a new authentication token with a given name.
  * The token value is automatically generated.
  */
-export const createToken = mutation({
+export const createToken = internalMutation({
   args: {
     name: v.string(),
   },
@@ -81,7 +75,7 @@ export const validateToken = internalMutation({
 /**
  * List all tokens (names only, not the values).
  */
-export const listTokens = query({
+export const listTokens = internalQuery({
   args: {},
   returns: v.array(
     v.object({
@@ -107,7 +101,7 @@ export const listTokens = query({
 /**
  * Delete a token by ID.
  */
-export const deleteToken = mutation({
+export const deleteToken = internalMutation({
   args: {
     tokenId: v.id("authTokens"),
   },
