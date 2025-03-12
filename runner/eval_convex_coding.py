@@ -192,11 +192,11 @@ def convex_coding_task(model: ModelTemplate, input: str):
 
 # Default to just running Claude, GPT-4o, o3-mini, and Gemini 2.0 Flash Lite.
 model_names = [
-    # "claude-3-5-sonnet-latest",
-    # "claude-3-7-sonnet-latest",
+    "claude-3-5-sonnet-latest",
+    "claude-3-7-sonnet-latest",
     "gpt-4o",
-    # "o3-mini",
-    # "gemini-2.0-flash-lite-preview-02-05",
+    "o3-mini",
+    "gemini-2.0-flash-lite-preview-02-05",
 ]
 
 if os.getenv("MODELS") is not None:
