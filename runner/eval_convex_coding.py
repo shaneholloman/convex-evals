@@ -1,4 +1,5 @@
-from braintrust import Eval, init_logger
+from braintrust import Eval, init_logger, Reporter, Evaluator
+from braintrust.framework import report_failures, EvalResultWithSummary, EvalReport
 from runner.models import MODELS_BY_NAME, ModelTemplate, ModelProvider
 from runner.models.model_codegen import Model
 from runner.scorer import convex_scorer, walk_answer
@@ -6,6 +7,7 @@ import tempfile
 from dotenv import load_dotenv
 import os
 import re
+import json
 
 PROJECT = "Convex Coding"
 
@@ -25,6 +27,42 @@ if os.getenv("TEST_FILTER") is not None:
 
 
 environment = os.getenv("ENVIRONMENT", "dev")
+
+
+def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
+    results = result.results
+    summary = result.summary
+
+    failing_results = [x for x in results if x.error]
+    if len(failing_results) > 0:
+        report_failures(evaluator, failing_results, verbose=verbose, jsonl=jsonl)
+    else:
+        num_tests = {}
+        scores = {}
+        for eval in results:
+            if eval.metadata["category"] not in num_tests:
+                num_tests[eval.metadata["category"]] = 0
+                scores[eval.metadata["category"]] = 0
+            num_tests[eval.metadata["category"]] += 1
+            scores[eval.metadata["category"]] += eval.scores["Tests pass"]
+        for category in num_tests:
+            print(
+                f"{category}: {scores[category] / num_tests[category]} ({num_tests[category]} tests)"
+            )
+        print(json.dumps(summary.as_dict()) if jsonl else f"{summary}")
+
+    return len(failing_results) == 0
+
+
+def report_run(eval_reports, verbose, jsonl):
+    return all(x for x in eval_reports)
+
+
+convex_reporter = Reporter(
+    name="convex reporter",
+    report_eval=report_eval,
+    report_run=report_run,
+)
 
 
 def convex_coding_evals(model: ModelTemplate):
@@ -108,11 +146,11 @@ def convex_coding_task(model: ModelTemplate, input: str):
 
 # Default to just running Claude, GPT-4o, o3-mini, and Gemini 2.0 Flash Lite.
 model_names = [
-    "claude-3-5-sonnet-latest",
-    "claude-3-7-sonnet-latest",
+    # "claude-3-5-sonnet-latest",
+    # "claude-3-7-sonnet-latest",
     "gpt-4o",
-    "o3-mini",
-    "gemini-2.0-flash-lite-preview-02-05",
+    # "o3-mini",
+    # "gemini-2.0-flash-lite-preview-02-05",
 ]
 
 if os.getenv("MODELS") is not None:
