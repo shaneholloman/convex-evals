@@ -28,7 +28,8 @@ if os.getenv("TEST_FILTER") is not None:
 
 
 environment = os.getenv("ENVIRONMENT", "dev")
-CONVEX_EVAL_ENDPOINT = os.getenv("CONVEX_EVAL_ENDPOINT", "http://localhost:3000/api/updateScores")
+CONVEX_EVAL_ENDPOINT = os.getenv("CONVEX_EVAL_ENDPOINT")
+CONVEX_AUTH_TOKEN = os.getenv("CONVEX_AUTH_TOKEN")
 
 
 def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
@@ -79,20 +80,24 @@ def post_scores_to_convex(model_name, scores):
     """
     payload = {"model": model_name, "scores": scores}
 
-    try:
-        response = requests.post(
-            "https://brave-ram-490.convex.site/updateScores",
-            json=payload,
-            headers={"Content-Type": "application/json"},
-        )
+    if CONVEX_EVAL_ENDPOINT is not None and CONVEX_AUTH_TOKEN is not None:
+        try:
+            response = requests.post(
+                CONVEX_EVAL_ENDPOINT,
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {CONVEX_AUTH_TOKEN}",
+                },
+            )
 
-        if response.status_code == 200:
-            print(f"Successfully posted scores for model {model_name} to Convex")
-        else:
-            print(f"Failed to post scores: HTTP {response.status_code}")
-            print(f"Response: {response.text}")
-    except Exception as e:
-        print(f"Error posting scores to Convex: {str(e)}")
+            if response.status_code == 200:
+                print(f"Successfully posted scores for model {model_name} to Convex")
+            else:
+                print(f"Failed to post scores: HTTP {response.status_code}")
+                print(f"Response: {response.text}")
+        except Exception as e:
+            print(f"Error posting scores to Convex: {str(e)}")
 
 
 def report_run(eval_reports, verbose, jsonl):

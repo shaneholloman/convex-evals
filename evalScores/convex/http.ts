@@ -12,6 +12,31 @@ http.route({
       // Parse the request body
       const body: any = await request.json();
       
+      // Extract authentication token
+      const authHeader = request.headers.get("Authorization");
+      const tokenValue = authHeader?.startsWith("Bearer ") 
+        ? authHeader.substring(7) 
+        : authHeader;
+      
+      // Validate the token
+      if (!tokenValue) {
+        return new Response(
+          JSON.stringify({ error: "Missing authentication token" }),
+          { status: 401 }
+        );
+      }
+      
+      const isValidToken = await ctx.runMutation(internal.auth.validateToken, {
+        value: tokenValue,
+      });
+      
+      if (!isValidToken) {
+        return new Response(
+          JSON.stringify({ error: "Invalid authentication token" }),
+          { status: 401 }
+        );
+      }
+      
       // Validate the inputs
       if (!body.model || typeof body.model !== "string") {
         return new Response(
