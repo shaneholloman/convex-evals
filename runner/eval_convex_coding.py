@@ -1,4 +1,5 @@
-from braintrust import Eval, init_logger
+from braintrust import Eval, init_logger, Reporter, Evaluator
+from braintrust.framework import report_failures, EvalResultWithSummary, EvalReport
 from runner.models import MODELS_BY_NAME, ModelTemplate, ModelProvider
 from runner.models.model_codegen import Model
 from runner.scorer import convex_scorer, walk_answer
@@ -6,6 +7,8 @@ import tempfile
 from dotenv import load_dotenv
 import os
 import re
+import json
+import requests
 
 PROJECT = "Convex Coding"
 
@@ -25,6 +28,87 @@ if os.getenv("TEST_FILTER") is not None:
 
 
 environment = os.getenv("ENVIRONMENT", "dev")
+CONVEX_EVAL_ENDPOINT = os.getenv("CONVEX_EVAL_ENDPOINT")
+CONVEX_AUTH_TOKEN = os.getenv("CONVEX_AUTH_TOKEN")
+
+
+def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
+    results = result.results
+    summary = result.summary
+
+    failing_results = [x for x in results if x.error]
+    if len(failing_results) > 0:
+        report_failures(evaluator, failing_results, verbose=verbose, jsonl=jsonl)
+    else:
+        num_tests = {}
+        scores = {}
+        for eval in results:
+            if eval.metadata["category"] not in num_tests:
+                num_tests[eval.metadata["category"]] = 0
+                scores[eval.metadata["category"]] = 0
+            num_tests[eval.metadata["category"]] += 1
+            scores[eval.metadata["category"]] += eval.scores["Tests pass"]
+
+        # Post the scores to the Convex endpoint
+        if eval.metadata.get("model"):
+            try:
+                model_name = eval.metadata["model"]
+                # Calculate the average score for each category
+                category_scores = {
+                    category: scores[category] / num_tests[category] for category in num_tests
+                }
+                post_scores_to_convex(model_name, category_scores)
+            except Exception as e:
+                print(f"Error posting scores to Convex: {e}")
+
+        for category in num_tests:
+            print(
+                f"{category}: {scores[category] / num_tests[category]} ({num_tests[category]} tests)"
+            )
+        print(json.dumps(summary.as_dict()) if jsonl else f"{summary}")
+
+    return len(failing_results) == 0
+
+
+def post_scores_to_convex(model_name, scores):
+    """
+    Post the evaluation scores to the Convex /updateScores endpoint.
+
+    Args:
+        model_name (str): The name of the model
+        scores (dict): Dictionary mapping category names to scores
+    """
+    payload = {"model": model_name, "scores": scores}
+
+    if CONVEX_EVAL_ENDPOINT is not None and CONVEX_AUTH_TOKEN is not None:
+        try:
+            response = requests.post(
+                CONVEX_EVAL_ENDPOINT,
+                json=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {CONVEX_AUTH_TOKEN}",
+                },
+            )
+
+            if response.status_code == 200:
+                print(f"Successfully posted scores for model {model_name} to Convex")
+            else:
+                print(f"Failed to post scores: HTTP {response.status_code}")
+                print(f"Response: {response.text}")
+        except Exception as e:
+            print(f"Error posting scores to Convex: {str(e)}")
+
+
+def report_run(eval_reports, verbose, jsonl):
+    return all(x for x in eval_reports)
+
+
+convex_reporter = Reporter(
+    name="convex reporter",
+    report_eval=report_eval,
+    report_run=report_run,
+)
 
 
 def convex_coding_evals(model: ModelTemplate):
