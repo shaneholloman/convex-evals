@@ -1,5 +1,5 @@
-from braintrust import Eval, init_logger, Reporter, Evaluator
-from braintrust.framework import report_failures, EvalResultWithSummary, EvalReport
+from braintrust import Eval, init_logger, Reporter
+from braintrust.framework import report_failures, EvalResultWithSummary
 from runner.models import MODELS_BY_NAME, ModelTemplate, ModelProvider
 from runner.models.model_codegen import Model
 from runner.scorer import convex_scorer, walk_answer
@@ -190,13 +190,15 @@ def convex_coding_task(model: ModelTemplate, input: str):
     return model_impl.generate(input)
 
 
-# Default to just running Claude, GPT-4o, o3-mini, and Gemini 2.0 Flash Lite.
+# Default to running Claude, GPT-4o, GPT 4.5 preview, o3-mini, and Gemini 2.0 Flash Lite, and Gemini 2.0 Flash.
 model_names = [
     "claude-3-5-sonnet-latest",
     "claude-3-7-sonnet-latest",
     "gpt-4o",
+    "gpt-4.5-preview",
     "o3-mini",
-    "gemini-2.0-flash-lite-preview-02-05",
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
 ]
 
 if os.getenv("MODELS") is not None:
