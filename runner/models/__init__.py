@@ -94,6 +94,7 @@ ALL_MODELS = [
         max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "8")),
         requires_chain_of_thought=True,
         uses_system_prompt=False,
+        provider=ModelProvider.GOOGLE,
     ),
 
 ]
