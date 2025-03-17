@@ -71,6 +71,7 @@ export const listAllScores = query({
   args: {},
   returns: v.array(
     v.object({
+      _creationTime: v.number(),
       _id: v.id("evalScores"),
       model: v.string(),
       scores: v.record(v.string(), v.number()),
