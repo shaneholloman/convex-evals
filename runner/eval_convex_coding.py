@@ -195,10 +195,8 @@ model_names = [
     "claude-3-5-sonnet-latest",
     "claude-3-7-sonnet-latest",
     "gpt-4o",
-    "gpt-4.5-preview",
     "o3-mini",
     "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
 ]
 
 if os.getenv("MODELS") is not None:
