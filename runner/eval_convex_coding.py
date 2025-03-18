@@ -42,12 +42,16 @@ def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
     else:
         num_tests = {}
         scores = {}
+        total_score = 0
+        total_num_tests = 0
         for eval in results:
             if eval.metadata["category"] not in num_tests:
                 num_tests[eval.metadata["category"]] = 0
                 scores[eval.metadata["category"]] = 0
             num_tests[eval.metadata["category"]] += 1
             scores[eval.metadata["category"]] += eval.scores["Tests pass"]
+            total_num_tests += 1
+            total_score += eval.scores["Tests pass"]
 
         # Post the scores to the Convex endpoint
         if eval.metadata.get("model"):
@@ -57,7 +61,8 @@ def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
                 category_scores = {
                     category: scores[category] / num_tests[category] for category in num_tests
                 }
-                post_scores_to_convex(model_name, category_scores)
+                combined_score = total_score / total_num_tests
+                post_scores_to_convex(model_name, category_scores, combined_score)
             except Exception as e:
                 print(f"Error posting scores to Convex: {e}")
 
@@ -70,15 +75,16 @@ def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
     return len(failing_results) == 0
 
 
-def post_scores_to_convex(model_name, scores):
+def post_scores_to_convex(model_name, category_scores, total_score):
     """
     Post the evaluation scores to the Convex /updateScores endpoint.
 
     Args:
         model_name (str): The name of the model
-        scores (dict): Dictionary mapping category names to scores
+        category_scores (dict): Dictionary mapping category names to scores
+        total_score (float): The total score for the model
     """
-    payload = {"model": model_name, "scores": scores}
+    payload = {"model": model_name, "scores": category_scores, "totalScore": total_score}
 
     if CONVEX_EVAL_ENDPOINT is not None and CONVEX_AUTH_TOKEN is not None:
         try:

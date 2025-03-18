@@ -64,10 +64,18 @@ http.route({
         }
       }
 
+      if (typeof body.totalScore !== "number") {
+        return new Response(
+          JSON.stringify({ error: "Total score must be a number" }),
+          { status: 400 },
+        );
+      }
+
       // Update the scores in the database
       const result = await ctx.runMutation(internal.evalScores.updateScores, {
         model: body.model,
         scores: body.scores,
+        totalScore: body.totalScore,
       });
 
       return new Response(JSON.stringify({ success: true, id: result }), {
@@ -94,6 +102,7 @@ http.route({
       const formattedScores = allScores.map((score) => ({
         model: score.model,
         scores: score.scores,
+        totalScore: score.totalScore,
       }));
 
       return new Response(JSON.stringify(formattedScores), {

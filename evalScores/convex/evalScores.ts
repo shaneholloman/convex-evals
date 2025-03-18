@@ -11,6 +11,7 @@ export const updateScores = internalMutation({
   args: {
     model: v.string(),
     scores: v.record(v.string(), v.number()),
+    totalScore: v.number(),
   },
   returns: v.id("evalScores"),
   handler: async (ctx, args) => {
@@ -24,6 +25,8 @@ export const updateScores = internalMutation({
       // Update the existing record
       await ctx.db.patch(existingScores._id, {
         scores: args.scores,
+        totalScore: args.totalScore,
+        updatedAt: Date.now(),
       });
 
       return existingScores._id;
@@ -32,6 +35,8 @@ export const updateScores = internalMutation({
       const id = await ctx.db.insert("evalScores", {
         model: args.model,
         scores: args.scores,
+        totalScore: args.totalScore,
+        updatedAt: Date.now(),
       });
 
       return id;
@@ -50,6 +55,7 @@ export const getScores = query({
     v.object({
       _id: v.id("evalScores"),
       model: v.string(),
+      totalScore: v.optional(v.number()),
       scores: v.record(v.string(), v.number()),
     }),
     v.null(),
@@ -74,6 +80,7 @@ export const listAllScores = query({
       _creationTime: v.number(),
       _id: v.id("evalScores"),
       model: v.string(),
+      totalScore: v.optional(v.number()),
       scores: v.record(v.string(), v.number()),
     }),
   ),
