@@ -82,6 +82,7 @@ export const listAllScores = query({
       model: v.string(),
       totalScore: v.optional(v.number()),
       scores: v.record(v.string(), v.number()),
+      updatedAt: v.optional(v.number()),
     }),
   ),
   handler: async (ctx) => {
