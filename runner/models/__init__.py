@@ -83,6 +83,13 @@ ALL_MODELS = [
         provider=ModelProvider.TOGETHER,
     ),
     ModelTemplate(
+        name="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+        max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.TOGETHER,
+    ),
+    ModelTemplate(
         name="gemini-2.0-flash-lite",
         max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "8")),
         requires_chain_of_thought=True,

@@ -196,13 +196,14 @@ def convex_coding_task(model: ModelTemplate, input: str):
     return model_impl.generate(input)
 
 
-# Default to running Claude, GPT-4o, GPT 4.5 preview, o3-mini, and Gemini 2.0 Flash Lite, and Gemini 2.0 Flash.
+# Default to running Claude, GPT-4o, GPT 4.5 preview, o3-mini, Gemini 2.0 Flash Lite, and Meta Llama 3.1 405B.
 model_names = [
     "claude-3-5-sonnet-latest",
     "claude-3-7-sonnet-latest",
     "gpt-4o",
     "o3-mini",
     "gemini-2.0-flash-lite",
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
 ]
 
 if os.getenv("MODELS") is not None:
