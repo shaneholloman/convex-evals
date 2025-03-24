@@ -1,4 +1,4 @@
-name: Daily Convex Evaluations
+name: Daily Convex Evaluations (Open Source Models)
 
 on:
   schedule:
@@ -43,10 +43,10 @@ jobs:
       run: |
         echo "CONVEX_EVAL_ENDPOINT=${{ secrets.CONVEX_EVAL_ENDPOINT }}" >> $GITHUB_ENV
         echo "CONVEX_AUTH_TOKEN=${{ secrets.CONVEX_AUTH_TOKEN }}" >> $GITHUB_ENV
-
-    - name: Set closed source models
+    
+    - name: Set open source models
       run: |
-        echo "MODELS=claude-3-5-sonnet-latest,claude-3-7-sonnet-latest,gpt-4o,o3-mini,gemini-2.0-flash-lite" >> $GITHUB_ENV
+        echo "MODELS=meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo,deepseek-ai/DeepSeek-R1" >> $GITHUB_ENV
 
     - name: Run evaluations
       env:
