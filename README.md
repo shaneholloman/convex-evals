@@ -1,9 +1,20 @@
 # Convex Coding Evals
 
-LLMs don't have _perfect_ knowledge of Convex, so they require some prompting
-to help them along. This repo contains a set of prompts for coding a Convex
-backend, a set of human-curated solutions, and a script for evaluating the
-LLM's output.
+Convex is an open-source, reactive database that's the best platform for full-stack AI coding.
+
+We ensure that Convex performs well with a large set of models by continuously running evals. Each eval has a set prompts for coding a Convex backend, a set of human-curated solutions, and a script for evaluating the LLM's output. These evals are split up into seven different categories:
+
+- Fundamentals
+- Data Modeling
+- Queries
+- Mutations
+- Actions
+- Idioms
+- Clients
+
+The most up to date eval runs can be found on our [website](https://convex.dev/llm-leaderboard).
+
+We use these evals to tune our [Convex Guidelines](https://docs.convex.dev/ai/), which greatly improve model performance writing Convex code and decrease hallucinations.
 
 ## Running the evaluations
 
