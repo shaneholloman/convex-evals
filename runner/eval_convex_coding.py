@@ -151,7 +151,8 @@ def convex_coding_evals(model: ModelTemplate):
                 "metadata": {
                     "category": category,
                     "name": name,
-                    "model": model.name,
+                    "model": model.formatted_name,
+                    "model_slug": model.name,
                 },
             }
         )
@@ -162,7 +163,8 @@ def convex_coding_evals(model: ModelTemplate):
         task=lambda input: convex_coding_task(model, input),
         scores=[lambda *args, **kwargs: convex_scorer(model, tempdir, *args, **kwargs)],
         metadata={
-            "model": model.name,
+            "model": model.formatted_name,
+            "model_slug": model.name,
             "tempdir": tempdir,
             "environment": environment,
         },
