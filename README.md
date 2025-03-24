@@ -1,6 +1,10 @@
 # Convex Coding Evals
 
-Convex is the open-source, reactive database for app developers and we believe it is the best platform for AI coding. To validate this claim, we have created a suite of evals that evaluate how well LLMs can write Convex code. Each eval has a set prompts for coding a Convex backend, a set of human-curated solutions, and a script for evaluating the LLM's output. These evals are split up into seven different categories:
+Convex is an open-source, reactive database that's the best platform for full-stack AI coding.
+
+We ensure that Convex performs well with a large set of models by continuously running evals. Each
+eval has a set prompts for coding a Convex backend, a set of human-curated solutions, and a script
+for evaluating the LLM's output. These evals are split up into seven different categories:
 
 - Fundamentals
 - Data Modeling
@@ -12,7 +16,7 @@ Convex is the open-source, reactive database for app developers and we believe i
 
 The most up to date eval runs can be found on our [website](https://convex.dev/llm-leaderboard).
 
-From the results of these evals, we discovered that LLMs have gaps in their knowledge of Convex. To mitigate these gaps in knowledge, we have curated a set of prompts to include missing information. We call these _Convex Guidelines_ and they increase model performance by ~20%.
+We use these evals to tune our [Convex Guidelines](https://docs.convex.dev/ai/), which greatly improve model performance writing Convex code and decrease hallucinations.
 
 ## Running the evaluations
 
