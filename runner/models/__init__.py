@@ -116,7 +116,22 @@ ALL_MODELS = [
         uses_system_prompt=False,
         provider=ModelProvider.GOOGLE,
     ),
-
+    ModelTemplate(
+        name="gemini-1.5-flash",
+        formatted_name="Gemini 1.5 Flash",
+        max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "8")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.GOOGLE,
+    ),
+    ModelTemplate(
+        name="gemini-2.0-pro-exp-02-05",
+        formatted_name="Gemini 2.0 Pro (Experimental)",
+        max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.GOOGLE,
+    ),
 ]
 MODELS_BY_NAME = {model.name: model for model in ALL_MODELS}
 
