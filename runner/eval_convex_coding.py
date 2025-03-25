@@ -56,7 +56,7 @@ def report_eval(evaluator, result: EvalResultWithSummary, verbose, jsonl):
         # Post the scores to the Convex endpoint
         if eval.metadata.get("model"):
             try:
-                model_name = eval.metadata["model"]
+                model_name = eval.metadata["model_name"]
                 # Calculate the average score for each category
                 category_scores = {
                     category: scores[category] / num_tests[category] for category in num_tests
@@ -151,8 +151,8 @@ def convex_coding_evals(model: ModelTemplate):
                 "metadata": {
                     "category": category,
                     "name": name,
-                    "model": model.formatted_name,
-                    "model_slug": model.name,
+                    "model": model.name,
+                    "model_name": model.formatted_name,
                 },
             }
         )
@@ -163,8 +163,8 @@ def convex_coding_evals(model: ModelTemplate):
         task=lambda input: convex_coding_task(model, input),
         scores=[lambda *args, **kwargs: convex_scorer(model, tempdir, *args, **kwargs)],
         metadata={
-            "model": model.formatted_name,
-            "model_slug": model.name,
+            "model": model.name,
+            "model_slug": model.formatted_name,
             "tempdir": tempdir,
             "environment": environment,
         },
