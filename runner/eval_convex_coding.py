@@ -206,6 +206,7 @@ model_names = [
     "o3-mini",
     "gemini-2.0-flash-lite",
     "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    "gemini-2.5-pro-exp-03-25",
 ]
 
 if os.getenv("MODELS") is not None:
