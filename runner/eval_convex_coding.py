@@ -193,6 +193,11 @@ def convex_coding_task(model: ModelTemplate, input: str):
         if not api_key:
             raise ValueError("GOOGLE_API_KEY is not set")
         model_impl = Model(api_key, model)
+    elif model.provider == ModelProvider.XAI:
+        api_key = os.getenv("XAI_API_KEY")
+        if not api_key:
+            raise ValueError("XAI_API_KEY is not set")
+        model_impl = Model(api_key, model)
     else:
         raise ValueError(f"Unknown model provider: {model.provider}")
     return model_impl.generate(input)
@@ -206,6 +211,8 @@ model_names = [
     "o3-mini",
     "gemini-2.0-flash-lite",
     "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    "gemini-2.5-pro-exp-03-25",
+    "grok-3-mini-beta",
 ]
 
 if os.getenv("MODELS") is not None:
