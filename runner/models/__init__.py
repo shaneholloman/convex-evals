@@ -77,6 +77,14 @@ ALL_MODELS = [
         provider=ModelProvider.OPENAI,
     ),
     ModelTemplate(
+        name="gpt-4.1",
+        formatted_name="GPT-4.1",
+        max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
+        requires_chain_of_thought=True,
+        uses_system_prompt=True,
+        provider=ModelProvider.OPENAI,
+    ),
+    ModelTemplate(
         name="deepseek-ai/DeepSeek-V3",
         formatted_name="DeepSeek V3",
         max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),

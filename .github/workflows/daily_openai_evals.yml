@@ -46,7 +46,7 @@ jobs:
 
     - name: Set OpenAI models
       run: |
-        echo "MODELS=gpt-4o,o3-mini" >> $GITHUB_ENV
+        echo "MODELS=gpt-4o,o3-mini,gpt-4.1" >> $GITHUB_ENV
 
     - name: Run evaluations
       env:
