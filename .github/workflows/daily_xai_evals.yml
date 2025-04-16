@@ -1,4 +1,4 @@
-name: Daily Convex Evaluations (OpenAI Models)
+name: Daily Convex Evaluations (xAI Models)
 
 on:
   schedule:
@@ -44,7 +44,7 @@ jobs:
         echo "CONVEX_EVAL_ENDPOINT=${{ secrets.CONVEX_EVAL_ENDPOINT }}" >> $GITHUB_ENV
         echo "CONVEX_AUTH_TOKEN=${{ secrets.CONVEX_AUTH_TOKEN }}" >> $GITHUB_ENV
 
-    - name: Set OpenAI models
+    - name: Set xAI models
       run: |
         echo "MODELS=grok-3-mini-beta,grok-3-beta" >> $GITHUB_ENV
 
