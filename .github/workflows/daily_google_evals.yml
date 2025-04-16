@@ -57,4 +57,5 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      run: pdm run braintrust eval runner/eval_convex_coding.py 
+        XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+      run: pdm run braintrust eval runner/eval_convex_coding.py
