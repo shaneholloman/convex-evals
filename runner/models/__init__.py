@@ -119,8 +119,8 @@ ALL_MODELS = [
         provider=ModelProvider.GOOGLE,
     ),
     ModelTemplate(
-        name="gemini-2.0-flash",
-        formatted_name="Gemini 2.0 Flash",
+        name="gemini-2.5-flash-preview-04-17",
+        formatted_name="Gemini 2.5 Flash",
         max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "8")),
         requires_chain_of_thought=True,
         uses_system_prompt=False,
