@@ -31,7 +31,6 @@ class Model(ConvexCodegenModel):
                 {"role": "user", "content": user_prompt},
             ],
             max_tokens=8192 if self.model.name == "claude-3-5-sonnet-latest" else 16384,
-            seed=1,
         )
         return self._parse_response(response.choices[0].message.content)
 

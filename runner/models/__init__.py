@@ -143,12 +143,13 @@ ALL_MODELS = [
         provider=ModelProvider.GOOGLE,
     ),
     ModelTemplate(
-        name="gemini-2.5-pro-exp-03-25",
-        formatted_name="Gemini 2.5 Pro (Experimental)",
+        name="gemini-2.5-pro-preview-05-06",
+        formatted_name="Gemini 2.5 Pro",
         max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "4")),
         requires_chain_of_thought=False,
         uses_system_prompt=False,
         provider=ModelProvider.GOOGLE,
+        override_proxy="https://generativelanguage.googleapis.com/v1beta",
     ),
     ModelTemplate(
         name="grok-3-beta",
