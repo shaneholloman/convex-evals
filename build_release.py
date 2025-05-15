@@ -10,6 +10,12 @@ globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
 
 """
 
+GITHUB_COPILOT_FRONTMATTER = """---
+applyTo: "**/*.ts,**/*.tsx,**/*.js,**/*.jsx"
+---
+
+"""
+
 
 def main():
     os.makedirs("dist", exist_ok=True)
@@ -35,6 +41,11 @@ def main():
 
     with open("dist/convex_rules.mdc", "w") as f:
         f.write(MDC_FRONTMATTER)
+        f.write(build_release_rules())
+
+    # Instructions for GithubCopilot
+    with open("dist/convex.instructions.md", "w") as f:
+        f.write(GITHUB_COPILOT_FRONTMATTER)
         f.write(build_release_rules())
 
 
