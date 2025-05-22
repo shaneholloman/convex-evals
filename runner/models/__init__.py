@@ -39,6 +39,15 @@ ALL_MODELS = [
         provider=ModelProvider.ANTHROPIC,
     ),
     ModelTemplate(
+        name="claude-sonnet-4-0",
+        formatted_name="Claude 4 Sonnet",
+        max_concurrency=int(os.getenv("ANTHROPIC_CONCURRENCY", "2")),
+        requires_chain_of_thought=True,
+        uses_system_prompt=True,
+        provider=ModelProvider.ANTHROPIC,
+        override_proxy="https://api.anthropic.com/v1",
+    ),
+    ModelTemplate(
         name="gpt-4o",
         formatted_name="GPT-4o",
         max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
