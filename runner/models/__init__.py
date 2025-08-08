@@ -48,14 +48,6 @@ ALL_MODELS = [
         override_proxy="https://api.anthropic.com/v1",
     ),
     ModelTemplate(
-        name="gpt-4o",
-        formatted_name="GPT-4o",
-        max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
-        requires_chain_of_thought=True,
-        uses_system_prompt=True,
-        provider=ModelProvider.OPENAI,
-    ),
-    ModelTemplate(
         name="o4-mini",
         formatted_name="o4-mini",
         max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
@@ -69,6 +61,14 @@ ALL_MODELS = [
         max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
         requires_chain_of_thought=True,
         uses_system_prompt=True,
+        provider=ModelProvider.OPENAI,
+    ),
+    ModelTemplate(
+        name="gpt-5",
+        formatted_name="GPT-5",
+        max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
         provider=ModelProvider.OPENAI,
     ),
     ModelTemplate(
