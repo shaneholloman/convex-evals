@@ -82,6 +82,14 @@ ALL_MODELS = [
         provider=ModelProvider.OPENAI,
     ),
     ModelTemplate(
+        name="gpt-5.1",
+        formatted_name="GPT-5.1",
+        max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.OPENAI,
+    ),
+    ModelTemplate(
         name="gpt-5",
         formatted_name="GPT-5",
         max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
@@ -97,7 +105,7 @@ ALL_MODELS = [
         uses_system_prompt=False,
         provider=ModelProvider.OPENAI,
     ),
-      ModelTemplate(
+    ModelTemplate(
         name="gpt-5-nano",
         formatted_name="GPT-5 nano",
         max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
