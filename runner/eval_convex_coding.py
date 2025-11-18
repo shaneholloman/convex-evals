@@ -146,7 +146,7 @@ model_names = [
     "o3-mini",
     "gemini-2.0-flash-lite",
     "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-    "gemini-2.5-pro-preview-06-05",
+    "gemini-3-pro-preview",
     "grok-3-mini-beta",
 ]
 

@@ -155,6 +155,15 @@ ALL_MODELS = [
         override_proxy="https://generativelanguage.googleapis.com/v1beta",
     ),
     ModelTemplate(
+        name="gemini-3-pro-preview",
+        formatted_name="Gemini 3 Pro",
+        max_concurrency=int(os.getenv("GOOGLE_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.GOOGLE,
+        override_proxy="https://generativelanguage.googleapis.com/v1beta",
+    ),
+    ModelTemplate(
         name="grok-4",
         formatted_name="Grok 4",
         max_concurrency=int(os.getenv("XAI_CONCURRENCY", "4")),
