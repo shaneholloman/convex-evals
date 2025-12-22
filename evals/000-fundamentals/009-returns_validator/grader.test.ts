@@ -2,6 +2,8 @@ import { expect, test } from "vitest";
 import {
   responseAdminClient,
   responseClient,
+  compareSchema,
+  compareFunctionSpec,
   addDocuments,
   listTable,
   deleteAllDocuments,
@@ -15,29 +17,26 @@ beforeEach(async () => {
   await deleteAllDocuments(responseAdminClient, ["users", "posts"]);
 });
 
+test("compare schema", async ({ skip }) => {
+  await compareSchema(skip);
+});
+
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
+
 async function createTestUser(): Promise<Id<"users">> {
-  await addDocuments(responseAdminClient, "users", [
-    {
-      name: "Test User",
-      email: "test@example.com",
-    },
-  ]);
-  const users = (await listTable(
-    responseAdminClient,
-    "users",
-  )) as Doc<"users">[];
+  await addDocuments(responseAdminClient, "users", [{
+    name: "Test User",
+    email: "test@example.com",
+  }]);
+  const users = await listTable(responseAdminClient, "users") as Doc<"users">[];
   return users.at(-1)!._id;
 }
 
-async function createTestPosts(
-  userId: Id<"users">,
-  toAdd: WithoutSystemFields<Doc<"posts">>[],
-): Promise<Id<"posts">[]> {
+async function createTestPosts(userId: Id<"users">, toAdd: WithoutSystemFields<Doc<"posts">>[]): Promise<Id<"posts">[]> {
   await addDocuments(responseAdminClient, "posts", toAdd);
-  const posts = (await listTable(
-    responseAdminClient,
-    "posts",
-  )) as Doc<"posts">[];
+  const posts = await listTable(responseAdminClient, "posts") as Doc<"posts">[];
   return posts.slice(-toAdd.length).map((post) => post._id);
 }
 
@@ -46,16 +45,14 @@ test("getPost returns raw document with correct type", async () => {
   const userId = await createTestUser();
 
   // Create test post
-  const [postId] = await createTestPosts(userId, [
-    {
-      title: "Test Post",
-      content: "Test Content",
-      authorId: userId,
-    },
-  ]);
+  const [postId] = await createTestPosts(userId, [{
+    title: "Test Post",
+    content: "Test Content",
+    authorId: userId,
+  }]);
 
   const post = await responseClient.query(api.index.getPost, {
-    postId,
+    id: postId,
   });
 
   expect(post).toEqual({
@@ -71,7 +68,7 @@ test("getPost returns raw document with correct type", async () => {
   let error = null;
   try {
     await responseClient.query(api.index.getPost, {
-      postId: "posts:nonexistent" as Id<"posts">,
+      id: "posts:nonexistent" as Id<"posts">,
     });
   } catch (e) {
     error = e;
@@ -84,11 +81,10 @@ test("getPostWithStatus handles success and error cases", async () => {
   const userId = await createTestUser();
 
   // Create test posts
-  const postIds = await createTestPosts(userId, [
-    {
-      title: "Valid Post",
-      content: "Test Content",
-      authorId: userId,
+  const postIds = await createTestPosts(userId, [{
+    title: "Valid Post",
+    content: "Test Content",
+    authorId: userId,
     },
     {
       title: "",
@@ -98,12 +94,9 @@ test("getPostWithStatus handles success and error cases", async () => {
   ]);
 
   // Test successful case
-  const successResult = await responseClient.query(
-    api.index.getPostWithStatus,
-    {
-      postId: postIds[0],
-    },
-  );
+  const successResult = await responseClient.query(api.index.getPostWithStatus, {
+    id: postIds[0],
+  });
   expect(successResult).toEqual({
     success: true,
     post: {
@@ -119,7 +112,7 @@ test("getPostWithStatus handles success and error cases", async () => {
   // Test empty title case
   const emptyTitleResult = await responseClient.query(
     api.index.getPostWithStatus,
-    { postId: postIds[1] },
+    { id: postIds[1] },
   );
   expect(emptyTitleResult).toEqual({
     success: false,
@@ -131,7 +124,7 @@ test("getPostWithStatus handles success and error cases", async () => {
   // Test non-existent post
   const nonExistentResult = await responseClient.query(
     api.index.getPostWithStatus,
-    { postId: postIds[0] },
+    { id: postIds[0] },
   );
   expect(nonExistentResult).toEqual({
     success: false,
@@ -144,16 +137,14 @@ test("getPostWithAuthor returns correct tuple", async () => {
   const userId = await createTestUser();
 
   // Create test post
-  const [postId] = await createTestPosts(userId, [
-    {
-      title: "Test Post",
-      content: "Test Content",
-      authorId: userId,
-    },
-  ]);
+  const [postId] = await createTestPosts(userId, [{
+    title: "Test Post",
+    content: "Test Content",
+    authorId: userId,
+  }]);
 
   const result = await responseClient.query(api.index.getPostWithAuthor, {
-    postId,
+    id: postId,
   });
 
   expect(result).toHaveLength(2);
@@ -177,7 +168,7 @@ test("getPostWithAuthor returns correct tuple", async () => {
   let error = null;
   try {
     await responseClient.query(api.index.getPostWithAuthor, {
-      postId: "posts:nonexistent" as Id<"posts">,
+      id: "posts:nonexistent" as Id<"posts">,
     });
   } catch (e) {
     error = e;

@@ -26,24 +26,24 @@ export default defineSchema({
 Implement the following functions in `convex/index.ts`:
 
 1. Create a mutation `createDocument` that:
-   - Takes a complete document object matching the schema as `{ metadata: ..., content: string }`
+   - Takes a complete document object matching the schema
    - Inserts it into the database
    - Returns the new document's ID
 
 2. Create a mutation `patchDocumentMetadata` that:
-   - Takes an argument object `{ documentId: Id<"documents">, metadata: { title: string, author: { name: string, contact: { email: string, phone?: string | undefined } }, tags: string[] } }`
+   - Takes a document ID and a complete new metadata object
    - Replaces the entire metadata object while preserving content
    - Throws an error if document doesn't exist
-   - Returns nothing
+   - Returns nothin
 
 3. Create a mutation `patchAuthorInfo` that:
-   - Takes an argument object `{ documentId: Id<"documents">, author: { name: string, contact: { email: string, phone?: string | undefined } } }`
+   - Takes a document ID and a complete new author object
    - Updates only the metadata.author portion of the document
    - Throws an error if document doesn't exist
    - Returns nothing
 
 4. Create a query `getDocument` that:
-   - Takes an argument object `{ documentId: Id<"documents"> }`
+   - Takes a document ID (documentId)
    - Returns the complete document with all nested fields
    - Returns null if document not found
 

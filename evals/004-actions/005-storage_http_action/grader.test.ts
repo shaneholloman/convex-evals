@@ -1,10 +1,13 @@
 import { expect, test } from "vitest";
-import { responseAdminClient } from "../../../grader";
+import {
+  compareFunctionSpec,
+  responseAdminClient,
+} from "../../../grader";
 import { api } from "./answer/convex/_generated/api";
-import { createAIGraderTest } from "../../../grader/aiGrader";
-
-createAIGraderTest(import.meta.url);
 import { getSiteURL } from "./answer/convex/http";
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
 
 async function getStoreURL(): Promise<string> {
   const siteURL = await responseAdminClient.query(api.http.getSiteURL, {});

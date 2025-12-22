@@ -14,7 +14,7 @@ export default defineSchema({
 ```
 
 Write a query named `getCustomerStats` in `convex/public.ts` that:
-- Takes arguments:  `{ customerId: string }`
+- Takes a customerId as an argument
 - Returns an object with:
   * totalOrders: number of orders
   * totalItems: sum of all quantities

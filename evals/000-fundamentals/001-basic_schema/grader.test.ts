@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { compareSchema, compareFunctionSpec } from "../../../grader";
+import {
+  responseAdminClient,
+  responseClient,
+  compareSchema,
+  compareFunctionSpec,
+} from "../../../grader";
+import { api } from "./answer/convex/_generated/api";
 
 test("compare schema", async ({ skip }) => {
   await compareSchema(skip);

@@ -13,6 +13,6 @@ export default defineSchema({
 ```
 
 Write a mutation named `deleteUserById` in `convex/index.ts` that:
-- Takes arguments:  `{ id: Id<"users"> }`
+- Takes an id as an argument
 - Efficiently deletes the document
 - Returns null

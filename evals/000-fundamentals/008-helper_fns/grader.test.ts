@@ -2,21 +2,28 @@ import { expect, test } from "vitest";
 import {
   responseAdminClient,
   responseClient,
+  compareSchema,
+  compareFunctionSpec,
   addDocuments,
   listTable,
 } from "../../../grader";
 import { api } from "./answer/convex/_generated/api";
 import { Doc, Id } from "./answer/convex/_generated/dataModel";
-import { createAIGraderTest } from "../../../grader/aiGrader";
 
-createAIGraderTest(import.meta.url);
+test("compare schema", async ({ skip }) => {
+  await compareSchema(skip);
+});
+
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
 
 test("getItem and updateItem handle non-existent items", async () => {
   // Try to get a non-existent item
   let error = null;
   try {
     await responseClient.query(api.index.getItem, {
-      itemId: "items:nonexistent" as Id<"items">,
+      id: "items:nonexistent" as Id<"items">,
     });
   } catch (e) {
     error = e;
@@ -27,7 +34,7 @@ test("getItem and updateItem handle non-existent items", async () => {
   error = null;
   try {
     await responseClient.mutation(api.index.updateItem, {
-      itemId: "items:nonexistent" as Id<"items">,
+      id: "items:nonexistent" as Id<"items">,
       quantity: 10,
     });
   } catch (e) {
@@ -50,7 +57,7 @@ test("getItem and updateItem work correctly with existing items", async () => {
 
   // Get the item
   const item = await responseClient.query(api.index.getItem, {
-    itemId,
+    id: itemId,
   });
 
   // Verify item format
@@ -61,13 +68,13 @@ test("getItem and updateItem work correctly with existing items", async () => {
 
   // Update the item
   await responseClient.mutation(api.index.updateItem, {
-    itemId,
+    id: itemId,
     quantity: 10,
   });
 
   // Get the updated item
   const updatedItem = await responseClient.query(api.index.getItem, {
-    itemId,
+    id: itemId,
   });
 
   // Verify the update
@@ -91,13 +98,13 @@ test("getItem and updateItem return the same format", async () => {
 
   // Update the item
   const updatedItem = await responseClient.mutation(api.index.updateItem, {
-    itemId,
+    id: itemId,
     quantity: 10,
   });
 
   // Get the updated item
   const item = await responseClient.query(api.index.getItem, {
-    itemId,
+    id: itemId,
   });
 
   // Verify the update

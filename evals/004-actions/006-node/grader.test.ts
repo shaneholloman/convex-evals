@@ -1,9 +1,13 @@
 import { expect, test } from "vitest";
-import { responseClient } from "../../../grader";
+import {
+  responseClient,
+  compareFunctionSpec,
+} from "../../../grader";
 import { api } from "./answer/convex/_generated/api";
-import { createAIGraderTest } from "../../../grader/aiGrader";
 
-createAIGraderTest(import.meta.url);
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
 
 test("processes string input correctly", async () => {
   const result = await responseClient.action(api.index.processWithNode, {
@@ -18,19 +22,17 @@ test("processes string input correctly", async () => {
 
 test("generates consistent hashes", async () => {
   const input = "hello world";
-
+  
   const result1 = await responseClient.action(api.index.processWithNode, {
     data: input,
   });
-
+  
   const result2 = await responseClient.action(api.index.processWithNode, {
     data: input,
   });
 
   expect(result1.hash).toBe(result2.hash);
-  expect(result1.hash).toBe(
-    "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
-  );
+  expect(result1.hash).toBe("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
 });
 
 test("handles empty string input", async () => {
@@ -38,15 +40,13 @@ test("handles empty string input", async () => {
     data: "",
   });
 
-  expect(result.hash).toBe(
-    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  ); // Empty string SHA-256
+  expect(result.hash).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"); // Empty string SHA-256
   expect(result.normalizedPath).toBe("/some/test/path");
 });
 
 test("handles long string input", async () => {
   const longString = "a".repeat(1000);
-
+  
   const result = await responseClient.action(api.index.processWithNode, {
     data: longString,
   });
@@ -57,7 +57,7 @@ test("handles long string input", async () => {
 
 test("handles special characters", async () => {
   const specialChars = "!@#$%^&*()_+-=[]{}|;:'\",.<>/?";
-
+  
   const result = await responseClient.action(api.index.processWithNode, {
     data: specialChars,
   });

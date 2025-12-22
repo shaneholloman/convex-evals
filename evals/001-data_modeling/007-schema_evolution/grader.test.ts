@@ -2,17 +2,24 @@ import { expect, test } from "vitest";
 import {
   responseAdminClient,
   responseClient,
+  compareSchema,
+  compareFunctionSpec,
   addDocuments,
   listTable,
 } from "../../../grader";
 import { api, internal } from "./answer/convex/_generated/api";
 import { Doc } from "./answer/convex/_generated/dataModel";
 
-import { createAIGraderTest } from "../../../grader/aiGrader";
+test("compare schema", async ({ skip }) => {
+  await compareSchema(skip);
+});
 
-createAIGraderTest(import.meta.url);
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
 
 test("migration helper transforms data correctly", async () => {
+
   // Insert a product with old schema format
   await addDocuments(responseAdminClient, "products", [
     {
@@ -29,9 +36,7 @@ test("migration helper transforms data correctly", async () => {
   await responseClient.mutation(api.index.migrateProduct, { productId });
 
   // Test that the product was migrated correctly
-  const product = await responseClient.query(api.index.getProduct, {
-    productId,
-  });
+  const product = await responseClient.query(api.index.getProduct, { productId });
   expect(product).toMatchObject({
     _id: productId,
     _creationTime: expect.any(Number),

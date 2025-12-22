@@ -3,6 +3,7 @@ import {
   responseAdminClient,
   responseClient,
   compareSchema,
+  compareFunctionSpec,
   addDocuments,
   listTable,
   deleteAllDocuments,
@@ -20,14 +21,14 @@ test("compare schema", async ({ skip }) => {
   await compareSchema(skip);
 });
 
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
+
 test("paginateChannelMessages returns empty result for non-existent channel", async () => {
   // Create a channel first
-  await addDocuments(responseAdminClient, "channels", [
-    { name: "Test Channel" },
-  ]);
-  const channel = (
-    await listTable(responseAdminClient, "channels")
-  )[0] as Doc<"channels">;
+  await addDocuments(responseAdminClient, "channels", [{ name: "Test Channel" }]);
+  const channel = (await listTable(responseAdminClient, "channels"))[0] as Doc<"channels">;
 
   const result = await responseClient.query(api.index.paginateChannelMessages, {
     channelId: channel._id,
@@ -40,12 +41,8 @@ test("paginateChannelMessages returns empty result for non-existent channel", as
 
 test("paginateChannelMessages returns messages in correct order", async () => {
   // Create a channel
-  await addDocuments(responseAdminClient, "channels", [
-    { name: "Test Channel" },
-  ]);
-  const channel = (
-    await listTable(responseAdminClient, "channels")
-  )[0] as Doc<"channels">;
+  await addDocuments(responseAdminClient, "channels", [{ name: "Test Channel" }]);
+  const channel = (await listTable(responseAdminClient, "channels"))[0] as Doc<"channels">;
 
   // Add messages
   const messages = [
@@ -61,7 +58,7 @@ test("paginateChannelMessages returns messages in correct order", async () => {
   });
 
   // Messages should be in reverse chronological order
-  expect(result.page.map((m) => m.content)).toEqual([
+  expect(result.page.map(m => m.content)).toEqual([
     "Third Message",
     "Second Message",
     "First Message",
@@ -70,12 +67,8 @@ test("paginateChannelMessages returns messages in correct order", async () => {
 
 test("paginateChannelMessages respects pagination size", async () => {
   // Create a channel
-  await addDocuments(responseAdminClient, "channels", [
-    { name: "Test Channel" },
-  ]);
-  const channel = (
-    await listTable(responseAdminClient, "channels")
-  )[0] as Doc<"channels">;
+  await addDocuments(responseAdminClient, "channels", [{ name: "Test Channel" }]);
+  const channel = (await listTable(responseAdminClient, "channels"))[0] as Doc<"channels">;
 
   // Add several messages
   const messages = Array.from({ length: 5 }, (_, i) => ({
@@ -86,37 +79,28 @@ test("paginateChannelMessages respects pagination size", async () => {
   await addDocuments(responseAdminClient, "messages", messages);
 
   // Request first page
-  const firstPage = await responseClient.query(
-    api.index.paginateChannelMessages,
-    {
-      channelId: channel._id,
-      paginationOpts: { numItems: 2, cursor: null },
-    },
-  );
+  const firstPage = await responseClient.query(api.index.paginateChannelMessages, {
+    channelId: channel._id,
+    paginationOpts: { numItems: 2, cursor: null },
+  });
 
   expect(firstPage.page).toHaveLength(2);
   expect(firstPage.isDone).toBe(false);
 
   // Request second page
-  const secondPage = await responseClient.query(
-    api.index.paginateChannelMessages,
-    {
-      channelId: channel._id,
-      paginationOpts: { numItems: 2, cursor: firstPage.continueCursor },
-    },
-  );
+  const secondPage = await responseClient.query(api.index.paginateChannelMessages, {
+    channelId: channel._id,
+    paginationOpts: { numItems: 2, cursor: firstPage.continueCursor },
+  });
 
   expect(secondPage.page).toHaveLength(2);
   expect(secondPage.isDone).toBe(false);
 
   // Request final page
-  const finalPage = await responseClient.query(
-    api.index.paginateChannelMessages,
-    {
-      channelId: channel._id,
-      paginationOpts: { numItems: 2, cursor: secondPage.continueCursor },
-    },
-  );
+  const finalPage = await responseClient.query(api.index.paginateChannelMessages, {
+    channelId: channel._id,
+    paginationOpts: { numItems: 2, cursor: secondPage.continueCursor },
+  });
 
   expect(finalPage.page).toHaveLength(1);
   expect(finalPage.isDone).toBe(true);
@@ -128,10 +112,7 @@ test("paginateChannelMessages only returns messages from specified channel", asy
     { name: "Channel 1" },
     { name: "Channel 2" },
   ]);
-  const channels = (await listTable(
-    responseAdminClient,
-    "channels",
-  )) as Doc<"channels">[];
+  const channels = await listTable(responseAdminClient, "channels") as Doc<"channels">[];
   const [channel1, channel2] = channels.slice(-2);
 
   // Add messages to both channels
@@ -141,25 +122,19 @@ test("paginateChannelMessages only returns messages from specified channel", asy
   ]);
 
   // Query messages from channel 1
-  const channel1Messages = await responseClient.query(
-    api.index.paginateChannelMessages,
-    {
-      channelId: channel1._id,
-      paginationOpts: { numItems: 10, cursor: null },
-    },
-  );
+  const channel1Messages = await responseClient.query(api.index.paginateChannelMessages, {
+    channelId: channel1._id,
+    paginationOpts: { numItems: 10, cursor: null },
+  });
 
   expect(channel1Messages.page).toHaveLength(1);
   expect(channel1Messages.page[0].content).toBe("Channel 1 Message");
 
   // Query messages from channel 2
-  const channel2Messages = await responseClient.query(
-    api.index.paginateChannelMessages,
-    {
-      channelId: channel2._id,
-      paginationOpts: { numItems: 10, cursor: null },
-    },
-  );
+  const channel2Messages = await responseClient.query(api.index.paginateChannelMessages, {
+    channelId: channel2._id,
+    paginationOpts: { numItems: 10, cursor: null },
+  });
 
   expect(channel2Messages.page).toHaveLength(1);
   expect(channel2Messages.page[0].content).toBe("Channel 2 Message");
@@ -167,12 +142,8 @@ test("paginateChannelMessages only returns messages from specified channel", asy
 
 test("paginateChannelMessages returns all message fields", async () => {
   // Create a channel
-  await addDocuments(responseAdminClient, "channels", [
-    { name: "Test Channel" },
-  ]);
-  const channel = (
-    await listTable(responseAdminClient, "channels")
-  )[0] as Doc<"channels">;
+  await addDocuments(responseAdminClient, "channels", [{ name: "Test Channel" }]);
+  const channel = (await listTable(responseAdminClient, "channels"))[0] as Doc<"channels">;
 
   // Add a message with all fields
   const message = {
@@ -192,12 +163,8 @@ test("paginateChannelMessages returns all message fields", async () => {
 
 test("paginateChannelMessages maintains consistent ordering across pages", async () => {
   // Create a channel
-  await addDocuments(responseAdminClient, "channels", [
-    { name: "Test Channel" },
-  ]);
-  const channel = (
-    await listTable(responseAdminClient, "channels")
-  )[0] as Doc<"channels">;
+  await addDocuments(responseAdminClient, "channels", [{ name: "Test Channel" }]);
+  const channel = (await listTable(responseAdminClient, "channels"))[0] as Doc<"channels">;
 
   // Add messages with known order
   const messages = Array.from({ length: 10 }, (_, i) => ({
@@ -213,11 +180,10 @@ test("paginateChannelMessages maintains consistent ordering across pages", async
   let isDone = false;
 
   while (!isDone) {
-    const result: PaginationResult<Doc<"messages">> =
-      await responseClient.query(api.index.paginateChannelMessages, {
-        channelId: channel._id,
-        paginationOpts: { numItems: 3, cursor },
-      });
+    const result: PaginationResult<Doc<"messages">> = await responseClient.query(api.index.paginateChannelMessages, {
+      channelId: channel._id,
+      paginationOpts: { numItems: 3, cursor },
+    });
 
     allMessages.push(...result.page);
     cursor = result.continueCursor;
@@ -225,6 +191,6 @@ test("paginateChannelMessages maintains consistent ordering across pages", async
   }
 
   // Verify ordering
-  const expectedMessages = [...messages].reverse().map((m) => m.content);
-  expect(allMessages.map((m) => m.content)).toEqual(expectedMessages);
+  const expectedMessages = [...messages].reverse().map(m => m.content);
+  expect(allMessages.map(m => m.content)).toEqual(expectedMessages);
 });

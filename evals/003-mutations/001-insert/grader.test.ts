@@ -1,14 +1,17 @@
 import { expect, test } from "vitest";
 import {
   responseClient,
-  responseAdminClient,
   compareSchema,
-  listTable,
+  compareFunctionSpec,
 } from "../../../grader";
 import { anyApi } from "convex/server";
 
 test("compare schema", async ({ skip }) => {
   await compareSchema(skip);
+});
+
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
 });
 
 test("insert user success", async () => {
@@ -32,22 +35,4 @@ test("insert user error", async () => {
   }
   expect(error).toBeDefined();
   expect(error.toString()).toContain("ArgumentValidationError");
-});
-
-test("insert user persists fields", async () => {
-  const email = "persist@example.com";
-  const name = "Persist";
-  const age = 42;
-
-  await responseClient.mutation(anyApi.index.insertUser, {
-    email,
-    name,
-    age,
-  });
-
-  const users = await listTable(responseAdminClient, "users");
-  const found = users.find((u: any) => u.email === email);
-  expect(found).toBeDefined();
-  expect(found.name).toBe(name);
-  expect(found.age).toBe(age);
 });

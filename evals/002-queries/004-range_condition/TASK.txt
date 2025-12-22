@@ -13,7 +13,7 @@ export default defineSchema({
 ```
 
 Write a query named `getSensorReadingsInRange` in `convex/public.ts` that:
-- Takes arguments:  `{ sensorId: string, startTime: number, endTime: number }`
+- Takes sensorId, startTime, and endTime as arguments
 - Efficiently gets all readings where:
   * sensorId matches (equality)
   * timestamp is >= startTime (range start)

@@ -18,7 +18,7 @@ export default defineSchema({
 Implement these functions in `convex/index.ts`:
 
 1. Create a mutation `initiateRequest` that:
-   - Takes arguments:  `{ url: string }`
+   - Takes a URL as argument
    - Checks if the URL already exists in the requests table
    - If it does, return the existing record ID
    - If it doesn't, inserts a pending record into requests table
@@ -26,16 +26,11 @@ Implement these functions in `convex/index.ts`:
    - Returns the ID of the new record
 
 2. Create an internal action `performHttpbinFetch` that:
-   - Takes arguments:  `{ url: string, requestId: Id<"requests"> }`
+   - Takes a URL and request ID as arguments
    - Makes a POST request to the URL
-   - Updates the requests record with an exported mutation `updateRequest`
-     - Define `updateRequest` to take arguments: `{ requestId: Id<"requests">, status: "completed", completedAt: number }`
-     - It should set the status to "completed" and set `completedAt` to the provided timestamp
+   - Updates the requests record with an internal function `updateRequest`
+     - Pass the completed status and timestamp as parameters
    - Returns nothing
-
-Behavioral expectations:
-- Multiple concurrent `initiateRequest` calls for the same URL must return the same existing request ID and not create duplicates.
-- Requests that fail the POST should not transition to completed; the request should remain `pending` and `completedAt` should be unset.
 
 The implementation should demonstrate:
 - Proper scheduling of async work using actions

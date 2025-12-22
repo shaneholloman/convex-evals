@@ -1,89 +1,169 @@
 import { expect, test } from "vitest";
-import { responseAdminClient, responseClient } from "../../../grader";
+import {
+  responseAdminClient,
+  responseClient,
+  compareSchema,
+  compareFunctionSpec,
+} from "../../../grader";
 import { anyApi } from "convex/server";
 
+test("compare schema", async ({ skip }) => {
+  await compareSchema(skip);
+});
+
+test("compare function spec", async ({ skip }) => {
+  await compareFunctionSpec(skip);
+});
+
 test("empty public query", async () => {
-  expect(await responseClient.query(anyApi.index.emptyPublicQuery, {})).toBe(
-    null,
-  );
+  const result = await responseClient.query(anyApi.index.emptyPublicQuery, {});
+  expect(result).toBe(null);
 
-  await expect(
-    responseClient.query(anyApi.index.emptyPublicQuery, { arg: "test" }),
-  ).rejects.toThrow(/ArgumentValidationError/);
+  let error: any = undefined;
+  try {
+    await responseClient.query(anyApi.index.emptyPublicQuery, {
+      arg: "test",
+    });
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
+  expect(error.toString()).toContain("ArgumentValidationError");
 
-  await expect(
-    responseClient.mutation(anyApi.index.emptyPublicQuery, {}),
-  ).rejects.toBeDefined();
+  error = undefined;
+  try {
+    await responseClient.mutation(anyApi.index.emptyPublicQuery, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
 
-  await expect(
-    responseClient.action(anyApi.index.emptyPublicQuery, {}),
-  ).rejects.toBeDefined();
+  error = undefined;
+  try {
+    await responseClient.action(anyApi.index.emptyPublicQuery, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
 });
 
 test("empty public mutation", async () => {
-  expect(
-    await responseClient.mutation(anyApi.index.emptyPublicMutation, {}),
-  ).toBe(null);
+  const result = await responseClient.mutation(
+    anyApi.index.emptyPublicMutation,
+    {},
+  );
+  expect(result).toBe(null);
 
-  await expect(
-    responseClient.mutation(anyApi.index.emptyPublicMutation, {
+  let error: any = undefined;
+  try {
+    await responseClient.mutation(anyApi.index.emptyPublicMutation, {
       arg: "test",
-    }),
-  ).rejects.toThrow(/ArgumentValidationError/);
+    });
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
+  expect(error.toString()).toContain("ArgumentValidationError");
 
-  await expect(
-    responseClient.query(anyApi.index.emptyPublicMutation, {}),
-  ).rejects.toBeDefined();
+  error = undefined;
+  try {
+    await responseClient.query(anyApi.index.emptyPublicMutation, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
 
-  await expect(
-    responseClient.action(anyApi.index.emptyPublicMutation, {}),
-  ).rejects.toBeDefined();
+  error = undefined;
+  try {
+    await responseClient.action(anyApi.index.emptyPublicMutation, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
 });
 
 test("empty public action", async () => {
-  expect(await responseClient.action(anyApi.index.emptyPublicAction, {})).toBe(
-    null,
+  const result = await responseClient.action(
+    anyApi.index.emptyPublicAction,
+    {},
   );
+  expect(result).toBe(null);
 
-  await expect(
-    responseClient.action(anyApi.index.emptyPublicAction, { arg: "test" }),
-  ).rejects.toThrow(/ArgumentValidationError/);
+  let error: any = undefined;
+  try {
+    await responseClient.action(anyApi.index.emptyPublicAction, {
+      arg: "test",
+    });
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
+  expect(error.toString()).toContain("ArgumentValidationError");
 
-  await expect(
-    responseClient.query(anyApi.index.emptyPublicAction, {}),
-  ).rejects.toBeDefined();
+  error = undefined;
+  try {
+    await responseClient.query(anyApi.index.emptyPublicAction, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
 
-  await expect(
-    responseClient.mutation(anyApi.index.emptyPublicAction, {}),
-  ).rejects.toBeDefined();
+  error = undefined;
+  try {
+    await responseClient.mutation(anyApi.index.emptyPublicAction, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
 });
 
 test("empty private query", async () => {
-  await expect(
-    responseClient.query(anyApi.index.emptyPrivateQuery, {}),
-  ).rejects.toThrow(/Could not find public function/);
+  let error: any = undefined;
+  try {
+    await responseClient.query(anyApi.index.emptyPrivateQuery, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
+  expect(error.toString()).toContain("Could not find public function");
 
-  expect(
-    await responseAdminClient.query(anyApi.index.emptyPrivateQuery, {}),
-  ).toBe(null);
+  const result = await responseAdminClient.query(
+    anyApi.index.emptyPrivateQuery,
+    {},
+  );
+  expect(result).toBe(null);
 });
 
 test("empty private mutation", async () => {
-  await expect(
-    responseClient.mutation(anyApi.index.emptyPrivateMutation, {}),
-  ).rejects.toThrow(/Could not find public function/);
+  let error: any = undefined;
+  try {
+    await responseClient.mutation(anyApi.index.emptyPrivateMutation, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
+  expect(error.toString()).toContain("Could not find public function");
 
-  expect(
-    await responseAdminClient.mutation(anyApi.index.emptyPrivateMutation, {}),
-  ).toBe(null);
+  const result = await responseAdminClient.mutation(
+    anyApi.index.emptyPrivateMutation,
+    {},
+  );
+  expect(result).toBe(null);
 });
 
 test("empty private action", async () => {
-  await expect(
-    responseClient.action(anyApi.index.emptyPrivateAction, {}),
-  ).rejects.toThrow(/Could not find public function/);
+  let error: any = undefined;
+  try {
+    await responseClient.action(anyApi.index.emptyPrivateAction, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(error).toBeDefined();
+  expect(error.toString()).toContain("Could not find public function");
 
-  expect(
-    await responseAdminClient.action(anyApi.index.emptyPrivateAction, {}),
-  ).toBe(null);
+  const result = await responseAdminClient.action(
+    anyApi.index.emptyPrivateAction,
+    {},
+  );
+  expect(result).toBe(null);
 });
