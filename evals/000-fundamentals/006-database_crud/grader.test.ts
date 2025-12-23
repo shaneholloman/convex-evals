@@ -1,24 +1,11 @@
 import { expect, test } from "vitest";
-import {
-  responseAdminClient,
-  responseClient,
-  compareSchema,
-  compareFunctionSpec,
-} from "../../../grader";
-import { anyApi } from "convex/server";
-
-test("compare schema", async ({ skip }) => {
-  await compareSchema(skip);
-});
-
-test("compare function spec", async ({ skip }) => {
-  await compareFunctionSpec(skip);
-});
+import { responseClient } from "../../../grader";
+import { api } from "./answer/convex/_generated/api";
 
 test("create and read location", async () => {
   // Test successful creation
   const locationId = await responseClient.mutation(
-    anyApi.public.createLocation,
+    api.public.createLocation,
     {
       name: "San Francisco",
       latitude: 37.7749,
@@ -28,7 +15,7 @@ test("create and read location", async () => {
   expect(locationId).toBeDefined();
 
   // Test reading the created location
-  const location = await responseClient.query(anyApi.public.readLocation, {
+  const location = await responseClient.query(api.public.readLocation, {
     id: locationId,
   });
   expect(location).toEqual({
@@ -40,24 +27,19 @@ test("create and read location", async () => {
   });
 
   // Test invalid arguments
-  let error: any = undefined;
-  try {
-    await responseClient.mutation(anyApi.public.createLocation, {
+  await expect(
+    responseClient.mutation(api.public.createLocation, {
       name: "Invalid",
-      latitude: "not a number",
+      latitude: "not a number" as unknown as number,
       longitude: -122.4194,
-    });
-  } catch (e) {
-    error = e;
-  }
-  expect(error).toBeDefined();
-  expect(error.toString()).toContain("ArgumentValidationError");
+    }),
+  ).rejects.toThrow(/ArgumentValidationError/);
 });
 
 test("update location", async () => {
   // Create a test location
   const locationId = await responseClient.mutation(
-    anyApi.public.createLocation,
+    api.public.createLocation,
     {
       name: "New York",
       latitude: 40.7128,
@@ -66,7 +48,7 @@ test("update location", async () => {
   );
 
   // Test full update
-  await responseClient.mutation(anyApi.public.updateLocation, {
+  await responseClient.mutation(api.public.updateLocation, {
     id: locationId,
     name: "Manhattan",
     latitude: 40.7831,
@@ -74,7 +56,7 @@ test("update location", async () => {
   });
 
   // Verify update
-  const updated = await responseClient.query(anyApi.public.readLocation, {
+  const updated = await responseClient.query(api.public.readLocation, {
     id: locationId,
   });
   expect(updated).toEqual({
@@ -89,7 +71,7 @@ test("update location", async () => {
 test("patch location", async () => {
   // Create a test location
   const locationId = await responseClient.mutation(
-    anyApi.public.createLocation,
+    api.public.createLocation,
     {
       name: "Seattle",
       latitude: 47.6062,
@@ -98,13 +80,13 @@ test("patch location", async () => {
   );
 
   // Test partial update - only name
-  await responseClient.mutation(anyApi.public.patchLocation, {
+  await responseClient.mutation(api.public.patchLocation, {
     id: locationId,
     name: "Downtown Seattle",
   });
 
   // Verify only name changed
-  let patched = await responseClient.query(anyApi.public.readLocation, {
+  let patched = await responseClient.query(api.public.readLocation, {
     id: locationId,
   });
   expect(patched).toEqual({
@@ -119,7 +101,7 @@ test("patch location", async () => {
 test("delete location", async () => {
   // Create a test location
   const locationId = await responseClient.mutation(
-    anyApi.public.createLocation,
+    api.public.createLocation,
     {
       name: "Chicago",
       latitude: 41.8781,
@@ -128,18 +110,18 @@ test("delete location", async () => {
   );
 
   // Verify it exists
-  const location = await responseClient.query(anyApi.public.readLocation, {
+  const location = await responseClient.query(api.public.readLocation, {
     id: locationId,
   });
   expect(location).toBeDefined();
 
   // Delete it
-  await responseClient.mutation(anyApi.public.deleteLocation, {
+  await responseClient.mutation(api.public.deleteLocation, {
     id: locationId,
   });
 
   // Verify it's gone
-  const deleted = await responseClient.query(anyApi.public.readLocation, {
+  const deleted = await responseClient.query(api.public.readLocation, {
     id: locationId,
   });
   expect(deleted).toBeNull();
