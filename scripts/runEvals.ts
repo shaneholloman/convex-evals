@@ -234,6 +234,11 @@ interface RunOptions {
   disableBraintrust: boolean;
   verbose: boolean;
   outputTempdir?: string;
+  postToConvex: boolean;
+}
+
+function isConvexPostingConfigured(): boolean {
+  return Boolean(process.env.CONVEX_EVAL_ENDPOINT && process.env.CONVEX_AUTH_TOKEN);
 }
 
 function buildEnvVars(options: RunOptions): Record<string, string> {
@@ -256,6 +261,10 @@ function buildEnvVars(options: RunOptions): Record<string, string> {
 
   if (options.verbose) {
     env.VERBOSE_INFO_LOGS = "1";
+  }
+
+  if (options.postToConvex) {
+    env.POST_TO_CONVEX = "1";
   }
 
   env.LOCAL_RESULTS = LOCAL_RESULTS_FILE;
@@ -285,6 +294,9 @@ async function runEvals(options: RunOptions): Promise<void> {
   console.log(`  Filter: ${options.filter || "(all)"}`);
   console.log(
     `  Braintrust: ${options.disableBraintrust ? "disabled" : "enabled"}`,
+  );
+  console.log(
+    `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (⚠️  CONVEX_EVAL_ENDPOINT or CONVEX_AUTH_TOKEN not set)" : ""}`,
   );
   console.log(`  Verbose: ${options.verbose ? "yes" : "no"}`);
   console.log("");
@@ -438,19 +450,43 @@ async function selectModels(): Promise<SelectResult<string[]>> {
 }
 
 async function selectOptions(): Promise<
-  SelectResult<{ useBraintrust: boolean; verbose: boolean }>
+  SelectResult<{ useBraintrust: boolean; verbose: boolean; postToConvex: boolean }>
 > {
   const useBraintrust = await confirm({
     message: "Send results to Braintrust?",
     default: false,
   });
 
+  // Only ask about Convex posting if the env vars are configured
+  let postToConvex = false;
+  if (isConvexPostingConfigured()) {
+    postToConvex = await confirm({
+      message: "Post results to Convex database?",
+      default: false,
+    });
+  }
+
   const verbose = await confirm({
     message: "Enable verbose logging?",
     default: true,
   });
 
-  return { useBraintrust, verbose };
+  return { useBraintrust, verbose, postToConvex };
+}
+
+interface LastRunConfig {
+  models: string[];
+  filter: string | undefined;
+  useBraintrust: boolean;
+  verbose: boolean;
+  postToConvex: boolean;
+}
+
+function formatRunConfigSummary(config: LastRunConfig): string {
+  const parts: string[] = [];
+  parts.push(`Models: ${config.models.join(", ") || "(default)"}`);
+  parts.push(`Filter: ${config.filter || "(all)"}`);
+  return parts.join(", ");
 }
 
 async function interactiveMode(): Promise<void> {
@@ -462,19 +498,25 @@ async function interactiveMode(): Promise<void> {
   }
 
   const categories = await discoverCategories();
-  const failedEvals = await getFailedEvals();
+  let failedEvals = await getFailedEvals();
+  let lastRunConfig: LastRunConfig | null = null;
 
   // Main loop with back navigation
   while (true) {
-    // Main menu
+    // Build menu choices dynamically based on whether we have a previous run config
+    const menuChoices = [
+      { name: "Run evals", value: "run" },
+      ...(lastRunConfig
+        ? [{ name: "Run again", value: "run-again" }]
+        : []),
+      { name: "View status", value: "status" },
+      { name: "List available evals", value: "list" },
+      { name: "Exit", value: "exit" },
+    ];
+
     const mainAction = await select({
       message: "What would you like to do?",
-      choices: [
-        { name: "Run evals", value: "run" },
-        { name: "View status", value: "status" },
-        { name: "List available evals", value: "list" },
-        { name: "Exit", value: "exit" },
-      ],
+      choices: menuChoices,
     });
 
     if (mainAction === "exit") {
@@ -522,6 +564,41 @@ async function interactiveMode(): Promise<void> {
       continue;
     }
 
+    if (mainAction === "run-again" && lastRunConfig) {
+      const runAgainChoice = await select({
+        message: "Run again:",
+        choices: [
+          {
+            name: `With same values (${formatRunConfigSummary(lastRunConfig)})`,
+            value: "same",
+          },
+          { name: "Change values", value: "change" },
+          { name: "← Back", value: "back" },
+        ],
+      });
+
+      if (runAgainChoice === "back") continue;
+
+      if (runAgainChoice === "same") {
+        try {
+          await runEvals({
+            models: lastRunConfig.models,
+            filter: lastRunConfig.filter,
+            disableBraintrust: !lastRunConfig.useBraintrust,
+            verbose: lastRunConfig.verbose,
+            postToConvex: lastRunConfig.postToConvex,
+          });
+          // Refresh failed evals after run
+          failedEvals = await getFailedEvals();
+        } catch (error) {
+          console.error("\nEval run failed:", error);
+        }
+        continue;
+      }
+
+      // runAgainChoice === "change" - fall through to run flow but with pre-filled defaults
+    }
+
     // Run evals flow with back navigation
     const filter = await selectFilter(categories, failedEvals);
     if (filter === BACK) continue;
@@ -543,18 +620,28 @@ async function interactiveMode(): Promise<void> {
       continue;
     }
 
+    // Save the run config for "Run again" option
+    lastRunConfig = {
+      models,
+      filter,
+      useBraintrust: options.useBraintrust,
+      verbose: options.verbose,
+      postToConvex: options.postToConvex,
+    };
+
     try {
       await runEvals({
         models,
         filter,
         disableBraintrust: !options.useBraintrust,
         verbose: options.verbose,
+        postToConvex: options.postToConvex,
       });
+      // Refresh failed evals after run
+      failedEvals = await getFailedEvals();
     } catch (error) {
       console.error("\nEval run failed:", error);
     }
-
-    // After running, loop back to main menu
   }
 }
 
@@ -577,6 +664,7 @@ program
   .option("-c, --category <categories...>", "Run specific categories")
   .option("--failed", "Re-run only failed evals from last run")
   .option("--braintrust", "Send results to Braintrust")
+  .option("--post-to-convex", "Post results to Convex database")
   .option("-v, --verbose", "Enable verbose logging", true)
   .option("--no-verbose", "Disable verbose logging")
   .option("-o, --output <dir>", "Output directory for results")
@@ -613,6 +701,7 @@ program
       disableBraintrust: !options.braintrust,
       verbose: options.verbose,
       outputTempdir: options.output,
+      postToConvex: options.postToConvex || false,
     });
   });
 

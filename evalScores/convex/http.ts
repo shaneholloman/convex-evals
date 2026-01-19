@@ -1,6 +1,14 @@
 import { httpRouter } from "convex/server";
+import { z } from "zod";
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
+
+const UpdateScoresBody = z.object({
+  model: z.string(),
+  scores: z.record(z.string(), z.number()),
+  totalScore: z.number(),
+  runId: z.string().optional(),
+});
 
 const http = httpRouter();
 
@@ -10,7 +18,7 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       // Parse the request body
-      const body: any = await request.json();
+      const body: unknown = await request.json();
 
       // Extract authentication token
       const authHeader = request.headers.get("Authorization");
@@ -38,45 +46,19 @@ http.route({
       }
 
       // Validate the inputs
-      if (!body.model || typeof body.model !== "string") {
+      const parsed = UpdateScoresBody.safeParse(body);
+      if (!parsed.success) {
         return new Response(
-          JSON.stringify({ error: "Missing or invalid model name" }),
-          { status: 400 },
-        );
-      }
-
-      if (!body.scores || typeof body.scores !== "object") {
-        return new Response(
-          JSON.stringify({ error: "Missing or invalid scores object" }),
-          { status: 400 },
-        );
-      }
-
-      // Validate that scores are properly formatted
-      for (const [category, score] of Object.entries(body.scores)) {
-        if (typeof category !== "string" || typeof score !== "number") {
-          return new Response(
-            JSON.stringify({
-              error: `Invalid score format for category "${category}". Category must be a string and score must be a number.`,
-            }),
-            { status: 400 },
-          );
-        }
-      }
-
-      if (typeof body.totalScore !== "number") {
-        return new Response(
-          JSON.stringify({ error: "Total score must be a number" }),
+          JSON.stringify({ error: parsed.error.issues[0].message }),
           { status: 400 },
         );
       }
 
       // Update the scores in the database
-      const result = await ctx.runMutation(internal.evalScores.updateScores, {
-        model: body.model,
-        scores: body.scores,
-        totalScore: body.totalScore,
-      });
+      const result = await ctx.runMutation(
+        internal.evalScores.updateScores,
+        parsed.data,
+      );
 
       return new Response(JSON.stringify({ success: true, id: result }), {
         status: 200,
@@ -103,6 +85,11 @@ http.route({
         model: score.model,
         scores: score.scores,
         totalScore: score.totalScore,
+        totalScoreErrorBar: score.totalScoreErrorBar,
+        scoreErrorBars: score.scoreErrorBars,
+        runCount: score.runCount,
+        latestRunId: score.latestRunId,
+        latestRunTime: score.latestRunTime,
       }));
 
       return new Response(JSON.stringify(formattedScores), {
