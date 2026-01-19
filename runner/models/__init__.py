@@ -99,6 +99,14 @@ ALL_MODELS = [
         provider=ModelProvider.OPENAI,
     ),
     ModelTemplate(
+        name="gpt-5.2",
+        formatted_name="GPT-5.2",
+        max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=False,
+        provider=ModelProvider.OPENAI,
+    ),
+    ModelTemplate(
         name="gpt-5",
         formatted_name="GPT-5",
         max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
