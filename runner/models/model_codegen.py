@@ -8,6 +8,11 @@ from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
 from braintrust import wrap_openai
 
 
+def should_skip_guidelines() -> bool:
+    """Check if guidelines should be skipped based on EVALS_EXPERIMENT env var."""
+    return os.getenv("EVALS_EXPERIMENT") == "no_guidelines"
+
+
 class Model(ConvexCodegenModel):
     def __init__(self, api_key: str, model: ModelTemplate):
         self.model = model
@@ -144,8 +149,9 @@ def render_prompt(chain_of_thought: bool, task_description: str):
     yield "- Ensure your code is clear, efficient, concise, and innovative.\n"
     yield "- Maintain a friendly and approachable tone in any comments or documentation.\n\n"
 
-    yield from render_guidelines(CONVEX_GUIDELINES)
-    yield "\n"
+    if not should_skip_guidelines():
+        yield from render_guidelines(CONVEX_GUIDELINES)
+        yield "\n"
 
     yield "\n# File Structure\n"
     yield "- You can write to `package.json`, `tsconfig.json`, and any files within the `convex/` folder.\n"

@@ -57,6 +57,10 @@ const LOCAL_RESULTS_FILE = "local_results.jsonl";
 const MODELS_FILE = "runner/models/__init__.py";
 const DEFAULT_MODEL = "claude-sonnet-4-5";
 
+// Valid experiment values (must match the Python/Convex schema)
+const VALID_EXPERIMENTS = ["no_guidelines"] as const;
+type Experiment = (typeof VALID_EXPERIMENTS)[number];
+
 interface ModelChoice {
   name: string;
   value: string;
@@ -235,6 +239,7 @@ interface RunOptions {
   verbose: boolean;
   outputTempdir?: string;
   postToConvex: boolean;
+  experiment?: Experiment;
 }
 
 function isConvexPostingConfigured(): boolean {
@@ -267,6 +272,10 @@ function buildEnvVars(options: RunOptions): Record<string, string> {
     env.POST_TO_CONVEX = "1";
   }
 
+  if (options.experiment) {
+    env.EVALS_EXPERIMENT = options.experiment;
+  }
+
   env.LOCAL_RESULTS = LOCAL_RESULTS_FILE;
 
   if (options.outputTempdir) {
@@ -292,6 +301,7 @@ async function runEvals(options: RunOptions): Promise<void> {
   console.log("Configuration:");
   console.log(`  Models: ${options.models.join(", ") || "(default)"}`);
   console.log(`  Filter: ${options.filter || "(all)"}`);
+  console.log(`  Experiment: ${options.experiment || "(none)"}`);
   console.log(
     `  Braintrust: ${options.disableBraintrust ? "disabled" : "enabled"}`,
   );
@@ -429,7 +439,10 @@ async function selectModels(): Promise<SelectResult<string[]>> {
       pageSize: 15,
     });
 
-    if (selected.length === 0) return BACK;
+    if (selected.length === 0) {
+      console.log("\nNo models selected, going back.\n");
+      return BACK;
+    }
     return selected;
   }
 
@@ -449,9 +462,27 @@ async function selectModels(): Promise<SelectResult<string[]>> {
   return [modelChoice];
 }
 
+async function selectExperiment(): Promise<SelectResult<Experiment | undefined>> {
+  const choice = await select({
+    message: "Run an experiment?",
+    choices: [
+      { name: "No experiment (use guidelines)", value: "none" },
+      { name: "no_guidelines (skip Convex guidelines)", value: "no_guidelines" },
+      { name: "← Back", value: "back" },
+    ],
+  });
+
+  if (choice === "back") return BACK;
+  if (choice === "none") return undefined;
+  return choice as Experiment;
+}
+
 async function selectOptions(): Promise<
-  SelectResult<{ useBraintrust: boolean; verbose: boolean; postToConvex: boolean }>
+  SelectResult<{ useBraintrust: boolean; verbose: boolean; postToConvex: boolean; experiment?: Experiment }>
 > {
+  const experiment = await selectExperiment();
+  if (experiment === BACK) return BACK;
+
   const useBraintrust = await confirm({
     message: "Send results to Braintrust?",
     default: false,
@@ -471,7 +502,7 @@ async function selectOptions(): Promise<
     default: true,
   });
 
-  return { useBraintrust, verbose, postToConvex };
+  return { useBraintrust, verbose, postToConvex, experiment };
 }
 
 interface LastRunConfig {
@@ -480,6 +511,7 @@ interface LastRunConfig {
   useBraintrust: boolean;
   verbose: boolean;
   postToConvex: boolean;
+  experiment?: Experiment;
 }
 
 function formatRunConfigSummary(config: LastRunConfig): string {
@@ -587,6 +619,7 @@ async function interactiveMode(): Promise<void> {
             disableBraintrust: !lastRunConfig.useBraintrust,
             verbose: lastRunConfig.verbose,
             postToConvex: lastRunConfig.postToConvex,
+            experiment: lastRunConfig.experiment,
           });
           // Refresh failed evals after run
           failedEvals = await getFailedEvals();
@@ -627,6 +660,7 @@ async function interactiveMode(): Promise<void> {
       useBraintrust: options.useBraintrust,
       verbose: options.verbose,
       postToConvex: options.postToConvex,
+      experiment: options.experiment,
     };
 
     try {
@@ -636,6 +670,7 @@ async function interactiveMode(): Promise<void> {
         disableBraintrust: !options.useBraintrust,
         verbose: options.verbose,
         postToConvex: options.postToConvex,
+        experiment: options.experiment,
       });
       // Refresh failed evals after run
       failedEvals = await getFailedEvals();
@@ -663,17 +698,25 @@ program
   .option("-f, --filter <pattern>", "Filter evals by regex pattern")
   .option("-c, --category <categories...>", "Run specific categories")
   .option("--failed", "Re-run only failed evals from last run")
+  .option("-e, --experiment <name>", `Run an experiment (${VALID_EXPERIMENTS.join(", ")})`)
   .option("--braintrust", "Send results to Braintrust")
   .option("--post-to-convex", "Post results to Convex database")
   .option("-v, --verbose", "Enable verbose logging", true)
   .option("--no-verbose", "Disable verbose logging")
   .option("-o, --output <dir>", "Output directory for results")
   .action(async (options) => {
+    // Validate experiment if provided
+    if (options.experiment && !VALID_EXPERIMENTS.includes(options.experiment)) {
+      console.error(`Invalid experiment: ${options.experiment}`);
+      console.error(`Valid experiments: ${VALID_EXPERIMENTS.join(", ")}`);
+      process.exit(1);
+    }
+
     // If no filtering options provided, enter interactive mode
     const hasFilterOptions =
       options.model || options.filter || options.category || options.failed;
 
-    if (!hasFilterOptions) {
+    if (!hasFilterOptions && !options.experiment) {
       await interactiveMode();
       return;
     }
@@ -702,6 +745,7 @@ program
       verbose: options.verbose,
       outputTempdir: options.output,
       postToConvex: options.postToConvex || false,
+      experiment: options.experiment,
     });
   });
 

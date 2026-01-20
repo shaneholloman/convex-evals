@@ -106,9 +106,25 @@ function Sidebar({
   return (
     <aside className="w-72 bg-slate-800/50 border-r border-slate-700 overflow-auto">
       <div className="p-4 border-b border-slate-700">
-        <h2 className="font-semibold text-white">Evaluation Runs</h2>
+        <h2 className="font-semibold text-white">Navigation</h2>
       </div>
       <nav className="p-2">
+        <Link to="/" className="sidebar-item block mb-1 active">
+          📁 Local Results
+        </Link>
+        <Link
+          to="/scores"
+          className="sidebar-item block mb-2 text-slate-400 hover:text-white"
+        >
+          📊 Database Scores
+        </Link>
+      </nav>
+      <div className="p-4 border-t border-slate-700">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+          Local Runs ({results.length})
+        </h3>
+      </div>
+      <nav className="p-2 pt-0">
         {results.map((result, index) => {
           const modelName = result.model_name ?? "Unknown Model";
           const overallScore = result.run_stats?.overall_score ?? 0;

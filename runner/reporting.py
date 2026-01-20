@@ -10,6 +10,7 @@ from braintrust.framework import report_failures, EvalResultWithSummary
 OUTPUT_RESULTS_FILE = os.getenv("LOCAL_RESULTS", "local_results.jsonl")
 CONVEX_EVAL_ENDPOINT = os.getenv("CONVEX_EVAL_ENDPOINT")
 CONVEX_AUTH_TOKEN = os.getenv("CONVEX_AUTH_TOKEN")
+EVALS_EXPERIMENT = os.getenv("EVALS_EXPERIMENT")
 
 
 def post_scores_to_convex(model_name: str, category_scores: dict, total_score: float) -> None:
@@ -19,6 +20,8 @@ def post_scores_to_convex(model_name: str, category_scores: dict, total_score: f
     if not post_to_convex and not braintrust_enabled:
         return
     payload = {"model": model_name, "scores": category_scores, "totalScore": total_score}
+    if EVALS_EXPERIMENT:
+        payload["experiment"] = EVALS_EXPERIMENT
     if CONVEX_EVAL_ENDPOINT is not None and CONVEX_AUTH_TOKEN is not None:
         try:
             response = requests.post(

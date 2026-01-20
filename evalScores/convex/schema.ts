@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const experimentLiteral = v.union(v.literal("no_guidelines"));
+
 export default defineSchema({
   // Each record is a single eval run for a model (append-only for history)
   evalScores: defineTable({
@@ -9,7 +11,11 @@ export default defineSchema({
     totalScore: v.number(),
     // Optional run identifier (e.g. git sha, date string)
     runId: v.optional(v.string()),
-  }).index("by_model", ["model"]),
+    // Optional experiment tag for A/B testing different configurations
+    experiment: v.optional(experimentLiteral),
+  })
+    .index("by_model", ["model"])
+    .index("by_experiment", ["experiment"]),
 
   authTokens: defineTable({
     name: v.string(),

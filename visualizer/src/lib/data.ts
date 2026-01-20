@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve, join } from "node:path";
-import type { EvalResult, FileEntry } from "./types";
+import type { EvalResult, FileEntry, ConvexModelScore, ConvexRun } from "./types";
+
+// Convex evalScores endpoint (use dev deployment for local testing)
+const CONVEX_BASE_URL =
+  process.env.CONVEX_SITE_URL || "https://brazen-pelican-414.convex.site";
+
+const CONVEX_SCORES_URL = `${CONVEX_BASE_URL}/listScores`;
+const CONVEX_RUNS_URL = `${CONVEX_BASE_URL}/listRuns`;
 
 // Get the project root (one level up from visualizer)
 function getProjectRoot(): string {
@@ -141,5 +148,35 @@ export const getAnswerFileContent = createServerFn().handler(
     }
 
     return readFileSync(filePath, { encoding: "utf-8" });
+  },
+);
+
+export const getConvexScores = createServerFn().handler(
+  async (): Promise<ConvexModelScore[]> => {
+    const response = await fetch(CONVEX_SCORES_URL);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch scores: ${response.status}`);
+    }
+    return response.json();
+  },
+);
+
+export const getConvexRuns = createServerFn().handler(
+  async (ctx: { data?: { experiment?: string; includeAll?: boolean; limit?: number } }): Promise<ConvexRun[]> => {
+    const { experiment, includeAll, limit } = ctx.data || {};
+    const url = new URL(CONVEX_RUNS_URL);
+    if (includeAll) {
+      url.searchParams.set("includeAll", "true");
+    } else if (experiment) {
+      url.searchParams.set("experiment", experiment);
+    }
+    if (limit) {
+      url.searchParams.set("limit", String(limit));
+    }
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      throw new Error(`Failed to fetch runs: ${response.status}`);
+    }
+    return response.json();
   },
 );

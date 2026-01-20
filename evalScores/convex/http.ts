@@ -3,11 +3,14 @@ import { z } from "zod";
 import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
+const experimentLiteral = z.enum(["no_guidelines"]);
+
 const UpdateScoresBody = z.object({
   model: z.string(),
   scores: z.record(z.string(), z.number()),
   totalScore: z.number(),
   runId: z.string().optional(),
+  experiment: experimentLiteral.optional(),
 });
 
 const http = httpRouter();
@@ -101,6 +104,44 @@ http.route({
       });
     } catch (error) {
       console.error("Error listing scores:", error);
+      return new Response(JSON.stringify({ error: "Internal server error" }), {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      });
+    }
+  }),
+});
+
+http.route({
+  path: "/listRuns",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const experiment = url.searchParams.get("experiment");
+      const includeAll = url.searchParams.get("includeAll") === "true";
+      const limitParam = url.searchParams.get("limit");
+      const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+
+      // Get runs from the database
+      const runs = await ctx.runQuery(api.evalScores.listAllRuns, {
+        experiment: experiment === "no_guidelines" ? "no_guidelines" : undefined,
+        includeAllExperiments: includeAll,
+        limit,
+      });
+
+      return new Response(JSON.stringify(runs), {
+        status: 200,
+        headers: new Headers({
+          "Access-Control-Allow-Origin": "*",
+          Vary: "origin",
+        }),
+      });
+    } catch (error) {
+      console.error("Error listing runs:", error);
       return new Response(JSON.stringify({ error: "Internal server error" }), {
         status: 500,
         headers: {

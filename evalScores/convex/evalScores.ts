@@ -3,6 +3,8 @@ import { v } from "convex/values";
 
 const HISTORY_SIZE = 5;
 
+const experimentLiteral = v.union(v.literal("no_guidelines"));
+
 /**
  * Records scores for a model run. Always inserts a new record (append-only).
  */
@@ -12,6 +14,7 @@ export const updateScores = internalMutation({
     scores: v.record(v.string(), v.number()),
     totalScore: v.number(),
     runId: v.optional(v.string()),
+    experiment: v.optional(experimentLiteral),
   },
   returns: v.id("evalScores"),
   handler: async (ctx, args) => {
@@ -20,6 +23,7 @@ export const updateScores = internalMutation({
       scores: args.scores,
       totalScore: args.totalScore,
       runId: args.runId,
+      experiment: args.experiment,
     });
     return id;
   },
@@ -65,7 +69,9 @@ function computeStdDev(values: number[]): number {
  * Error bars are ± standard deviation computed from the last N runs.
  */
 export const listAllScores = query({
-  args: {},
+  args: {
+    experiment: v.optional(experimentLiteral),
+  },
   returns: v.array(
     v.object({
       model: v.string(),
@@ -78,8 +84,16 @@ export const listAllScores = query({
       latestRunTime: v.number(),
     }),
   ),
-  handler: async (ctx) => {
-    const allScores = await ctx.db.query("evalScores").collect();
+  handler: async (ctx, args) => {
+    const allScores = args.experiment
+      ? await ctx.db
+          .query("evalScores")
+          .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
+          .collect()
+      : await ctx.db
+          .query("evalScores")
+          .withIndex("by_experiment", (q) => q.eq("experiment", undefined))
+          .collect();
 
     // Group by model
     const byModel = new Map<string, typeof allScores>();
@@ -142,5 +156,61 @@ export const listAllScores = query({
     results.sort((a, b) => a.model.localeCompare(b.model));
 
     return results;
+  },
+});
+
+/**
+ * Lists all individual runs (not aggregated by model).
+ * Pass includeAllExperiments=true to get all runs regardless of experiment.
+ * Otherwise, pass experiment to filter by a specific experiment, or omit to get only default runs.
+ */
+export const listAllRuns = query({
+  args: {
+    experiment: v.optional(experimentLiteral),
+    includeAllExperiments: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("evalScores"),
+      model: v.string(),
+      totalScore: v.number(),
+      scores: v.record(v.string(), v.number()),
+      runId: v.optional(v.string()),
+      experiment: v.optional(experimentLiteral),
+      _creationTime: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    let allRuns;
+    if (args.includeAllExperiments) {
+      // Fetch all runs regardless of experiment
+      allRuns = await ctx.db.query("evalScores").order("desc").collect();
+    } else if (args.experiment) {
+      allRuns = await ctx.db
+        .query("evalScores")
+        .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
+        .order("desc")
+        .collect();
+    } else {
+      allRuns = await ctx.db
+        .query("evalScores")
+        .withIndex("by_experiment", (q) => q.eq("experiment", undefined))
+        .order("desc")
+        .collect();
+    }
+
+    // Apply limit if provided
+    const runs = args.limit ? allRuns.slice(0, args.limit) : allRuns;
+
+    return runs.map((run) => ({
+      _id: run._id,
+      model: run.model,
+      totalScore: run.totalScore,
+      scores: run.scores,
+      runId: run.runId,
+      experiment: run.experiment,
+      _creationTime: run._creationTime,
+    }));
   },
 });

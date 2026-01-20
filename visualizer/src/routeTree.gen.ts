@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ScoresRouteImport } from './routes/scores'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RunRunIndexRouteImport } from './routes/run.$runIndex'
 import { Route as RunRunIndexIndexRouteImport } from './routes/run.$runIndex.index'
@@ -16,6 +17,11 @@ import { Route as RunRunIndexCategoryRouteImport } from './routes/run.$runIndex.
 import { Route as RunRunIndexCategoryIndexRouteImport } from './routes/run.$runIndex.$category.index'
 import { Route as RunRunIndexCategoryEvalNameRouteImport } from './routes/run.$runIndex.$category.$evalName'
 
+const ScoresRoute = ScoresRouteImport.update({
+  id: '/scores',
+  path: '/scores',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -51,6 +57,7 @@ const RunRunIndexCategoryEvalNameRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/scores': typeof ScoresRoute
   '/run/$runIndex': typeof RunRunIndexRouteWithChildren
   '/run/$runIndex/$category': typeof RunRunIndexCategoryRouteWithChildren
   '/run/$runIndex/': typeof RunRunIndexIndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/scores': typeof ScoresRoute
   '/run/$runIndex': typeof RunRunIndexIndexRoute
   '/run/$runIndex/$category/$evalName': typeof RunRunIndexCategoryEvalNameRoute
   '/run/$runIndex/$category': typeof RunRunIndexCategoryIndexRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/scores': typeof ScoresRoute
   '/run/$runIndex': typeof RunRunIndexRouteWithChildren
   '/run/$runIndex/$category': typeof RunRunIndexCategoryRouteWithChildren
   '/run/$runIndex/': typeof RunRunIndexIndexRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/scores'
     | '/run/$runIndex'
     | '/run/$runIndex/$category'
     | '/run/$runIndex/'
@@ -84,12 +94,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/scores'
     | '/run/$runIndex'
     | '/run/$runIndex/$category/$evalName'
     | '/run/$runIndex/$category'
   id:
     | '__root__'
     | '/'
+    | '/scores'
     | '/run/$runIndex'
     | '/run/$runIndex/$category'
     | '/run/$runIndex/'
@@ -99,11 +111,19 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ScoresRoute: typeof ScoresRoute
   RunRunIndexRoute: typeof RunRunIndexRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/scores': {
+      id: '/scores'
+      path: '/scores'
+      fullPath: '/scores'
+      preLoaderRoute: typeof ScoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -178,6 +198,7 @@ const RunRunIndexRouteWithChildren = RunRunIndexRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ScoresRoute: ScoresRoute,
   RunRunIndexRoute: RunRunIndexRouteWithChildren,
 }
 export const routeTree = rootRouteImport

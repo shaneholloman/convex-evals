@@ -57,6 +57,28 @@ export interface FileEntry {
   path: string;
 }
 
+// Types for Convex evalScores database
+export interface ConvexModelScore {
+  model: string;
+  totalScore: number;
+  totalScoreErrorBar: number;
+  scores: Record<string, number>;
+  scoreErrorBars: Record<string, number>;
+  runCount: number;
+  latestRunId?: string;
+  latestRunTime: number;
+}
+
+export interface ConvexRun {
+  _id: string;
+  model: string;
+  totalScore: number;
+  scores: Record<string, number>;
+  runId?: string;
+  experiment?: "no_guidelines";
+  _creationTime: number;
+}
+
 export function getScoreStatus(
   score: number,
 ): "excellent" | "good" | "fair" | "poor" {
