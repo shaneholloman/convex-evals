@@ -51,7 +51,14 @@ class Model(ConvexCodegenModel):
         else:
             system_message = {"role": "user", "content": SYSTEM_PROMPT}
         # Build parameters, selecting the correct token limit key for newer models
-        max_token_limit = 8192 if self.model.name == "claude-3-5-sonnet-latest" else 16384
+        # Together AI models (DeepSeek, Llama) have a 12289 total context limit,
+        # so we use a lower max_tokens to leave room for input tokens (~7000)
+        if self.model.provider == ModelProvider.TOGETHER:
+            max_token_limit = 4096
+        elif self.model.name == "claude-3-5-sonnet-latest":
+            max_token_limit = 8192
+        else:
+            max_token_limit = 16384
         create_params = {
             "model": self.model.name,
             "messages": [

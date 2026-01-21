@@ -157,7 +157,7 @@ model_names = [
 ]
 
 if os.getenv("MODELS") is not None:
-    model_names = os.getenv("MODELS").split(",")
+    model_names = [name.strip() for name in os.getenv("MODELS").split(",") if name.strip()]
 
 for model_name in model_names:
     assert model_name in MODELS_BY_NAME, f"Model {model_name} not supported"
