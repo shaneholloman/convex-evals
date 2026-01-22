@@ -14,9 +14,12 @@ jobs:
       max-parallel: 2
       matrix:
         model:
-          - meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo
+          - meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
           - deepseek-ai/DeepSeek-R1
           - deepseek-ai/DeepSeek-V3
+          - Zhipu/glm-4.7
+          - moonshotai/Kimi-K2-Instruct
+          - Qwen/Qwen3-235B-A22B-Instruct-2507-FP8
 
     steps:
       - uses: actions/checkout@v4
