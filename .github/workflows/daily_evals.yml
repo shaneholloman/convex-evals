@@ -1,8 +1,8 @@
-name: Weekly Convex Evaluations (All Models)
+name: Daily Convex Evaluations
 
 on:
   schedule:
-    - cron: "0 0 * * 0" # Run at midnight UTC on Sunday
+    - cron: "0 0 * * 1,3,5" # Run at midnight UTC on Monday, Wednesday, and Friday
   workflow_dispatch: # Allow manual triggering
 
 jobs:
@@ -22,8 +22,7 @@ jobs:
         run: pdm install
       - id: set-models
         run: |
-          # Get all models from Python source of truth
-          models=$(pdm run python -m runner.list_models --provider all --format json)
+          models=$(pdm run python -m runner.list_models --frequency daily --format json)
           echo "models=$models" >> $GITHUB_OUTPUT
 
   run-evals:
@@ -35,6 +34,17 @@ jobs:
       max-parallel: 2
       matrix:
         model: ${{ fromJson(needs.setup.outputs.models) }}
+
+    env:
+      ENVIRONMENT: ci
+      BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+      CONVEX_EVAL_ENDPOINT: ${{ secrets.CONVEX_EVAL_ENDPOINT }}
+      CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -77,30 +87,12 @@ jobs:
 
       - name: Run evaluations
         env:
-          ENVIRONMENT: ci
           OUTPUT_TEMPDIR: /tmp/convex-evals
-          BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          CONVEX_EVAL_ENDPOINT: ${{ secrets.CONVEX_EVAL_ENDPOINT }}
-          CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
         run: pdm run braintrust eval runner/eval_convex_coding.py
 
       - name: Run evaluations (no_guidelines experiment)
         env:
-          ENVIRONMENT: ci
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines
           DISABLE_BRAINTRUST: 1
-          BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-          CONVEX_EVAL_ENDPOINT: ${{ secrets.CONVEX_EVAL_ENDPOINT }}
-          CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
         run: pdm run braintrust eval runner/eval_convex_coding.py
