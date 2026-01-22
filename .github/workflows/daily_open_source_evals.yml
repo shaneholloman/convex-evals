@@ -65,6 +65,7 @@ jobs:
           ENVIRONMENT: ci
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines
+          DISABLE_BRAINTRUST: 1
           BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
