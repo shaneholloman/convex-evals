@@ -187,7 +187,7 @@ ALL_MODELS = [
         ci_run_frequency="daily",
     ),
     ModelTemplate(
-        name="Zhipu/glm-4.7",
+        name="zai-org/GLM-4.7",
         formatted_name="GLM 4.7",
         max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
         requires_chain_of_thought=False,
@@ -196,7 +196,7 @@ ALL_MODELS = [
         ci_run_frequency="daily",
     ),
     ModelTemplate(
-        name="moonshotai/Kimi-K2-Instruct",
+        name="moonshotai/Kimi-K2-Instruct-0905",
         formatted_name="Kimi K2",
         max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
         requires_chain_of_thought=False,
@@ -205,7 +205,7 @@ ALL_MODELS = [
         ci_run_frequency="daily",
     ),
     ModelTemplate(
-        name="Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
+        name="Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
         formatted_name="Qwen3 235B",
         max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
         requires_chain_of_thought=False,
