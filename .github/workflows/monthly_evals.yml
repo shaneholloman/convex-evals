@@ -95,4 +95,5 @@ jobs:
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines
           DISABLE_BRAINTRUST: 1
+          POST_TO_CONVEX: 1
         run: pdm run braintrust eval runner/eval_convex_coding.py
