@@ -321,13 +321,15 @@ describe("GET /listScores", () => {
 
     const entry = body[0];
     expect(entry.model).toBe("model-x");
-    expect(entry.totalScore).toBe(1.0); // Latest score
     expect(entry.runCount).toBe(3);
 
-    // Standard deviation of [0.8, 0.9, 1.0] = sqrt(((0.8-0.9)^2 + (0.9-0.9)^2 + (1.0-0.9)^2) / 3)
-    // = sqrt((0.01 + 0 + 0.01) / 3) = sqrt(0.02/3) ≈ 0.0816
-    expect(entry.totalScoreErrorBar).toBeCloseTo(0.0816, 3);
-    expect(entry.scoreErrorBars.cat1).toBeCloseTo(0.0816, 3);
+    // Scores [0.8, 0.9, 1.0]: min=0.8, max=1.0
+    // Midpoint = (0.8 + 1.0) / 2 = 0.9
+    // Error bar = (1.0 - 0.8) / 2 = 0.1
+    expect(entry.totalScore).toBeCloseTo(0.9);
+    expect(entry.totalScoreErrorBar).toBeCloseTo(0.1);
+    expect(entry.scores.cat1).toBeCloseTo(0.9);
+    expect(entry.scoreErrorBars.cat1).toBeCloseTo(0.1);
   });
 
   it("returns multiple models sorted by name", async () => {

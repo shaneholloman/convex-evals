@@ -62,6 +62,10 @@ jobs:
         working-directory: evalScores
         run: bun install
 
+      - name: Run evalScores tests
+        working-directory: evalScores
+        run: bun test --run
+
       - name: Deploy Convex
         working-directory: evalScores
         env:

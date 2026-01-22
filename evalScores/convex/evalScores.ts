@@ -56,12 +56,16 @@ export const getScores = query({
   },
 });
 
-function computeStdDev(values: number[]): number {
-  if (values.length < 2) return 0;
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  const squaredDiffs = values.map((v) => (v - mean) ** 2);
-  const variance = squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
-  return Math.sqrt(variance);
+function computeMeanAndErrorBar(values: number[]): { mean: number; errorBar: number } {
+  if (values.length === 0) return { mean: 0, errorBar: 0 };
+  if (values.length === 1) return { mean: values[0], errorBar: 0 };
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const mean = (min + max) / 2;
+  const errorBar = (max - min) / 2;
+
+  return { mean, errorBar };
 }
 
 /**
@@ -120,11 +124,12 @@ export const listAllScores = query({
       const recentRuns = sorted.slice(0, HISTORY_SIZE);
       const latest = recentRuns[0];
 
-      // Compute error bar for totalScore
+      // Compute mean and error bar for totalScore
       const totalScores = recentRuns.map((r) => r.totalScore);
-      const totalScoreErrorBar = computeStdDev(totalScores);
+      const { mean: totalScore, errorBar: totalScoreErrorBar } =
+        computeMeanAndErrorBar(totalScores);
 
-      // Compute error bars for each category
+      // Compute mean and error bars for each category
       const allCategories = new Set<string>();
       for (const run of recentRuns) {
         for (const cat of Object.keys(run.scores)) {
@@ -132,19 +137,22 @@ export const listAllScores = query({
         }
       }
 
+      const scores: Record<string, number> = {};
       const scoreErrorBars: Record<string, number> = {};
       for (const cat of allCategories) {
         const catScores = recentRuns
           .map((r) => r.scores[cat])
           .filter((s): s is number => s !== undefined);
-        scoreErrorBars[cat] = computeStdDev(catScores);
+        const { mean, errorBar } = computeMeanAndErrorBar(catScores);
+        scores[cat] = mean;
+        scoreErrorBars[cat] = errorBar;
       }
 
       results.push({
         model,
-        totalScore: latest.totalScore,
+        totalScore,
         totalScoreErrorBar,
-        scores: latest.scores,
+        scores,
         scoreErrorBars,
         runCount: runs.length,
         latestRunId: latest.runId,
