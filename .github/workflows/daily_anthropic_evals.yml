@@ -8,7 +8,16 @@ on:
 jobs:
   run-evals:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        model:
+          - claude-sonnet-4-0
+          - claude-sonnet-4-5
+          - claude-haiku-4-5
+          - claude-opus-4-5
 
     steps:
       - uses: actions/checkout@v4
@@ -45,9 +54,9 @@ jobs:
           echo "CONVEX_EVAL_ENDPOINT=${{ secrets.CONVEX_EVAL_ENDPOINT }}" >> $GITHUB_ENV
           echo "CONVEX_AUTH_TOKEN=${{ secrets.CONVEX_AUTH_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Set Anthropic models
+      - name: Set model
         run: |
-          echo "MODELS=claude-sonnet-4-0,claude-sonnet-4-5,claude-haiku-4-5,claude-opus-4-5" >> $GITHUB_ENV
+          echo "MODELS=${{ matrix.model }}" >> $GITHUB_ENV
 
       - name: Run evaluations
         env:
