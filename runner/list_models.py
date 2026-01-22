@@ -33,7 +33,7 @@ def main():
     )
     parser.add_argument(
         "--frequency",
-        choices=["daily", "weekly", "never", "all"],
+        choices=["daily", "weekly", "monthly", "never", "all"],
         default="all",
         help="Filter by CI run frequency (default: all)",
     )

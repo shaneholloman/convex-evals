@@ -12,7 +12,7 @@ class ModelProvider(Enum):
     XAI = "xai"
 
 
-CIRunFrequency = Literal["daily", "weekly", "never"]
+CIRunFrequency = Literal["daily", "weekly", "monthly", "never"]
 
 
 class ModelTemplate(BaseModel):
@@ -36,7 +36,7 @@ ALL_MODELS = [
         requires_chain_of_thought=True,
         uses_system_prompt=True,
         provider=ModelProvider.ANTHROPIC,
-        ci_run_frequency="weekly",
+        ci_run_frequency="monthly",
     ),
     ModelTemplate(
         name="claude-3-7-sonnet-latest",
@@ -45,7 +45,7 @@ ALL_MODELS = [
         requires_chain_of_thought=True,
         uses_system_prompt=True,
         provider=ModelProvider.ANTHROPIC,
-        ci_run_frequency="weekly",
+        ci_run_frequency="monthly",
     ),
     ModelTemplate(
         name="claude-sonnet-4-0",
@@ -55,7 +55,7 @@ ALL_MODELS = [
         uses_system_prompt=True,
         provider=ModelProvider.ANTHROPIC,
         override_proxy="https://api.anthropic.com/v1",
-        ci_run_frequency="daily",
+        ci_run_frequency="weekly",
     ),
     ModelTemplate(
         name="claude-sonnet-4-5",
@@ -96,7 +96,7 @@ ALL_MODELS = [
         uses_system_prompt=False,
         provider=ModelProvider.OPENAI,
         supports_temperature=False,
-        ci_run_frequency="weekly",
+        ci_run_frequency="monthly",
     ),
     ModelTemplate(
         name="gpt-4.1",
@@ -105,7 +105,7 @@ ALL_MODELS = [
         requires_chain_of_thought=True,
         uses_system_prompt=True,
         provider=ModelProvider.OPENAI,
-        ci_run_frequency="weekly",
+        ci_run_frequency="monthly",
     ),
     ModelTemplate(
         name="gpt-5.1",
