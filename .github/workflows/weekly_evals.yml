@@ -1,4 +1,4 @@
-name: Weekly Convex Evaluations (All Models)
+name: Weekly Convex Evaluations
 
 on:
   schedule:
