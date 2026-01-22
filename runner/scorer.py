@@ -166,35 +166,55 @@ def write_filesystem(project_dir, output):
             f.write(file_content)
 
 
+# Timeout for bun install (in seconds)
+BUN_INSTALL_TIMEOUT_SECONDS = 60
+
+
 @traced
 def install_dependencies(project_dir):
     cmd = ["bun", "install"]
-    done = subprocess.run(
-        cmd,
-        cwd=project_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        done = subprocess.run(
+            cmd,
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=BUN_INSTALL_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"bun install timed out after {BUN_INSTALL_TIMEOUT_SECONDS} seconds")
     if done.returncode != 0:
         raise Exception(f"Failed to install dependencies:\n{done.stdout}")
     # Return a list of (safe_cmd, stdout)
     return [(cmd, done.stdout)]
 
 
+# Timeout for convex codegen (in seconds)
+CODEGEN_TIMEOUT_SECONDS = 60
+
+
 @traced
 def generate_code(project_dir):
     cmd = ["bunx", "convex", "codegen", "--typecheck", "disable", "--init"]
-    done = subprocess.run(
-        cmd,
-        cwd=project_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        done = subprocess.run(
+            cmd,
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=CODEGEN_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"convex codegen timed out after {CODEGEN_TIMEOUT_SECONDS} seconds")
     if done.returncode != 0:
         raise Exception(f"Failed to generate code:\n{done.stdout}")
     return [(cmd, done.stdout)]
+
+
+# Timeout for tsc (in seconds)
+TSC_TIMEOUT_SECONDS = 60
 
 
 @traced
@@ -202,13 +222,17 @@ def typecheck_code(project_dir):
     results = []
     convex_dir = os.path.abspath(os.path.join(project_dir, "convex"))
     tsc_convex_cmd = ["bunx", "tsc", "-noEmit", "-p", convex_dir]
-    done = subprocess.run(
-        tsc_convex_cmd,
-        cwd=project_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        done = subprocess.run(
+            tsc_convex_cmd,
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=TSC_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"tsc timed out after {TSC_TIMEOUT_SECONDS} seconds")
     if done.returncode != 0:
         raise Exception(f"Failed to typecheck code:\n{done.stdout}")
     results.append((tsc_convex_cmd, done.stdout))
@@ -216,17 +240,25 @@ def typecheck_code(project_dir):
     src_dir = os.path.abspath(os.path.join(project_dir, "src"))
     if os.path.exists(src_dir):
         tsc_src_cmd = ["bunx", "tsc", "-noEmit", "-p", "."]
-        done = subprocess.run(
-            tsc_src_cmd,
-            cwd=project_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
-        )
+        try:
+            done = subprocess.run(
+                tsc_src_cmd,
+                cwd=project_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                timeout=TSC_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            raise Exception(f"tsc timed out after {TSC_TIMEOUT_SECONDS} seconds")
         if done.returncode != 0:
             raise Exception(f"Failed to typecheck code:\n{done.stdout}")
         results.append((tsc_src_cmd, done.stdout))
     return results
+
+
+# Timeout for eslint (in seconds)
+ESLINT_TIMEOUT_SECONDS = 60
 
 
 @traced
@@ -234,13 +266,17 @@ def lint_code(project_dir):
     results = []
     eslint_config = os.path.abspath("eslint.config.mjs")
     eslint_convex_cmd = ["bunx", "eslint", "-c", eslint_config, "convex"]
-    done = subprocess.run(
-        eslint_convex_cmd,
-        cwd=project_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        done = subprocess.run(
+            eslint_convex_cmd,
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=ESLINT_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"eslint timed out after {ESLINT_TIMEOUT_SECONDS} seconds")
     if done.returncode != 0:
         raise Exception(f"Failed to lint code:\n{done.stdout}")
     results.append((eslint_convex_cmd, done.stdout))
@@ -249,17 +285,25 @@ def lint_code(project_dir):
     src_dir = os.path.join(project_dir, "src")
     if os.path.exists(src_dir):
         eslint_src_cmd = ["bunx", "eslint", "-c", src_eslint_config, "src"]
-        done = subprocess.run(
-            eslint_src_cmd,
-            cwd=project_dir,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
-        )
+        try:
+            done = subprocess.run(
+                eslint_src_cmd,
+                cwd=project_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                timeout=ESLINT_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            raise Exception(f"eslint timed out after {ESLINT_TIMEOUT_SECONDS} seconds")
         if done.returncode != 0:
             raise Exception(f"Failed to lint code:\n{done.stdout}")
         results.append((eslint_src_cmd, done.stdout))
     return results
+
+
+# Timeout for convex dev --once (in seconds)
+DEPLOY_TIMEOUT_SECONDS = 90
 
 
 @traced
@@ -269,13 +313,17 @@ def deploy(backend, project_dir):
       
     # Run codegen --init to create convex/tsconfig.json and other boilerplate files
     init_cmd = ["bunx", "convex", "codegen", "--typecheck", "disable", "--init"]
-    init_done = subprocess.run(
-        init_cmd,
-        cwd=project_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        init_done = subprocess.run(
+            init_cmd,
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=CODEGEN_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"convex codegen timed out after {CODEGEN_TIMEOUT_SECONDS} seconds")
     results.append((init_cmd, init_done.stdout))
     
     # Run convex dev --once to generate code and push functions
@@ -289,13 +337,17 @@ def deploy(backend, project_dir):
         "--url",
         convex_url,
     ]
-    done = subprocess.run(
-        exec_cmd,
-        cwd=project_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        done = subprocess.run(
+            exec_cmd,
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=DEPLOY_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"convex dev timed out after {DEPLOY_TIMEOUT_SECONDS} seconds")
     
     # Check for success: either zero exit code OR output contains success message.
     # On Windows, bun can crash with a libuv assertion failure after successful deploy,
@@ -338,6 +390,10 @@ def setup_answer_backend(tempdir, eval_path, model, category, name):
     return answer_project_dir, answer_backend_dir
 
 
+# Timeout for vitest test execution (in seconds)
+VITEST_TIMEOUT_SECONDS = 120
+
+
 @traced
 def run_tests(backend, answer_backend, test_file):
     env = dict(
@@ -364,13 +420,17 @@ def run_tests(backend, answer_backend, test_file):
         "--reporter=default",
         "--no-color",
     ]
-    done = subprocess.run(
-        cmd,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        encoding="utf-8",
-    )
+    try:
+        done = subprocess.run(
+            cmd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            timeout=VITEST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        raise Exception(f"Tests timed out after {VITEST_TIMEOUT_SECONDS} seconds")
 
     # Parse the JSON file for test counts
     try:
