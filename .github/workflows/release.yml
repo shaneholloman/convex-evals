@@ -64,7 +64,7 @@ jobs:
 
       - name: Run evalScores tests
         working-directory: evalScores
-        run: bun test --run
+        run: bunx vitest run
 
       - name: Deploy Convex
         working-directory: evalScores

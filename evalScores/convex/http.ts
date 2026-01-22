@@ -80,8 +80,13 @@ http.route({
   method: "GET",
   handler: httpAction(async (ctx, request) => {
     try {
+      const url = new URL(request.url);
+      const experiment = url.searchParams.get("experiment");
+
       // Get all model scores from the database
-      const allScores = await ctx.runQuery(api.evalScores.listAllScores, {});
+      const allScores = await ctx.runQuery(api.evalScores.listAllScores, {
+        experiment: experiment === "no_guidelines" ? "no_guidelines" : undefined,
+      });
 
       // Format the response
       const formattedScores = allScores.map((score) => ({

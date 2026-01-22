@@ -230,6 +230,55 @@ describe("POST /updateScores", () => {
 
     expect(response.status).toBe(200);
   });
+
+  it("accepts optional experiment parameter", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    const response = await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "test-model",
+        scores: { category1: 0.8 },
+        totalScore: 0.8,
+        experiment: "no_guidelines",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+
+    // Verify it was saved with the experiment tag
+    const runs = await t.query(api.evalScores.listAllRuns, {
+      experiment: "no_guidelines",
+    });
+    expect(runs).toHaveLength(1);
+    expect(runs[0].experiment).toBe("no_guidelines");
+  });
+
+  it("rejects invalid experiment values", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    const response = await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "test-model",
+        scores: { category1: 0.8 },
+        totalScore: 0.8,
+        experiment: "invalid_experiment",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+  });
 });
 
 describe("GET /listScores", () => {
@@ -372,6 +421,262 @@ describe("GET /listScores", () => {
     const t = convexTest(schema, modules);
 
     const response = await t.fetch("/listScores", { method: "GET" });
+
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("filters by experiment query parameter", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    // Add a default run
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.9 },
+        totalScore: 0.9,
+      }),
+    });
+
+    // Add an experiment run
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.7 },
+        totalScore: 0.7,
+        experiment: "no_guidelines",
+      }),
+    });
+
+    // Default query should only return default runs
+    const defaultResponse = await t.fetch("/listScores", { method: "GET" });
+    expect(defaultResponse.status).toBe(200);
+    const defaultBody = (await defaultResponse.json()) as ScoreEntry[];
+    expect(defaultBody).toHaveLength(1);
+    expect(defaultBody[0].totalScore).toBe(0.9);
+
+    // Query with experiment filter
+    const expResponse = await t.fetch("/listScores?experiment=no_guidelines", {
+      method: "GET",
+    });
+    expect(expResponse.status).toBe(200);
+    const expBody = (await expResponse.json()) as ScoreEntry[];
+    expect(expBody).toHaveLength(1);
+    expect(expBody[0].totalScore).toBe(0.7);
+  });
+
+  it("ignores invalid experiment values", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.9 },
+        totalScore: 0.9,
+      }),
+    });
+
+    // Invalid experiment value should be treated as undefined (returns default runs)
+    const response = await t.fetch("/listScores?experiment=invalid_value", {
+      method: "GET",
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as ScoreEntry[];
+    expect(body).toHaveLength(1);
+  });
+});
+
+type RunEntry = {
+  _id: string;
+  model: string;
+  totalScore: number;
+  scores: Record<string, number>;
+  runId?: string;
+  experiment?: string;
+  _creationTime: number;
+};
+
+describe("GET /listRuns", () => {
+  it("returns empty array when no runs exist", async () => {
+    const t = convexTest(schema, modules);
+
+    const response = await t.fetch("/listRuns", { method: "GET" });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as RunEntry[];
+    expect(body).toEqual([]);
+  });
+
+  it("returns all runs ordered by creation time desc", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.8 },
+        totalScore: 0.8,
+        runId: "run-1",
+      }),
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.9 },
+        totalScore: 0.9,
+        runId: "run-2",
+      }),
+    });
+
+    const response = await t.fetch("/listRuns", { method: "GET" });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as RunEntry[];
+    expect(body).toHaveLength(2);
+    expect(body[0].runId).toBe("run-2"); // Most recent first
+    expect(body[1].runId).toBe("run-1");
+  });
+
+  it("filters by experiment query parameter", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    // Add a default run
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.9 },
+        totalScore: 0.9,
+        runId: "default-run",
+      }),
+    });
+
+    // Add an experiment run
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.7 },
+        totalScore: 0.7,
+        runId: "exp-run",
+        experiment: "no_guidelines",
+      }),
+    });
+
+    // Default query should only return default runs
+    const defaultResponse = await t.fetch("/listRuns", { method: "GET" });
+    expect(defaultResponse.status).toBe(200);
+    const defaultBody = (await defaultResponse.json()) as RunEntry[];
+    expect(defaultBody).toHaveLength(1);
+    expect(defaultBody[0].runId).toBe("default-run");
+
+    // Query with experiment filter
+    const expResponse = await t.fetch("/listRuns?experiment=no_guidelines", {
+      method: "GET",
+    });
+    expect(expResponse.status).toBe(200);
+    const expBody = (await expResponse.json()) as RunEntry[];
+    expect(expBody).toHaveLength(1);
+    expect(expBody[0].runId).toBe("exp-run");
+    expect(expBody[0].experiment).toBe("no_guidelines");
+  });
+
+  it("returns all runs when includeAll=true", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    // Add a default run
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.9 },
+        totalScore: 0.9,
+      }),
+    });
+
+    // Add an experiment run
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "model-a",
+        scores: { cat1: 0.7 },
+        totalScore: 0.7,
+        experiment: "no_guidelines",
+      }),
+    });
+
+    const response = await t.fetch("/listRuns?includeAll=true", {
+      method: "GET",
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as RunEntry[];
+    expect(body).toHaveLength(2);
+  });
+
+  it("respects limit query parameter", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    for (let i = 0; i < 5; i++) {
+      await t.fetch("/updateScores", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token.value}` },
+        body: JSON.stringify({
+          model: "model-a",
+          scores: { cat1: i * 0.1 },
+          totalScore: i * 0.1,
+        }),
+      });
+    }
+
+    const response = await t.fetch("/listRuns?limit=2", { method: "GET" });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as RunEntry[];
+    expect(body).toHaveLength(2);
+  });
+
+  it("includes CORS headers", async () => {
+    const t = convexTest(schema, modules);
+
+    const response = await t.fetch("/listRuns", { method: "GET" });
 
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
