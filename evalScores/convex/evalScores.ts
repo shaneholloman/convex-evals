@@ -56,21 +56,21 @@ export const getScores = query({
   },
 });
 
-function computeMeanAndErrorBar(values: number[]): { mean: number; errorBar: number } {
-  if (values.length === 0) return { mean: 0, errorBar: 0 };
-  if (values.length === 1) return { mean: values[0], errorBar: 0 };
+function computeMeanAndStdDev(values: number[]): { mean: number; stdDev: number } {
+  if (values.length === 0) return { mean: 0, stdDev: 0 };
+  if (values.length === 1) return { mean: values[0], stdDev: 0 };
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const mean = (min + max) / 2;
-  const errorBar = (max - min) / 2;
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const squaredDiffs = values.map((v) => (v - mean) ** 2);
+  const variance = squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length;
+  const stdDev = Math.sqrt(variance);
 
-  return { mean, errorBar };
+  return { mean, stdDev };
 }
 
 /**
- * Lists all models with their latest scores and error bars.
- * Error bars are ± standard deviation computed from the last N runs.
+ * Lists all models with their mean scores and standard deviations.
+ * Standard deviation is computed from the last N runs (population SD).
  */
 export const listAllScores = query({
   args: {
@@ -124,10 +124,10 @@ export const listAllScores = query({
       const recentRuns = sorted.slice(0, HISTORY_SIZE);
       const latest = recentRuns[0];
 
-      // Compute mean and error bar for totalScore
+      // Compute mean and standard deviation for totalScore
       const totalScores = recentRuns.map((r) => r.totalScore);
-      const { mean: totalScore, errorBar: totalScoreErrorBar } =
-        computeMeanAndErrorBar(totalScores);
+      const { mean: totalScore, stdDev: totalScoreErrorBar } =
+        computeMeanAndStdDev(totalScores);
 
       // Compute mean and error bars for each category
       const allCategories = new Set<string>();
@@ -143,9 +143,9 @@ export const listAllScores = query({
         const catScores = recentRuns
           .map((r) => r.scores[cat])
           .filter((s): s is number => s !== undefined);
-        const { mean, errorBar } = computeMeanAndErrorBar(catScores);
+        const { mean, stdDev } = computeMeanAndStdDev(catScores);
         scores[cat] = mean;
-        scoreErrorBars[cat] = errorBar;
+        scoreErrorBars[cat] = stdDev;
       }
 
       results.push({

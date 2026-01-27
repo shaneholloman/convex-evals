@@ -372,13 +372,12 @@ describe("GET /listScores", () => {
     expect(entry.model).toBe("model-x");
     expect(entry.runCount).toBe(3);
 
-    // Scores [0.8, 0.9, 1.0]: min=0.8, max=1.0
-    // Midpoint = (0.8 + 1.0) / 2 = 0.9
-    // Error bar = (1.0 - 0.8) / 2 = 0.1
+    // Scores [0.8, 0.9, 1.0]: mean = 0.9
+    // SD = sqrt(((0.8-0.9)^2 + (0.9-0.9)^2 + (1.0-0.9)^2) / 3) ≈ 0.0816
     expect(entry.totalScore).toBeCloseTo(0.9);
-    expect(entry.totalScoreErrorBar).toBeCloseTo(0.1);
+    expect(entry.totalScoreErrorBar).toBeCloseTo(0.0816, 3);
     expect(entry.scores.cat1).toBeCloseTo(0.9);
-    expect(entry.scoreErrorBars.cat1).toBeCloseTo(0.1);
+    expect(entry.scoreErrorBars.cat1).toBeCloseTo(0.0816, 3);
   });
 
   it("returns multiple models sorted by name", async () => {

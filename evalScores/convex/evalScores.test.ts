@@ -4,8 +4,8 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { modules } from "./test.setup";
 
-describe("computeMeanAndErrorBar logic", () => {
-  it("returns midpoint and half-range for two values", async () => {
+describe("computeMeanAndStdDev logic", () => {
+  it("returns mean and standard deviation for two values", async () => {
     const t = convexTest(schema, modules);
 
     // Insert two runs with scores 80 and 60
@@ -25,9 +25,9 @@ describe("computeMeanAndErrorBar logic", () => {
     expect(results).toHaveLength(1);
     const entry = results[0];
 
-    // Midpoint of 60 and 80 is 70
+    // Mean of 60 and 80 is 70
     expect(entry.totalScore).toBe(70);
-    // Error bar is (80 - 60) / 2 = 10
+    // SD: sqrt(((60-70)^2 + (80-70)^2) / 2) = sqrt((100 + 100) / 2) = sqrt(100) = 10
     expect(entry.totalScoreErrorBar).toBe(10);
 
     expect(entry.scores.cat1).toBe(70);
@@ -53,13 +53,13 @@ describe("computeMeanAndErrorBar logic", () => {
     expect(entry!.scoreErrorBars.cat1).toBe(0);
   });
 
-  it("computes midpoint correctly for three values", async () => {
+  it("computes mean and SD correctly for three values", async () => {
     const t = convexTest(schema, modules);
 
     // Insert three runs: 0.8, 0.9, 1.0
-    // Min = 0.8, Max = 1.0
-    // Midpoint = (0.8 + 1.0) / 2 = 0.9
-    // Error bar = (1.0 - 0.8) / 2 = 0.1
+    // Mean = (0.8 + 0.9 + 1.0) / 3 = 0.9
+    // SD = sqrt(((0.8-0.9)^2 + (0.9-0.9)^2 + (1.0-0.9)^2) / 3)
+    //    = sqrt((0.01 + 0 + 0.01) / 3) = sqrt(0.02/3) ≈ 0.0816
     await t.mutation(internal.evalScores.updateScores, {
       model: "three-runs",
       scores: { cat1: 0.8 },
@@ -81,9 +81,9 @@ describe("computeMeanAndErrorBar logic", () => {
     const entry = results.find((e) => e.model === "three-runs");
     expect(entry).toBeDefined();
     expect(entry!.totalScore).toBeCloseTo(0.9);
-    expect(entry!.totalScoreErrorBar).toBeCloseTo(0.1);
+    expect(entry!.totalScoreErrorBar).toBeCloseTo(0.0816, 3);
     expect(entry!.scores.cat1).toBeCloseTo(0.9);
-    expect(entry!.scoreErrorBars.cat1).toBeCloseTo(0.1);
+    expect(entry!.scoreErrorBars.cat1).toBeCloseTo(0.0816, 3);
     expect(entry!.runCount).toBe(3);
   });
 
@@ -92,9 +92,9 @@ describe("computeMeanAndErrorBar logic", () => {
 
     // Insert 7 runs: 10, 20, 30, 40, 50, 60, 70
     // Only the last 5 (30, 40, 50, 60, 70) should be used
-    // Min = 30, Max = 70
-    // Midpoint = (30 + 70) / 2 = 50
-    // Error bar = (70 - 30) / 2 = 20
+    // Mean = (30 + 40 + 50 + 60 + 70) / 5 = 250 / 5 = 50
+    // SD = sqrt(((30-50)^2 + (40-50)^2 + (50-50)^2 + (60-50)^2 + (70-50)^2) / 5)
+    //    = sqrt((400 + 100 + 0 + 100 + 400) / 5) = sqrt(1000 / 5) = sqrt(200) ≈ 14.14
     for (const score of [10, 20, 30, 40, 50, 60, 70]) {
       await t.mutation(internal.evalScores.updateScores, {
         model: "many-runs",
@@ -108,7 +108,7 @@ describe("computeMeanAndErrorBar logic", () => {
     const entry = results.find((e) => e.model === "many-runs");
     expect(entry).toBeDefined();
     expect(entry!.totalScore).toBe(50);
-    expect(entry!.totalScoreErrorBar).toBe(20);
+    expect(entry!.totalScoreErrorBar).toBeCloseTo(14.14, 1);
     expect(entry!.runCount).toBe(7); // Total runs stored
   });
 
@@ -131,15 +131,17 @@ describe("computeMeanAndErrorBar logic", () => {
     const entry = results.find((e) => e.model === "multi-cat");
     expect(entry).toBeDefined();
 
-    // catA: min=80, max=100, midpoint=90, errorBar=10
+    // catA: mean = (100 + 80) / 2 = 90
+    // SD = sqrt(((100-90)^2 + (80-90)^2) / 2) = sqrt((100 + 100) / 2) = 10
     expect(entry!.scores.catA).toBe(90);
     expect(entry!.scoreErrorBars.catA).toBe(10);
 
-    // catB: min=50, max=70, midpoint=60, errorBar=10
+    // catB: mean = (50 + 70) / 2 = 60
+    // SD = sqrt(((50-60)^2 + (70-60)^2) / 2) = sqrt((100 + 100) / 2) = 10
     expect(entry!.scores.catB).toBe(60);
     expect(entry!.scoreErrorBars.catB).toBe(10);
 
-    // totalScore: both runs have 75, so midpoint=75, errorBar=0
+    // totalScore: both runs have 75, so mean=75, SD=0
     expect(entry!.totalScore).toBe(75);
     expect(entry!.totalScoreErrorBar).toBe(0);
   });
