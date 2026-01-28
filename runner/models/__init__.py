@@ -210,6 +210,16 @@ ALL_MODELS = [
         ci_run_frequency="daily",
     ),
     ModelTemplate(
+        name="moonshotai/Kimi-K2.5",
+        formatted_name="Kimi K2.5",
+        max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
+        requires_chain_of_thought=False,
+        uses_system_prompt=True,
+        provider=ModelProvider.TOGETHER,
+        override_proxy="https://api.together.xyz/v1",
+        ci_run_frequency="daily",
+    ),
+    ModelTemplate(
         name="Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
         formatted_name="Qwen3 235B",
         max_concurrency=int(os.getenv("TOGETHER_CONCURRENCY", "4")),
