@@ -1,11 +1,20 @@
 import openai
 import os
 import textwrap
+import time
+import random
 from . import ConvexCodegenModel, SYSTEM_PROMPT, ModelTemplate, ModelProvider
 from markdown_it import MarkdownIt
 from typing import Union
 from .guidelines import Guideline, GuidelineSection, CONVEX_GUIDELINES
 from braintrust import wrap_openai
+
+
+# Retry configuration for flaky API providers (e.g., Together.xyz 503 errors)
+MAX_RETRIES = 5
+INITIAL_RETRY_DELAY_SECONDS = 2.0
+MAX_RETRY_DELAY_SECONDS = 60.0
+RETRY_JITTER_FACTOR = 0.25  # Add up to 25% random jitter
 
 
 def should_skip_guidelines() -> bool:
@@ -47,11 +56,22 @@ class Model(ConvexCodegenModel):
                 case _:
                     raise ValueError(f"Unknown model provider for disable-proxy mode: {model.provider}")
 
+        # Configure OpenAI client with increased retries for transient errors
         if model.override_proxy:
             url = model.override_proxy
-            client = openai.OpenAI(base_url=url, api_key=api_key)
+            client = openai.OpenAI(
+                base_url=url,
+                api_key=api_key,
+                max_retries=MAX_RETRIES,
+                timeout=openai.Timeout(connect=30.0, read=300.0, write=30.0, pool=30.0),
+            )
         else:
-            base_client = openai.OpenAI(base_url=url, api_key=api_key)
+            base_client = openai.OpenAI(
+                base_url=url,
+                api_key=api_key,
+                max_retries=MAX_RETRIES,
+                timeout=openai.Timeout(connect=30.0, read=300.0, write=30.0, pool=30.0),
+            )
             client = base_client if disable_proxy else wrap_openai(base_client)
         self.client = client
 
@@ -87,8 +107,46 @@ class Model(ConvexCodegenModel):
         else:
             create_params["max_tokens"] = max_token_limit
 
-        response = self.client.chat.completions.create(**create_params)
+        response = self._call_with_retry(create_params)
         return self._parse_response(response.choices[0].message.content)
+
+    def _call_with_retry(self, create_params: dict):
+        """
+        Call the API with additional retry logic for transient errors.
+        
+        The OpenAI client has built-in retries, but for very flaky providers
+        (like Together.xyz which often returns 503), we add an outer retry loop
+        with exponential backoff.
+        """
+        last_exception = None
+        delay = INITIAL_RETRY_DELAY_SECONDS
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                return self.client.chat.completions.create(**create_params)
+            except openai.APIStatusError as e:
+                # Retry on 5xx server errors and 429 rate limits
+                if e.status_code in (429, 500, 502, 503, 504):
+                    last_exception = e
+                    # Add jitter to prevent thundering herd
+                    jitter = delay * RETRY_JITTER_FACTOR * random.random()
+                    sleep_time = min(delay + jitter, MAX_RETRY_DELAY_SECONDS)
+                    print(f"API error {e.status_code}, retrying in {sleep_time:.1f}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                    time.sleep(sleep_time)
+                    delay *= 2  # Exponential backoff
+                else:
+                    raise
+            except openai.APIConnectionError as e:
+                # Retry on connection errors
+                last_exception = e
+                jitter = delay * RETRY_JITTER_FACTOR * random.random()
+                sleep_time = min(delay + jitter, MAX_RETRY_DELAY_SECONDS)
+                print(f"Connection error, retrying in {sleep_time:.1f}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                time.sleep(sleep_time)
+                delay *= 2
+
+        # If we've exhausted all retries, raise the last exception
+        raise last_exception
 
     def _parse_response(self, response: str):
         md = MarkdownIt()
