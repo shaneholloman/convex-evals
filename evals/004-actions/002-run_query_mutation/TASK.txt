@@ -33,14 +33,13 @@ Implement these functions in `convex/index.ts`:
    - Has the handler return type of `Promise<Id<"fetchRequests">>`
    - Returns the newly created record ID
 
-Add appropriate ESLint directives for any type handling:
-- `// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment`
-- `// eslint-disable-next-line @typescript-eslint/no-unsafe-return`
-
 The implementation should demonstrate:
 - Proper use of indexes for efficient lookups
 - Coordination between query, mutation and action
 - Proper type handling for external data
+- Type safety with `any` data using appropriate ESLint directives:
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
 
 Create only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
 
