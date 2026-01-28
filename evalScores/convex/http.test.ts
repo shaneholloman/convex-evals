@@ -680,3 +680,170 @@ describe("GET /listRuns", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 });
+
+type HistoryEntry = {
+  _creationTime: number;
+  totalScore: number;
+  scores: Record<string, number>;
+  runId?: string;
+};
+
+describe("GET /getModelHistory", () => {
+  it("returns 400 when model parameter is missing", async () => {
+    const t = convexTest(schema, modules);
+
+    const response = await t.fetch("/getModelHistory", { method: "GET" });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as ErrorResponse;
+    expect(body.error).toContain("Missing required parameter: model");
+  });
+
+  it("returns empty array when no runs exist for model", async () => {
+    const t = convexTest(schema, modules);
+
+    const response = await t.fetch("/getModelHistory?model=nonexistent", {
+      method: "GET",
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as HistoryEntry[];
+    expect(body).toEqual([]);
+  });
+
+  it("returns runs in chronological order (oldest first)", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "history-test",
+        scores: { cat1: 0.8 },
+        totalScore: 0.8,
+        runId: "run-1",
+      }),
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "history-test",
+        scores: { cat1: 0.9 },
+        totalScore: 0.9,
+        runId: "run-2",
+      }),
+    });
+
+    const response = await t.fetch("/getModelHistory?model=history-test", {
+      method: "GET",
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as HistoryEntry[];
+    expect(body).toHaveLength(2);
+    expect(body[0].runId).toBe("run-1");
+    expect(body[0].totalScore).toBe(0.8);
+    expect(body[1].runId).toBe("run-2");
+    expect(body[1].totalScore).toBe(0.9);
+  });
+
+  it("filters by experiment query parameter", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "exp-filter",
+        scores: { cat1: 0.8 },
+        totalScore: 0.8,
+        runId: "default-1",
+      }),
+    });
+
+    await t.fetch("/updateScores", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body: JSON.stringify({
+        model: "exp-filter",
+        scores: { cat1: 0.7 },
+        totalScore: 0.7,
+        runId: "exp-1",
+        experiment: "no_guidelines",
+      }),
+    });
+
+    // Default query should only return default runs
+    const defaultResponse = await t.fetch("/getModelHistory?model=exp-filter", {
+      method: "GET",
+    });
+    expect(defaultResponse.status).toBe(200);
+    const defaultBody = (await defaultResponse.json()) as HistoryEntry[];
+    expect(defaultBody).toHaveLength(1);
+    expect(defaultBody[0].runId).toBe("default-1");
+
+    // Query with experiment filter
+    const expResponse = await t.fetch(
+      "/getModelHistory?model=exp-filter&experiment=no_guidelines",
+      { method: "GET" },
+    );
+    expect(expResponse.status).toBe(200);
+    const expBody = (await expResponse.json()) as HistoryEntry[];
+    expect(expBody).toHaveLength(1);
+    expect(expBody[0].runId).toBe("exp-1");
+  });
+
+  it("respects limit query parameter", async () => {
+    const t = convexTest(schema, modules);
+
+    const token = await t.mutation(internal.auth.createToken, {
+      name: "test-token",
+    });
+
+    for (let i = 0; i < 5; i++) {
+      await t.fetch("/updateScores", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token.value}` },
+        body: JSON.stringify({
+          model: "limit-test",
+          scores: { cat1: i * 0.1 },
+          totalScore: i * 0.1,
+          runId: `run-${i + 1}`,
+        }),
+      });
+    }
+
+    const response = await t.fetch(
+      "/getModelHistory?model=limit-test&limit=3",
+      { method: "GET" },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as HistoryEntry[];
+    expect(body).toHaveLength(3);
+    // Should be in chronological order (oldest first)
+    expect(body[0].runId).toBe("run-3");
+    expect(body[1].runId).toBe("run-4");
+    expect(body[2].runId).toBe("run-5");
+  });
+
+  it("includes CORS headers", async () => {
+    const t = convexTest(schema, modules);
+
+    const response = await t.fetch("/getModelHistory?model=test", {
+      method: "GET",
+    });
+
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+});

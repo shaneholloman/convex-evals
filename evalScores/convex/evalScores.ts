@@ -3,6 +3,9 @@ import { v } from "convex/values";
 
 const HISTORY_SIZE = 5;
 
+/** Maximum age of runs to include in queries (90 days in milliseconds) */
+const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
 const experimentLiteral = v.union(v.literal("no_guidelines"));
 
 /**
@@ -71,6 +74,7 @@ function computeMeanAndStdDev(values: number[]): { mean: number; stdDev: number 
 /**
  * Lists all models with their mean scores and standard deviations.
  * Standard deviation is computed from the last N runs (population SD).
+ * Only includes runs from the last 90 days.
  */
 export const listAllScores = query({
   args: {
@@ -89,6 +93,8 @@ export const listAllScores = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const cutoffTime = Date.now() - MAX_AGE_MS;
+
     const allScores = args.experiment
       ? await ctx.db
           .query("evalScores")
@@ -99,9 +105,12 @@ export const listAllScores = query({
           .withIndex("by_experiment", (q) => q.eq("experiment", undefined))
           .collect();
 
+    // Filter to only include runs within the date range
+    const recentScores = allScores.filter((s) => s._creationTime >= cutoffTime);
+
     // Group by model
-    const byModel = new Map<string, typeof allScores>();
-    for (const score of allScores) {
+    const byModel = new Map<string, typeof recentScores>();
+    for (const score of recentScores) {
       const existing = byModel.get(score.model) ?? [];
       existing.push(score);
       byModel.set(score.model, existing);
@@ -171,6 +180,7 @@ export const listAllScores = query({
  * Lists all individual runs (not aggregated by model).
  * Pass includeAllExperiments=true to get all runs regardless of experiment.
  * Otherwise, pass experiment to filter by a specific experiment, or omit to get only default runs.
+ * Only includes runs from the last 90 days.
  */
 export const listAllRuns = query({
   args: {
@@ -190,6 +200,8 @@ export const listAllRuns = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const cutoffTime = Date.now() - MAX_AGE_MS;
+
     let allRuns;
     if (args.includeAllExperiments) {
       // Fetch all runs regardless of experiment
@@ -208,8 +220,9 @@ export const listAllRuns = query({
         .collect();
     }
 
-    // Apply limit if provided
-    const runs = args.limit ? allRuns.slice(0, args.limit) : allRuns;
+    // Filter to only include runs within the date range, then apply limit
+    const recentRuns = allRuns.filter((r) => r._creationTime >= cutoffTime);
+    const runs = args.limit ? recentRuns.slice(0, args.limit) : recentRuns;
 
     return runs.map((run) => ({
       _id: run._id,
@@ -219,6 +232,61 @@ export const listAllRuns = query({
       runId: run.runId,
       experiment: run.experiment,
       _creationTime: run._creationTime,
+    }));
+  },
+});
+
+/**
+ * Gets historical run data for a specific model, ordered chronologically (oldest first).
+ * Useful for displaying time-series charts of model performance over time.
+ * Only includes runs from the last 90 days.
+ */
+export const getModelHistory = query({
+  args: {
+    model: v.string(),
+    experiment: v.optional(experimentLiteral),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _creationTime: v.number(),
+      totalScore: v.number(),
+      scores: v.record(v.string(), v.number()),
+      runId: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const cutoffTime = Date.now() - MAX_AGE_MS;
+
+    // Query by model index
+    let runs = await ctx.db
+      .query("evalScores")
+      .withIndex("by_model", (q) => q.eq("model", args.model))
+      .collect();
+
+    // Filter by date range and experiment
+    runs = runs.filter((run) => run._creationTime >= cutoffTime);
+
+    if (args.experiment !== undefined) {
+      runs = runs.filter((run) => run.experiment === args.experiment);
+    } else {
+      // If no experiment specified, only get runs without experiment tag
+      runs = runs.filter((run) => run.experiment === undefined);
+    }
+
+    // Sort by creation time ascending (oldest first) for chronological charting
+    runs.sort((a, b) => a._creationTime - b._creationTime);
+
+    // Apply limit if provided (take from the end since we want recent data)
+    if (args.limit !== undefined && args.limit > 0) {
+      runs = runs.slice(-args.limit);
+    }
+
+    return runs.map((run) => ({
+      _creationTime: run._creationTime,
+      totalScore: run.totalScore,
+      scores: run.scores,
+      runId: run.runId,
     }));
   },
 });

@@ -298,3 +298,166 @@ describe("listAllScores with experiments", () => {
     expect(expScores[0].totalScoreErrorBar).toBe(0);
   });
 });
+
+describe("getModelHistory", () => {
+  it("returns empty array when no runs exist for model", async () => {
+    const t = convexTest(schema, modules);
+
+    const result = await t.query(api.evalScores.getModelHistory, {
+      model: "nonexistent",
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it("returns runs in chronological order (oldest first)", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "history-test",
+      scores: { cat1: 0.8 },
+      totalScore: 0.8,
+      runId: "run-1",
+    });
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "history-test",
+      scores: { cat1: 0.9 },
+      totalScore: 0.9,
+      runId: "run-2",
+    });
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "history-test",
+      scores: { cat1: 1.0 },
+      totalScore: 1.0,
+      runId: "run-3",
+    });
+
+    const result = await t.query(api.evalScores.getModelHistory, {
+      model: "history-test",
+    });
+
+    expect(result).toHaveLength(3);
+    // Should be in chronological order (oldest first)
+    expect(result[0].runId).toBe("run-1");
+    expect(result[0].totalScore).toBe(0.8);
+    expect(result[1].runId).toBe("run-2");
+    expect(result[1].totalScore).toBe(0.9);
+    expect(result[2].runId).toBe("run-3");
+    expect(result[2].totalScore).toBe(1.0);
+  });
+
+  it("filters by experiment when provided", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "exp-filter",
+      scores: { cat1: 0.8 },
+      totalScore: 0.8,
+      runId: "default-1",
+    });
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "exp-filter",
+      scores: { cat1: 0.7 },
+      totalScore: 0.7,
+      runId: "exp-1",
+      experiment: "no_guidelines",
+    });
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "exp-filter",
+      scores: { cat1: 0.9 },
+      totalScore: 0.9,
+      runId: "exp-2",
+      experiment: "no_guidelines",
+    });
+
+    // Default query (no experiment) should only return default runs
+    const defaultHistory = await t.query(api.evalScores.getModelHistory, {
+      model: "exp-filter",
+    });
+    expect(defaultHistory).toHaveLength(1);
+    expect(defaultHistory[0].runId).toBe("default-1");
+
+    // Query with experiment filter
+    const expHistory = await t.query(api.evalScores.getModelHistory, {
+      model: "exp-filter",
+      experiment: "no_guidelines",
+    });
+    expect(expHistory).toHaveLength(2);
+    expect(expHistory[0].runId).toBe("exp-1");
+    expect(expHistory[1].runId).toBe("exp-2");
+  });
+
+  it("respects limit parameter (returns most recent runs)", async () => {
+    const t = convexTest(schema, modules);
+
+    // Create 5 runs
+    for (let i = 0; i < 5; i++) {
+      await t.mutation(internal.evalScores.updateScores, {
+        model: "limit-test",
+        scores: { cat1: i * 0.1 },
+        totalScore: i * 0.1,
+        runId: `run-${i + 1}`,
+      });
+    }
+
+    // Limit to 3 should return the last 3 runs (most recent)
+    const result = await t.query(api.evalScores.getModelHistory, {
+      model: "limit-test",
+      limit: 3,
+    });
+
+    expect(result).toHaveLength(3);
+    // Should still be in chronological order
+    expect(result[0].runId).toBe("run-3");
+    expect(result[1].runId).toBe("run-4");
+    expect(result[2].runId).toBe("run-5");
+  });
+
+  it("only returns data for the specified model", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "model-a",
+      scores: { cat1: 0.8 },
+      totalScore: 0.8,
+    });
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "model-b",
+      scores: { cat1: 0.9 },
+      totalScore: 0.9,
+    });
+
+    const result = await t.query(api.evalScores.getModelHistory, {
+      model: "model-a",
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].totalScore).toBe(0.8);
+  });
+
+  it("includes all required fields", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.evalScores.updateScores, {
+      model: "fields-test",
+      scores: { cat1: 0.8, cat2: 0.9 },
+      totalScore: 0.85,
+      runId: "test-run",
+    });
+
+    const result = await t.query(api.evalScores.getModelHistory, {
+      model: "fields-test",
+    });
+
+    expect(result).toHaveLength(1);
+    const entry = result[0];
+    expect(entry).toHaveProperty("_creationTime");
+    expect(typeof entry._creationTime).toBe("number");
+    expect(entry).toHaveProperty("totalScore");
+    expect(entry.totalScore).toBe(0.85);
+    expect(entry).toHaveProperty("scores");
+    expect(entry.scores).toEqual({ cat1: 0.8, cat2: 0.9 });
+    expect(entry).toHaveProperty("runId");
+    expect(entry.runId).toBe("test-run");
+  });
+});

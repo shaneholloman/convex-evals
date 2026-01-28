@@ -158,4 +158,55 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/getModelHistory",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const model = url.searchParams.get("model");
+      const experiment = url.searchParams.get("experiment");
+      const limitParam = url.searchParams.get("limit");
+      const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+
+      if (!model) {
+        return new Response(
+          JSON.stringify({ error: "Missing required parameter: model" }),
+          {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+
+      // Get historical runs for the model
+      const history = await ctx.runQuery(api.evalScores.getModelHistory, {
+        model,
+        experiment: experiment === "no_guidelines" ? "no_guidelines" : undefined,
+        limit,
+      });
+
+      return new Response(JSON.stringify(history), {
+        status: 200,
+        headers: new Headers({
+          "Access-Control-Allow-Origin": "*",
+          Vary: "origin",
+        }),
+      });
+    } catch (error) {
+      console.error("Error getting model history:", error);
+      return new Response(JSON.stringify({ error: "Internal server error" }), {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      });
+    }
+  }),
+});
+
 export default http;
