@@ -53,6 +53,8 @@ class Model(ConvexCodegenModel):
                     url = "https://generativelanguage.googleapis.com/v1beta"
                 case ModelProvider.XAI:
                     url = "https://api.x.ai/v1"
+                case ModelProvider.MOONSHOT:
+                    url = "https://api.moonshot.ai/v1"
                 case _:
                     raise ValueError(f"Unknown model provider for disable-proxy mode: {model.provider}")
 

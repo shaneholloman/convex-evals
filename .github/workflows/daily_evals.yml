@@ -43,6 +43,7 @@ jobs:
       TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
       CONVEX_EVAL_ENDPOINT: ${{ secrets.CONVEX_EVAL_ENDPOINT }}
       CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
 

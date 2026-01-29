@@ -12,17 +12,13 @@ jobs:
       max-parallel: 2
       matrix:
         model:
-          - "moonshotai/Kimi-K2-Instruct-0905"
-          - "moonshotai/Kimi-K2.5"
+          - "kimi-k2-0905-preview"
+          - "kimi-k2.5"
 
     env:
       ENVIRONMENT: ci
       BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
       CONVEX_EVAL_ENDPOINT: ${{ secrets.CONVEX_EVAL_ENDPOINT }}
       CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
 
