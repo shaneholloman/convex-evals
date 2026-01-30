@@ -1,4 +1,4 @@
-name: Manual Kimi Evaluations
+name: Manual Model Evaluations
 
 on:
   workflow_dispatch: # Manual trigger only
@@ -12,13 +12,12 @@ jobs:
       max-parallel: 2
       matrix:
         model:
-          - "kimi-k2-0905-preview"
-          - "kimi-k2.5"
+          - "gpt-5.2-codex"
 
     env:
       ENVIRONMENT: ci
       BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
-      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       CONVEX_EVAL_ENDPOINT: ${{ secrets.CONVEX_EVAL_ENDPOINT }}
       CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
 

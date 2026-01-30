@@ -79,6 +79,11 @@ class Model(ConvexCodegenModel):
 
     def generate(self, prompt: str):
         user_prompt = "".join(render_prompt(self.model.requires_chain_of_thought, prompt))
+        
+        # Use Responses API for models that require it (e.g., gpt-5.2-codex)
+        if self.model.uses_responses_api:
+            return self._generate_with_responses_api(user_prompt)
+        
         if self.model.uses_system_prompt:
             system_message = {"role": "system", "content": SYSTEM_PROMPT}
         else:
@@ -111,6 +116,28 @@ class Model(ConvexCodegenModel):
 
         response = self._call_with_retry(create_params)
         return self._parse_response(response.choices[0].message.content)
+    
+    def _generate_with_responses_api(self, user_prompt: str):
+        """
+        Generate using the OpenAI Responses API for models like gpt-5.2-codex.
+        
+        The Responses API uses a different endpoint (/v1/responses) and request format:
+        - 'instructions' for system-level guidance
+        - 'input' for user content (can be a string or list of messages)
+        - Response text is in response.output_text
+        """
+        max_token_limit = 16384
+        
+        create_params = {
+            "model": self.model.name,
+            "instructions": SYSTEM_PROMPT,
+            "input": user_prompt,
+            "max_output_tokens": max_token_limit,
+            "store": False,  # Don't persist the response
+        }
+        
+        response = self._call_responses_api_with_retry(create_params)
+        return self._parse_response(response.output_text)
 
     def _call_with_retry(self, create_params: dict):
         """
@@ -148,6 +175,40 @@ class Model(ConvexCodegenModel):
                 delay *= 2
 
         # If we've exhausted all retries, raise the last exception
+        raise last_exception
+
+    def _call_responses_api_with_retry(self, create_params: dict):
+        """
+        Call the OpenAI Responses API with retry logic for transient errors.
+        
+        Similar to _call_with_retry but uses the responses.create endpoint
+        instead of chat.completions.create.
+        """
+        last_exception = None
+        delay = INITIAL_RETRY_DELAY_SECONDS
+
+        for attempt in range(MAX_RETRIES):
+            try:
+                return self.client.responses.create(**create_params)
+            except openai.APIStatusError as e:
+                # Retry on 5xx server errors and 429 rate limits
+                if e.status_code in (429, 500, 502, 503, 504):
+                    last_exception = e
+                    jitter = delay * RETRY_JITTER_FACTOR * random.random()
+                    sleep_time = min(delay + jitter, MAX_RETRY_DELAY_SECONDS)
+                    print(f"Responses API error {e.status_code}, retrying in {sleep_time:.1f}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                    time.sleep(sleep_time)
+                    delay *= 2
+                else:
+                    raise
+            except openai.APIConnectionError as e:
+                last_exception = e
+                jitter = delay * RETRY_JITTER_FACTOR * random.random()
+                sleep_time = min(delay + jitter, MAX_RETRY_DELAY_SECONDS)
+                print(f"Connection error, retrying in {sleep_time:.1f}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                time.sleep(sleep_time)
+                delay *= 2
+
         raise last_exception
 
     def _parse_response(self, response: str):
