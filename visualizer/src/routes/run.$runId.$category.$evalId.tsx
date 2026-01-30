@@ -923,11 +923,19 @@ function AnswerTab({
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProduction, setIsProduction] = useState(false);
 
   useEffect(() => {
     getAnswerDirectory({ data: { category, evalName } })
       .then(setFiles)
-      .catch((err: Error) => setError(err.message));
+      .catch((err: Error) => {
+        // In production (Netlify), filesystem access won't work
+        if (err.message.includes("not found") || err.message.includes("ENOENT")) {
+          setIsProduction(true);
+        } else {
+          setError(err.message);
+        }
+      });
   }, [category, evalName]);
 
   const handleFileClick = async (filePath: string) => {
@@ -946,6 +954,17 @@ function AnswerTab({
     return (
       <div className="p-6 text-red-400">
         <p>Error loading answer directory: {error}</p>
+      </div>
+    );
+  }
+
+  if (isProduction) {
+    return (
+      <div className="p-6 text-slate-400">
+        <p>Answer files are not available in the public deployment.</p>
+        <p className="text-sm mt-2">
+          To view answer files, run the visualizer locally with access to the evals directory.
+        </p>
       </div>
     );
   }
