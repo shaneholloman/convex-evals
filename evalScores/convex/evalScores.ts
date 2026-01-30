@@ -1,10 +1,11 @@
 import { internalMutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 
 const HISTORY_SIZE = 5;
 
-/** Maximum age of runs to include in queries (90 days in milliseconds) */
-const MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+/** Suggested max age for filtering runs (90 days in milliseconds) */
+export const SUGGESTED_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 const experimentLiteral = v.union(v.literal("no_guidelines"));
 
@@ -74,11 +75,15 @@ function computeMeanAndStdDev(values: number[]): { mean: number; stdDev: number 
 /**
  * Lists all models with their mean scores and standard deviations.
  * Standard deviation is computed from the last N runs (population SD).
- * Only includes runs from the last 90 days.
+ * Only includes runs within the specified date range (defaults to last 90 days).
  */
 export const listAllScores = query({
   args: {
     experiment: v.optional(experimentLiteral),
+    /** Start of date range (inclusive). Defaults to 90 days ago. */
+    startTime: v.optional(v.number()),
+    /** End of date range (inclusive). Defaults to now. */
+    endTime: v.optional(v.number()),
   },
   returns: v.array(
     v.object({
@@ -93,20 +98,22 @@ export const listAllScores = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const cutoffTime = Date.now() - MAX_AGE_MS;
+    // Use by_experiment index (which has _creationTime appended automatically)
+    // for efficient time-range filtering
+    const { startTime, endTime } = args;
+    const hasStart = startTime !== undefined;
+    const hasEnd = endTime !== undefined;
 
-    const allScores = args.experiment
-      ? await ctx.db
-          .query("evalScores")
-          .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
-          .collect()
-      : await ctx.db
-          .query("evalScores")
-          .withIndex("by_experiment", (q) => q.eq("experiment", undefined))
-          .collect();
-
-    // Filter to only include runs within the date range
-    const recentScores = allScores.filter((s) => s._creationTime >= cutoffTime);
+    const recentScores = await ctx.db
+      .query("evalScores")
+      .withIndex("by_experiment", (q) => {
+        const base = q.eq("experiment", args.experiment);
+        if (hasStart && hasEnd) return base.gte("_creationTime", startTime).lte("_creationTime", endTime);
+        if (hasStart) return base.gte("_creationTime", startTime);
+        if (hasEnd) return base.lte("_creationTime", endTime);
+        return base;
+      })
+      .collect();
 
     // Group by model
     const byModel = new Map<string, typeof recentScores>();
@@ -180,13 +187,17 @@ export const listAllScores = query({
  * Lists all individual runs (not aggregated by model).
  * Pass includeAllExperiments=true to get all runs regardless of experiment.
  * Otherwise, pass experiment to filter by a specific experiment, or omit to get only default runs.
- * Only includes runs from the last 90 days.
+ * Only includes runs within the specified date range (defaults to last 90 days).
  */
 export const listAllRuns = query({
   args: {
     experiment: v.optional(experimentLiteral),
     includeAllExperiments: v.optional(v.boolean()),
     limit: v.optional(v.number()),
+    /** Start of date range (inclusive). Defaults to 90 days ago. */
+    startTime: v.optional(v.number()),
+    /** End of date range (inclusive). Defaults to now. */
+    endTime: v.optional(v.number()),
   },
   returns: v.array(
     v.object({
@@ -200,29 +211,45 @@ export const listAllRuns = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const cutoffTime = Date.now() - MAX_AGE_MS;
+    let runs: Doc<"evalScores">[];
 
-    let allRuns;
     if (args.includeAllExperiments) {
-      // Fetch all runs regardless of experiment
-      allRuns = await ctx.db.query("evalScores").order("desc").collect();
-    } else if (args.experiment) {
-      allRuns = await ctx.db
-        .query("evalScores")
-        .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
-        .order("desc")
-        .collect();
-    } else {
-      allRuns = await ctx.db
-        .query("evalScores")
-        .withIndex("by_experiment", (q) => q.eq("experiment", undefined))
-        .order("desc")
-        .collect();
-    }
+      // For all experiments, we can't use the compound index efficiently
+      // but we can still use limit to avoid fetching everything
+      const dbQuery = ctx.db.query("evalScores").order("desc");
 
-    // Filter to only include runs within the date range, then apply limit
-    const recentRuns = allRuns.filter((r) => r._creationTime >= cutoffTime);
-    const runs = args.limit ? recentRuns.slice(0, args.limit) : recentRuns;
+      // Collect with streaming filter for time range if specified
+      if (args.startTime !== undefined || args.endTime !== undefined || args.limit !== undefined) {
+        const results: Doc<"evalScores">[] = [];
+        for await (const run of dbQuery) {
+          if (args.startTime !== undefined && run._creationTime < args.startTime) break;
+          if (args.endTime === undefined || run._creationTime <= args.endTime) results.push(run);
+          if (args.limit && results.length >= args.limit) break;
+        }
+        runs = results;
+      } else {
+        runs = await dbQuery.collect();
+      }
+    } else {
+      // Use by_experiment index (which has _creationTime appended automatically)
+      // for efficient time-range filtering
+      const { startTime, endTime } = args;
+      const hasStart = startTime !== undefined;
+      const hasEnd = endTime !== undefined;
+
+      const dbQuery = ctx.db
+        .query("evalScores")
+        .withIndex("by_experiment", (q) => {
+          const base = q.eq("experiment", args.experiment);
+          if (hasStart && hasEnd) return base.gte("_creationTime", startTime).lte("_creationTime", endTime);
+          if (hasStart) return base.gte("_creationTime", startTime);
+          if (hasEnd) return base.lte("_creationTime", endTime);
+          return base;
+        })
+        .order("desc");
+
+      runs = args.limit ? await dbQuery.take(args.limit) : await dbQuery.collect();
+    }
 
     return runs.map((run) => ({
       _id: run._id,
@@ -239,13 +266,17 @@ export const listAllRuns = query({
 /**
  * Gets historical run data for a specific model, ordered chronologically (oldest first).
  * Useful for displaying time-series charts of model performance over time.
- * Only includes runs from the last 90 days.
+ * Only includes runs within the specified date range (defaults to last 90 days).
  */
 export const getModelHistory = query({
   args: {
     model: v.string(),
     experiment: v.optional(experimentLiteral),
     limit: v.optional(v.number()),
+    /** Start of date range (inclusive). Defaults to 90 days ago. */
+    startTime: v.optional(v.number()),
+    /** End of date range (inclusive). Defaults to now. */
+    endTime: v.optional(v.number()),
   },
   returns: v.array(
     v.object({
@@ -256,26 +287,31 @@ export const getModelHistory = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const cutoffTime = Date.now() - MAX_AGE_MS;
+    // Use by_model index (which has _creationTime appended automatically)
+    // for efficient time-range filtering
+    const { startTime, endTime } = args;
+    const hasStart = startTime !== undefined;
+    const hasEnd = endTime !== undefined;
 
-    // Query by model index
     let runs = await ctx.db
       .query("evalScores")
-      .withIndex("by_model", (q) => q.eq("model", args.model))
+      .withIndex("by_model", (q) => {
+        const base = q.eq("model", args.model);
+        if (hasStart && hasEnd) return base.gte("_creationTime", startTime).lte("_creationTime", endTime);
+        if (hasStart) return base.gte("_creationTime", startTime);
+        if (hasEnd) return base.lte("_creationTime", endTime);
+        return base;
+      })
+      .order("asc") // Chronological order (oldest first) for charting
       .collect();
 
-    // Filter by date range and experiment
-    runs = runs.filter((run) => run._creationTime >= cutoffTime);
-
+    // Filter by experiment (still needed since it's not in the index)
     if (args.experiment !== undefined) {
       runs = runs.filter((run) => run.experiment === args.experiment);
     } else {
       // If no experiment specified, only get runs without experiment tag
       runs = runs.filter((run) => run.experiment === undefined);
     }
-
-    // Sort by creation time ascending (oldest first) for chronological charting
-    runs.sort((a, b) => a._creationTime - b._creationTime);
 
     // Apply limit if provided (take from the end since we want recent data)
     if (args.limit !== undefined && args.limit > 0) {

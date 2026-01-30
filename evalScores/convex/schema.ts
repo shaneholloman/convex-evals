@@ -37,6 +37,9 @@ const stepStatus = v.union(
 
 export default defineSchema({
   // Each record is a single eval run for a model (append-only for history)
+  // Note: _creationTime is automatically appended to all indexes, so:
+  // - by_model is effectively ["model", "_creationTime"]
+  // - by_experiment is effectively ["experiment", "_creationTime"]
   evalScores: defineTable({
     model: v.string(),
     scores: v.record(v.string(), v.number()),
