@@ -1,10 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import JSZip from "jszip";
-import Editor from "@monaco-editor/react";
 import { api } from "../convex/api";
 import type { Id } from "../convex/types";
+
+// Lazy load Monaco Editor to avoid SSR issues
+const Editor = lazy(() => 
+  import("@monaco-editor/react").then((mod) => ({ default: mod.default }))
+);
 import {
   getStepStatusIcon,
   formatDuration,
@@ -638,26 +642,28 @@ function FileViewer({
   const language = getLanguageFromFilename(filename);
 
   return (
-    <Editor
-      height="100%"
-      language={language}
-      value={content}
-      theme="vs-dark"
-      options={{
-        readOnly: true,
-        minimap: { enabled: false },
-        scrollBeyondLastLine: false,
-        fontSize: 13,
-        lineNumbers: "on",
-        renderLineHighlight: "none",
-        scrollbar: {
-          vertical: "auto",
-          horizontal: "auto",
-        },
-        wordWrap: language === "plaintext" ? "on" : "off",
-        padding: { top: 12, bottom: 12 },
-      }}
-    />
+    <Suspense fallback={<div className="file-content text-slate-500">Loading editor...</div>}>
+      <Editor
+        height="100%"
+        language={language}
+        value={content}
+        theme="vs-dark"
+        options={{
+          readOnly: true,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          fontSize: 13,
+          lineNumbers: "on",
+          renderLineHighlight: "none",
+          scrollbar: {
+            vertical: "auto",
+            horizontal: "auto",
+          },
+          wordWrap: language === "plaintext" ? "on" : "off",
+          padding: { top: 12, bottom: 12 },
+        }}
+      />
+    </Suspense>
   );
 }
 
