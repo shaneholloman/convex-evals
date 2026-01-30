@@ -14,6 +14,10 @@ We ensure that Convex performs well with a large set of models by continuously r
 
 The most up to date eval runs can be found on our [website](https://convex.dev/llm-leaderboard).
 
+Detailed results from production runs can be visualized at [convex-evals.netlify.app](https://convex-evals.netlify.app/):
+
+![Visualizer Screenshot](docs/assets/visualizer.png)
+
 We use these evals to tune our [Convex Guidelines](https://docs.convex.dev/ai/), which greatly improve model performance writing Convex code and decrease hallucinations.
 
 ## Running the evaluations
