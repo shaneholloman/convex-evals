@@ -3,7 +3,6 @@ import { useQuery } from "convex/react";
 import { api } from "../convex/api";
 import type { Id } from "../convex/types";
 import { getEvalStatusIcon, formatDuration, type Eval } from "../lib/types";
-import { Breadcrumbs } from "../lib/breadcrumbs";
 
 export const Route = createFileRoute("/experiment/$experimentId/run/$runId/$category/")({
   component: CategoryOverviewPage,
@@ -40,18 +39,8 @@ function CategoryOverviewPage() {
   const passRate = total > 0 ? (passed / total) * 100 : 0;
 
   return (
-    <main className="flex-1 overflow-auto flex flex-col">
-      <div className="border-b border-slate-700 px-6 py-4 shrink-0">
-        <Breadcrumbs
-          experimentId={experimentId}
-          runId={runId}
-          runModel={run.model}
-          category={category}
-          current="category"
-        />
-      </div>
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-4xl mx-auto">
+    <main className="flex-1 overflow-auto p-6">
+      <div className="max-w-4xl mx-auto">
           <header className="mb-8">
             <h1 className="text-2xl font-bold text-white mb-2">
               {formatCategoryName(category)}
@@ -107,7 +96,6 @@ function CategoryOverviewPage() {
               </tbody>
             </table>
           </div>
-        </div>
         </div>
       </div>
     </main>

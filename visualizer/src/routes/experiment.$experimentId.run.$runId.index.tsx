@@ -8,7 +8,6 @@ import {
   formatDuration,
   type Eval,
 } from "../lib/types";
-import { Breadcrumbs } from "../lib/breadcrumbs";
 
 export const Route = createFileRoute("/experiment/$experimentId/run/$runId/")({
   component: RunOverviewPage,
@@ -59,17 +58,8 @@ function RunOverviewPage() {
   }
 
   return (
-    <main className="flex-1 overflow-auto flex flex-col">
-      <div className="border-b border-slate-700 px-6 py-4 shrink-0">
-        <Breadcrumbs
-          experimentId={experimentId}
-          runId={runId}
-          runModel={run.model}
-          current="run"
-        />
-      </div>
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-6xl mx-auto">
+    <main className="flex-1 overflow-auto p-6">
+      <div className="max-w-6xl mx-auto">
           <header className="mb-8">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-3xl">{getRunStatusIcon(run.status)}</span>
@@ -159,7 +149,6 @@ function RunOverviewPage() {
               </tbody>
             </table>
           </div>
-        </div>
         </div>
       </div>
     </main>

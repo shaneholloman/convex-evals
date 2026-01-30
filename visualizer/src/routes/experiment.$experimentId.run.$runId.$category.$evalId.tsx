@@ -9,7 +9,6 @@ import { api } from "../convex/api";
 import type { Id } from "../convex/types";
 import { getEvalStatusIcon, formatDuration } from "../lib/types";
 import { StepsTab, OutputTab, TaskTab } from "../lib/evalComponents";
-import { Breadcrumbs } from "../lib/breadcrumbs";
 
 export const Route = createFileRoute("/experiment/$experimentId/run/$runId/$category/$evalId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -58,15 +57,7 @@ function EvalDetailsPage() {
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
       <div className="border-b border-slate-700 px-6 py-4">
-        <Breadcrumbs
-          experimentId={experimentId}
-          runId={runId}
-          runModel={run.model}
-          category={category}
-          evalName={evalItem.name}
-          current="eval"
-        />
-        <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-3">
           <span className="text-2xl">{getEvalStatusIcon(evalItem.status)}</span>
           <h1 className="text-xl font-bold text-white">{evalItem.name}</h1>
           {(evalItem.status.kind === "passed" || evalItem.status.kind === "failed") && (

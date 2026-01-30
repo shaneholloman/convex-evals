@@ -232,7 +232,7 @@
 
 /* Breadcrumb */
 .breadcrumb {
-  @apply flex items-center gap-2 text-sm text-slate-400 mb-4;
+  @apply flex items-center gap-2 text-sm text-slate-400 flex-wrap;
 }
 
 .breadcrumb-btn {
@@ -245,6 +245,27 @@
 
 .breadcrumb-current {
   @apply text-white font-medium;
+}
+
+/* Top navigation bar */
+.top-bar {
+  @apply px-4 py-3;
+}
+
+.top-bar-inner {
+  @apply flex items-center gap-6 max-w-full;
+}
+
+.top-bar-logo {
+  @apply text-sm font-semibold text-white shrink-0 hover:text-slate-200 transition-colors;
+}
+
+.top-bar-breadcrumb {
+  @apply min-w-0 flex-1;
+}
+
+.top-bar-breadcrumb .breadcrumb {
+  @apply mb-0;
 }
 
 /* Accordion */

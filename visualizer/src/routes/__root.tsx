@@ -7,6 +7,7 @@ import {
 import { ConvexProvider } from "convex/react";
 import { convex } from "../lib/convex";
 import { AppSidebar } from "../lib/AppSidebar";
+import { AppTopBar } from "../lib/AppTopBar";
 
 import appCss from "../styles.css?url";
 
@@ -30,9 +31,12 @@ function RootComponent() {
       </head>
       <body className="bg-slate-900 text-slate-100 min-h-screen">
         <ConvexProvider client={convex}>
-          <div className="flex h-screen">
-            <AppSidebar />
-            <Outlet />
+          <div className="flex flex-col h-screen">
+            <AppTopBar />
+            <div className="flex flex-1 min-h-0">
+              <AppSidebar />
+              <Outlet />
+            </div>
           </div>
         </ConvexProvider>
         <Scripts />
