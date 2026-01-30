@@ -1,4 +1,4 @@
-import { createFileRoute, useParams } from "@tanstack/react-router";
+import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../convex/api";
 import type { Id } from "../convex/types";
@@ -8,13 +8,14 @@ import {
   formatDuration,
   type Eval,
 } from "../lib/types";
+import { Breadcrumbs } from "../lib/breadcrumbs";
 
-export const Route = createFileRoute("/run/$runId/")({
+export const Route = createFileRoute("/experiment/$experimentId/run/$runId/")({
   component: RunOverviewPage,
 });
 
 function RunOverviewPage() {
-  const { runId } = useParams({ from: "/run/$runId/" });
+  const { experimentId, runId } = useParams({ from: "/experiment/$experimentId/run/$runId/" });
   const run = useQuery(api.runs.getRunDetails, {
     runId: runId as Id<"runs">,
   });
@@ -58,13 +59,22 @@ function RunOverviewPage() {
   }
 
   return (
-    <main className="flex-1 overflow-auto p-6">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">{getRunStatusIcon(run.status)}</span>
-            <h1 className="text-3xl font-bold text-white">{run.model}</h1>
-          </div>
+    <main className="flex-1 overflow-auto flex flex-col">
+      <div className="border-b border-slate-700 px-6 py-4 shrink-0">
+        <Breadcrumbs
+          experimentId={experimentId}
+          runId={runId}
+          runModel={run.model}
+          current="run"
+        />
+      </div>
+      <div className="flex-1 p-6 overflow-auto">
+        <div className="max-w-6xl mx-auto">
+          <header className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">{getRunStatusIcon(run.status)}</span>
+              <h1 className="text-3xl font-bold text-white">{run.model}</h1>
+            </div>
           <p className="text-slate-400">
             {run.provider && <span>{run.provider} · </span>}
             {new Date(run._creationTime).toLocaleString()}
@@ -109,39 +119,15 @@ function RunOverviewPage() {
               <tbody>
                 {Array.from(categoryStats.entries())
                   .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([category, stats]) => {
-                    const percentage =
-                      stats.total > 0
-                        ? ((stats.passed / stats.total) * 100).toFixed(1)
-                        : "0.0";
-                    const icon =
-                      stats.passed === stats.total
-                        ? "✅"
-                        : stats.failed === stats.total
-                          ? "❌"
-                          : "⚠️";
-
-                    return (
-                      <tr key={category}>
-                        <td>
-                          <span className="mr-2">{icon}</span>
-                          {formatCategoryName(category)}
-                        </td>
-                        <td>
-                          <div className="score-bar-container w-24">
-                            <div
-                              className="score-bar"
-                              style={{ width: `${percentage}%` }}
-                            />
-                            <span className="score-text">{percentage}%</span>
-                          </div>
-                        </td>
-                        <td className="text-green-400">{stats.passed}</td>
-                        <td className="text-red-400">{stats.failed}</td>
-                        <td>{stats.total}</td>
-                      </tr>
-                    );
-                  })}
+                  .map(([category, stats]) => (
+                    <CategoryRow
+                      key={category}
+                      experimentId={experimentId}
+                      runId={runId}
+                      category={category}
+                      stats={stats}
+                    />
+                  ))}
               </tbody>
             </table>
           </div>
@@ -163,25 +149,96 @@ function RunOverviewPage() {
                 {run.evals
                   .sort((a, b) => a.evalPath.localeCompare(b.evalPath))
                   .map((evalItem) => (
-                    <EvalRow key={evalItem._id} evalItem={evalItem} />
+                    <EvalRow
+                      key={evalItem._id}
+                      experimentId={experimentId}
+                      runId={runId}
+                      evalItem={evalItem}
+                    />
                   ))}
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       </div>
     </main>
   );
 }
 
-function EvalRow({ evalItem }: { evalItem: Eval }) {
+function CategoryRow({
+  experimentId,
+  runId,
+  category,
+  stats,
+}: {
+  experimentId: string;
+  runId: string;
+  category: string;
+  stats: { passed: number; failed: number; total: number };
+}) {
+  const navigate = useNavigate();
+  const percentage =
+    stats.total > 0 ? ((stats.passed / stats.total) * 100).toFixed(1) : "0.0";
+  const icon =
+    stats.passed === stats.total
+      ? "✅"
+      : stats.failed === stats.total
+        ? "❌"
+        : "⚠️";
+
+  return (
+    <tr
+      className="cursor-pointer hover:bg-slate-800/50"
+      onClick={() =>
+        navigate({
+          to: "/experiment/$experimentId/run/$runId/$category",
+          params: { experimentId, runId, category },
+        })
+      }
+    >
+      <td>
+        <span className="mr-2">{icon}</span>
+        {formatCategoryName(category)}
+      </td>
+      <td>
+        <div className="score-bar-container w-24">
+          <div className="score-bar" style={{ width: `${percentage}%` }} />
+          <span className="score-text">{percentage}%</span>
+        </div>
+      </td>
+      <td className="text-green-400">{stats.passed}</td>
+      <td className="text-red-400">{stats.failed}</td>
+      <td>{stats.total}</td>
+    </tr>
+  );
+}
+
+function EvalRow({
+  experimentId,
+  runId,
+  evalItem,
+}: {
+  experimentId: string;
+  runId: string;
+  evalItem: Eval;
+}) {
+  const navigate = useNavigate();
   const duration =
     evalItem.status.kind === "passed" || evalItem.status.kind === "failed"
       ? formatDuration(evalItem.status.durationMs)
       : "—";
 
   return (
-    <tr>
+    <tr
+      className="cursor-pointer hover:bg-slate-800/50"
+      onClick={() =>
+        navigate({
+          to: "/experiment/$experimentId/run/$runId/$category/$evalId",
+          params: { experimentId, runId, category: evalItem.category, evalId: evalItem._id },
+        })
+      }
+    >
       <td>
         <span>{getEvalStatusIcon(evalItem.status)}</span>
       </td>

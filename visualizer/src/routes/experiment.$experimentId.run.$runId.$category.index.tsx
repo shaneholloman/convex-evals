@@ -1,15 +1,18 @@
-import { createFileRoute, useParams } from "@tanstack/react-router";
+import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../convex/api";
 import type { Id } from "../convex/types";
-import { getEvalStatusIcon, formatDuration } from "../lib/types";
+import { getEvalStatusIcon, formatDuration, type Eval } from "../lib/types";
+import { Breadcrumbs } from "../lib/breadcrumbs";
 
-export const Route = createFileRoute("/run/$runId/$category/")({
+export const Route = createFileRoute("/experiment/$experimentId/run/$runId/$category/")({
   component: CategoryOverviewPage,
 });
 
 function CategoryOverviewPage() {
-  const { runId, category } = useParams({ from: "/run/$runId/$category/" });
+  const { experimentId, runId, category } = useParams({
+    from: "/experiment/$experimentId/run/$runId/$category/",
+  });
   const run = useQuery(api.runs.getRunDetails, {
     runId: runId as Id<"runs">,
   });
@@ -37,12 +40,22 @@ function CategoryOverviewPage() {
   const passRate = total > 0 ? (passed / total) * 100 : 0;
 
   return (
-    <main className="flex-1 overflow-auto p-6">
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">
-            {formatCategoryName(category)}
-          </h1>
+    <main className="flex-1 overflow-auto flex flex-col">
+      <div className="border-b border-slate-700 px-6 py-4 shrink-0">
+        <Breadcrumbs
+          experimentId={experimentId}
+          runId={runId}
+          runModel={run.model}
+          category={category}
+          current="category"
+        />
+      </div>
+      <div className="flex-1 p-6 overflow-auto">
+        <div className="max-w-4xl mx-auto">
+          <header className="mb-8">
+            <h1 className="text-2xl font-bold text-white mb-2">
+              {formatCategoryName(category)}
+            </h1>
           <p className="text-slate-400">
             Select an evaluation from the sidebar to view details
           </p>
@@ -82,36 +95,65 @@ function CategoryOverviewPage() {
               <tbody>
                 {categoryEvals
                   .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((evalItem) => {
-                    const duration =
-                      evalItem.status.kind === "passed" ||
-                      evalItem.status.kind === "failed"
-                        ? formatDuration(evalItem.status.durationMs)
-                        : "—";
-
-                    return (
-                      <tr key={evalItem._id}>
-                        <td>
-                          <span>{getEvalStatusIcon(evalItem.status)}</span>
-                        </td>
-                        <td className="text-white">{evalItem.name}</td>
-                        <td className="text-slate-400">{duration}</td>
-                        <td>
-                          {evalItem.status.kind === "failed" && (
-                            <span className="text-red-400 text-sm">
-                              {evalItem.status.failureReason}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  .map((evalItem) => (
+                    <EvalRow
+                      key={evalItem._id}
+                      experimentId={experimentId}
+                      runId={runId}
+                      category={category}
+                      evalItem={evalItem}
+                    />
+                  ))}
               </tbody>
             </table>
           </div>
         </div>
+        </div>
       </div>
     </main>
+  );
+}
+
+function EvalRow({
+  experimentId,
+  runId,
+  category,
+  evalItem,
+}: {
+  experimentId: string;
+  runId: string;
+  category: string;
+  evalItem: Eval;
+}) {
+  const navigate = useNavigate();
+  const duration =
+    evalItem.status.kind === "passed" || evalItem.status.kind === "failed"
+      ? formatDuration(evalItem.status.durationMs)
+      : "—";
+
+  return (
+    <tr
+      className="cursor-pointer hover:bg-slate-800/50"
+      onClick={() =>
+        navigate({
+          to: "/experiment/$experimentId/run/$runId/$category/$evalId",
+          params: { experimentId, runId, category, evalId: evalItem._id },
+        })
+      }
+    >
+      <td>
+        <span>{getEvalStatusIcon(evalItem.status)}</span>
+      </td>
+      <td className="text-white">{evalItem.name}</td>
+      <td className="text-slate-400">{duration}</td>
+      <td>
+        {evalItem.status.kind === "failed" && (
+          <span className="text-red-400 text-sm">
+            {evalItem.status.failureReason}
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }
 

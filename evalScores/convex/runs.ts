@@ -27,6 +27,10 @@ export const createRun = internalMutation({
   },
   returns: v.id("runs"),
   handler: async (ctx, args) => {
+    const now = Date.now();
+    const expName = args.experiment ?? "default";
+    
+    // Create the run
     const id = await ctx.db.insert("runs", {
       model: args.model,
       provider: args.provider,
@@ -35,6 +39,34 @@ export const createRun = internalMutation({
       status: { kind: "pending" },
       experiment: args.experiment,
     });
+    
+    // Update experiment stats
+    const existing = await ctx.db
+      .query("experiments")
+      .withIndex("by_name", (q) => q.eq("name", expName))
+      .unique();
+    
+    if (existing) {
+      const models = existing.models.includes(args.model)
+        ? existing.models
+        : [...existing.models, args.model];
+      await ctx.db.patch(existing._id, {
+        runCount: existing.runCount + 1,
+        models,
+        latestRunTime: now,
+      });
+    } else {
+      await ctx.db.insert("experiments", {
+        name: expName,
+        runCount: 1,
+        completedRuns: 0,
+        totalEvals: 0,
+        passedEvals: 0,
+        models: [args.model],
+        latestRunTime: now,
+      });
+    }
+    
     return id;
   },
 });
@@ -63,9 +95,26 @@ export const completeRun = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run) return null;
+    
     await ctx.db.patch(args.runId, {
       status: args.status,
     });
+    
+    // Update experiment completed run count
+    const expName = run.experiment ?? "default";
+    const experiment = await ctx.db
+      .query("experiments")
+      .withIndex("by_name", (q) => q.eq("name", expName))
+      .unique();
+    
+    if (experiment && args.status.kind === "completed") {
+      await ctx.db.patch(experiment._id, {
+        completedRuns: experiment.completedRuns + 1,
+      });
+    }
+    
     return null;
   },
 });
@@ -235,5 +284,31 @@ export const listRuns = query({
     );
     
     return runsWithCounts;
+  },
+});
+
+// List all experiments with their denormalized stats
+export const listExperiments = query({
+  args: {},
+  handler: async (ctx) => {
+    const experiments = await ctx.db.query("experiments").collect();
+    
+    // Transform to expected format and sort by latest run
+    const result = experiments.map((exp) => ({
+      name: exp.name,
+      runCount: exp.runCount,
+      modelCount: exp.models.length,
+      models: exp.models,
+      latestRun: exp.latestRunTime,
+      totalEvals: exp.totalEvals,
+      passedEvals: exp.passedEvals,
+      passRate: exp.totalEvals > 0 ? exp.passedEvals / exp.totalEvals : 0,
+      completedRuns: exp.completedRuns,
+    }));
+    
+    // Sort by latest run (most recent first)
+    result.sort((a, b) => b.latestRun - a.latestRun);
+    
+    return result;
   },
 });

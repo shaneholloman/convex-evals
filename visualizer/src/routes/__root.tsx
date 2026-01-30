@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { ConvexProvider } from "convex/react";
 import { convex } from "../lib/convex";
+import { AppSidebar } from "../lib/AppSidebar";
 
 import appCss from "../styles.css?url";
 
@@ -29,7 +30,10 @@ function RootComponent() {
       </head>
       <body className="bg-slate-900 text-slate-100 min-h-screen">
         <ConvexProvider client={convex}>
-          <Outlet />
+          <div className="flex h-screen">
+            <AppSidebar />
+            <Outlet />
+          </div>
         </ConvexProvider>
         <Scripts />
       </body>

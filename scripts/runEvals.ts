@@ -424,7 +424,6 @@ async function selectModels(): Promise<SelectResult<string[]>> {
     choices: [
       { name: "Claude 4.5 Sonnet (default)", value: DEFAULT_MODEL },
       { name: "Choose from list", value: "choose" },
-      { name: "Enter custom model name(s)", value: "custom" },
       { name: "← Back", value: "back" },
     ],
   });
@@ -444,19 +443,6 @@ async function selectModels(): Promise<SelectResult<string[]>> {
       return BACK;
     }
     return selected;
-  }
-
-  if (modelChoice === "custom") {
-    const customModels = await input({
-      message: "Enter model name(s) (comma-separated):",
-    });
-    const models = customModels
-      .split(",")
-      .map((m) => m.trim())
-      .filter(Boolean);
-
-    if (models.length === 0) return BACK;
-    return models;
   }
 
   return [modelChoice];
@@ -493,7 +479,7 @@ async function selectOptions(): Promise<
   if (isConvexPostingConfigured()) {
     postToConvex = await confirm({
       message: "Post results to Convex database?",
-      default: false,
+      default: true,
     });
   }
 

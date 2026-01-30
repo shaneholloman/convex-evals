@@ -18,6 +18,7 @@ import { anyApi } from "convex/server";
  */
 export const api = anyApi as {
   runs: {
+    listExperiments: any;
     listRuns: any;
     getRunDetails: any;
     getOutputUrl: any;

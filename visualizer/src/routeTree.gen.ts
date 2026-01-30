@@ -10,94 +10,122 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RunRunIdRouteImport } from './routes/run.$runId'
-import { Route as RunRunIdIndexRouteImport } from './routes/run.$runId.index'
-import { Route as RunRunIdCategoryRouteImport } from './routes/run.$runId.$category'
-import { Route as RunRunIdCategoryIndexRouteImport } from './routes/run.$runId.$category.index'
-import { Route as RunRunIdCategoryEvalIdRouteImport } from './routes/run.$runId.$category.$evalId'
+import { Route as ExperimentExperimentIdRouteImport } from './routes/experiment.$experimentId'
+import { Route as ExperimentExperimentIdIndexRouteImport } from './routes/experiment.$experimentId.index'
+import { Route as ExperimentExperimentIdRunRunIdRouteImport } from './routes/experiment.$experimentId.run.$runId'
+import { Route as ExperimentExperimentIdRunRunIdIndexRouteImport } from './routes/experiment.$experimentId.run.$runId.index'
+import { Route as ExperimentExperimentIdRunRunIdCategoryRouteImport } from './routes/experiment.$experimentId.run.$runId.$category'
+import { Route as ExperimentExperimentIdRunRunIdCategoryIndexRouteImport } from './routes/experiment.$experimentId.run.$runId.$category.index'
+import { Route as ExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport } from './routes/experiment.$experimentId.run.$runId.$category.$evalId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RunRunIdRoute = RunRunIdRouteImport.update({
-  id: '/run/$runId',
-  path: '/run/$runId',
+const ExperimentExperimentIdRoute = ExperimentExperimentIdRouteImport.update({
+  id: '/experiment/$experimentId',
+  path: '/experiment/$experimentId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RunRunIdIndexRoute = RunRunIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RunRunIdRoute,
-} as any)
-const RunRunIdCategoryRoute = RunRunIdCategoryRouteImport.update({
-  id: '/$category',
-  path: '/$category',
-  getParentRoute: () => RunRunIdRoute,
-} as any)
-const RunRunIdCategoryIndexRoute = RunRunIdCategoryIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RunRunIdCategoryRoute,
-} as any)
-const RunRunIdCategoryEvalIdRoute = RunRunIdCategoryEvalIdRouteImport.update({
-  id: '/$evalId',
-  path: '/$evalId',
-  getParentRoute: () => RunRunIdCategoryRoute,
-} as any)
+const ExperimentExperimentIdIndexRoute =
+  ExperimentExperimentIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ExperimentExperimentIdRoute,
+  } as any)
+const ExperimentExperimentIdRunRunIdRoute =
+  ExperimentExperimentIdRunRunIdRouteImport.update({
+    id: '/run/$runId',
+    path: '/run/$runId',
+    getParentRoute: () => ExperimentExperimentIdRoute,
+  } as any)
+const ExperimentExperimentIdRunRunIdIndexRoute =
+  ExperimentExperimentIdRunRunIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ExperimentExperimentIdRunRunIdRoute,
+  } as any)
+const ExperimentExperimentIdRunRunIdCategoryRoute =
+  ExperimentExperimentIdRunRunIdCategoryRouteImport.update({
+    id: '/$category',
+    path: '/$category',
+    getParentRoute: () => ExperimentExperimentIdRunRunIdRoute,
+  } as any)
+const ExperimentExperimentIdRunRunIdCategoryIndexRoute =
+  ExperimentExperimentIdRunRunIdCategoryIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ExperimentExperimentIdRunRunIdCategoryRoute,
+  } as any)
+const ExperimentExperimentIdRunRunIdCategoryEvalIdRoute =
+  ExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport.update({
+    id: '/$evalId',
+    path: '/$evalId',
+    getParentRoute: () => ExperimentExperimentIdRunRunIdCategoryRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/run/$runId': typeof RunRunIdRouteWithChildren
-  '/run/$runId/$category': typeof RunRunIdCategoryRouteWithChildren
-  '/run/$runId/': typeof RunRunIdIndexRoute
-  '/run/$runId/$category/$evalId': typeof RunRunIdCategoryEvalIdRoute
-  '/run/$runId/$category/': typeof RunRunIdCategoryIndexRoute
+  '/experiment/$experimentId': typeof ExperimentExperimentIdRouteWithChildren
+  '/experiment/$experimentId/': typeof ExperimentExperimentIdIndexRoute
+  '/experiment/$experimentId/run/$runId': typeof ExperimentExperimentIdRunRunIdRouteWithChildren
+  '/experiment/$experimentId/run/$runId/$category': typeof ExperimentExperimentIdRunRunIdCategoryRouteWithChildren
+  '/experiment/$experimentId/run/$runId/': typeof ExperimentExperimentIdRunRunIdIndexRoute
+  '/experiment/$experimentId/run/$runId/$category/$evalId': typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/experiment/$experimentId/run/$runId/$category/': typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/run/$runId': typeof RunRunIdIndexRoute
-  '/run/$runId/$category/$evalId': typeof RunRunIdCategoryEvalIdRoute
-  '/run/$runId/$category': typeof RunRunIdCategoryIndexRoute
+  '/experiment/$experimentId': typeof ExperimentExperimentIdIndexRoute
+  '/experiment/$experimentId/run/$runId': typeof ExperimentExperimentIdRunRunIdIndexRoute
+  '/experiment/$experimentId/run/$runId/$category/$evalId': typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/experiment/$experimentId/run/$runId/$category': typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/run/$runId': typeof RunRunIdRouteWithChildren
-  '/run/$runId/$category': typeof RunRunIdCategoryRouteWithChildren
-  '/run/$runId/': typeof RunRunIdIndexRoute
-  '/run/$runId/$category/$evalId': typeof RunRunIdCategoryEvalIdRoute
-  '/run/$runId/$category/': typeof RunRunIdCategoryIndexRoute
+  '/experiment/$experimentId': typeof ExperimentExperimentIdRouteWithChildren
+  '/experiment/$experimentId/': typeof ExperimentExperimentIdIndexRoute
+  '/experiment/$experimentId/run/$runId': typeof ExperimentExperimentIdRunRunIdRouteWithChildren
+  '/experiment/$experimentId/run/$runId/$category': typeof ExperimentExperimentIdRunRunIdCategoryRouteWithChildren
+  '/experiment/$experimentId/run/$runId/': typeof ExperimentExperimentIdRunRunIdIndexRoute
+  '/experiment/$experimentId/run/$runId/$category/$evalId': typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/experiment/$experimentId/run/$runId/$category/': typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/run/$runId'
-    | '/run/$runId/$category'
-    | '/run/$runId/'
-    | '/run/$runId/$category/$evalId'
-    | '/run/$runId/$category/'
+    | '/experiment/$experimentId'
+    | '/experiment/$experimentId/'
+    | '/experiment/$experimentId/run/$runId'
+    | '/experiment/$experimentId/run/$runId/$category'
+    | '/experiment/$experimentId/run/$runId/'
+    | '/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/experiment/$experimentId/run/$runId/$category/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/run/$runId'
-    | '/run/$runId/$category/$evalId'
-    | '/run/$runId/$category'
+    | '/experiment/$experimentId'
+    | '/experiment/$experimentId/run/$runId'
+    | '/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/experiment/$experimentId/run/$runId/$category'
   id:
     | '__root__'
     | '/'
-    | '/run/$runId'
-    | '/run/$runId/$category'
-    | '/run/$runId/'
-    | '/run/$runId/$category/$evalId'
-    | '/run/$runId/$category/'
+    | '/experiment/$experimentId'
+    | '/experiment/$experimentId/'
+    | '/experiment/$experimentId/run/$runId'
+    | '/experiment/$experimentId/run/$runId/$category'
+    | '/experiment/$experimentId/run/$runId/'
+    | '/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/experiment/$experimentId/run/$runId/$category/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  RunRunIdRoute: typeof RunRunIdRouteWithChildren
+  ExperimentExperimentIdRoute: typeof ExperimentExperimentIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -109,74 +137,114 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/run/$runId': {
-      id: '/run/$runId'
-      path: '/run/$runId'
-      fullPath: '/run/$runId'
-      preLoaderRoute: typeof RunRunIdRouteImport
+    '/experiment/$experimentId': {
+      id: '/experiment/$experimentId'
+      path: '/experiment/$experimentId'
+      fullPath: '/experiment/$experimentId'
+      preLoaderRoute: typeof ExperimentExperimentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/run/$runId/': {
-      id: '/run/$runId/'
+    '/experiment/$experimentId/': {
+      id: '/experiment/$experimentId/'
       path: '/'
-      fullPath: '/run/$runId/'
-      preLoaderRoute: typeof RunRunIdIndexRouteImport
-      parentRoute: typeof RunRunIdRoute
+      fullPath: '/experiment/$experimentId/'
+      preLoaderRoute: typeof ExperimentExperimentIdIndexRouteImport
+      parentRoute: typeof ExperimentExperimentIdRoute
     }
-    '/run/$runId/$category': {
-      id: '/run/$runId/$category'
+    '/experiment/$experimentId/run/$runId': {
+      id: '/experiment/$experimentId/run/$runId'
+      path: '/run/$runId'
+      fullPath: '/experiment/$experimentId/run/$runId'
+      preLoaderRoute: typeof ExperimentExperimentIdRunRunIdRouteImport
+      parentRoute: typeof ExperimentExperimentIdRoute
+    }
+    '/experiment/$experimentId/run/$runId/': {
+      id: '/experiment/$experimentId/run/$runId/'
+      path: '/'
+      fullPath: '/experiment/$experimentId/run/$runId/'
+      preLoaderRoute: typeof ExperimentExperimentIdRunRunIdIndexRouteImport
+      parentRoute: typeof ExperimentExperimentIdRunRunIdRoute
+    }
+    '/experiment/$experimentId/run/$runId/$category': {
+      id: '/experiment/$experimentId/run/$runId/$category'
       path: '/$category'
-      fullPath: '/run/$runId/$category'
-      preLoaderRoute: typeof RunRunIdCategoryRouteImport
-      parentRoute: typeof RunRunIdRoute
+      fullPath: '/experiment/$experimentId/run/$runId/$category'
+      preLoaderRoute: typeof ExperimentExperimentIdRunRunIdCategoryRouteImport
+      parentRoute: typeof ExperimentExperimentIdRunRunIdRoute
     }
-    '/run/$runId/$category/': {
-      id: '/run/$runId/$category/'
+    '/experiment/$experimentId/run/$runId/$category/': {
+      id: '/experiment/$experimentId/run/$runId/$category/'
       path: '/'
-      fullPath: '/run/$runId/$category/'
-      preLoaderRoute: typeof RunRunIdCategoryIndexRouteImport
-      parentRoute: typeof RunRunIdCategoryRoute
+      fullPath: '/experiment/$experimentId/run/$runId/$category/'
+      preLoaderRoute: typeof ExperimentExperimentIdRunRunIdCategoryIndexRouteImport
+      parentRoute: typeof ExperimentExperimentIdRunRunIdCategoryRoute
     }
-    '/run/$runId/$category/$evalId': {
-      id: '/run/$runId/$category/$evalId'
+    '/experiment/$experimentId/run/$runId/$category/$evalId': {
+      id: '/experiment/$experimentId/run/$runId/$category/$evalId'
       path: '/$evalId'
-      fullPath: '/run/$runId/$category/$evalId'
-      preLoaderRoute: typeof RunRunIdCategoryEvalIdRouteImport
-      parentRoute: typeof RunRunIdCategoryRoute
+      fullPath: '/experiment/$experimentId/run/$runId/$category/$evalId'
+      preLoaderRoute: typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport
+      parentRoute: typeof ExperimentExperimentIdRunRunIdCategoryRoute
     }
   }
 }
 
-interface RunRunIdCategoryRouteChildren {
-  RunRunIdCategoryEvalIdRoute: typeof RunRunIdCategoryEvalIdRoute
-  RunRunIdCategoryIndexRoute: typeof RunRunIdCategoryIndexRoute
+interface ExperimentExperimentIdRunRunIdCategoryRouteChildren {
+  ExperimentExperimentIdRunRunIdCategoryEvalIdRoute: typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  ExperimentExperimentIdRunRunIdCategoryIndexRoute: typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 
-const RunRunIdCategoryRouteChildren: RunRunIdCategoryRouteChildren = {
-  RunRunIdCategoryEvalIdRoute: RunRunIdCategoryEvalIdRoute,
-  RunRunIdCategoryIndexRoute: RunRunIdCategoryIndexRoute,
+const ExperimentExperimentIdRunRunIdCategoryRouteChildren: ExperimentExperimentIdRunRunIdCategoryRouteChildren =
+  {
+    ExperimentExperimentIdRunRunIdCategoryEvalIdRoute:
+      ExperimentExperimentIdRunRunIdCategoryEvalIdRoute,
+    ExperimentExperimentIdRunRunIdCategoryIndexRoute:
+      ExperimentExperimentIdRunRunIdCategoryIndexRoute,
+  }
+
+const ExperimentExperimentIdRunRunIdCategoryRouteWithChildren =
+  ExperimentExperimentIdRunRunIdCategoryRoute._addFileChildren(
+    ExperimentExperimentIdRunRunIdCategoryRouteChildren,
+  )
+
+interface ExperimentExperimentIdRunRunIdRouteChildren {
+  ExperimentExperimentIdRunRunIdCategoryRoute: typeof ExperimentExperimentIdRunRunIdCategoryRouteWithChildren
+  ExperimentExperimentIdRunRunIdIndexRoute: typeof ExperimentExperimentIdRunRunIdIndexRoute
 }
 
-const RunRunIdCategoryRouteWithChildren =
-  RunRunIdCategoryRoute._addFileChildren(RunRunIdCategoryRouteChildren)
+const ExperimentExperimentIdRunRunIdRouteChildren: ExperimentExperimentIdRunRunIdRouteChildren =
+  {
+    ExperimentExperimentIdRunRunIdCategoryRoute:
+      ExperimentExperimentIdRunRunIdCategoryRouteWithChildren,
+    ExperimentExperimentIdRunRunIdIndexRoute:
+      ExperimentExperimentIdRunRunIdIndexRoute,
+  }
 
-interface RunRunIdRouteChildren {
-  RunRunIdCategoryRoute: typeof RunRunIdCategoryRouteWithChildren
-  RunRunIdIndexRoute: typeof RunRunIdIndexRoute
+const ExperimentExperimentIdRunRunIdRouteWithChildren =
+  ExperimentExperimentIdRunRunIdRoute._addFileChildren(
+    ExperimentExperimentIdRunRunIdRouteChildren,
+  )
+
+interface ExperimentExperimentIdRouteChildren {
+  ExperimentExperimentIdIndexRoute: typeof ExperimentExperimentIdIndexRoute
+  ExperimentExperimentIdRunRunIdRoute: typeof ExperimentExperimentIdRunRunIdRouteWithChildren
 }
 
-const RunRunIdRouteChildren: RunRunIdRouteChildren = {
-  RunRunIdCategoryRoute: RunRunIdCategoryRouteWithChildren,
-  RunRunIdIndexRoute: RunRunIdIndexRoute,
-}
+const ExperimentExperimentIdRouteChildren: ExperimentExperimentIdRouteChildren =
+  {
+    ExperimentExperimentIdIndexRoute: ExperimentExperimentIdIndexRoute,
+    ExperimentExperimentIdRunRunIdRoute:
+      ExperimentExperimentIdRunRunIdRouteWithChildren,
+  }
 
-const RunRunIdRouteWithChildren = RunRunIdRoute._addFileChildren(
-  RunRunIdRouteChildren,
-)
+const ExperimentExperimentIdRouteWithChildren =
+  ExperimentExperimentIdRoute._addFileChildren(
+    ExperimentExperimentIdRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  RunRunIdRoute: RunRunIdRouteWithChildren,
+  ExperimentExperimentIdRoute: ExperimentExperimentIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

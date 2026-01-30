@@ -35,7 +35,23 @@ const stepStatus = v.union(
   v.object({ kind: v.literal("skipped") }),
 );
 
+// Experiment name type - "default" for runs without an experiment tag
+const experimentName = v.union(v.literal("default"), experimentLiteral);
+
 export default defineSchema({
+  // Denormalized experiment stats - updated when runs/evals are created/completed
+  experiments: defineTable({
+    name: experimentName,
+    runCount: v.number(),
+    completedRuns: v.number(),
+    totalEvals: v.number(),
+    passedEvals: v.number(),
+    // Store models as an array since Set isn't supported
+    models: v.array(v.string()),
+    latestRunTime: v.number(),
+  })
+    .index("by_name", ["name"]),
+
   // Each record is a single eval run for a model (append-only for history)
   // Note: _creationTime is automatically appended to all indexes, so:
   // - by_model is effectively ["model", "_creationTime"]

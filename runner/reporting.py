@@ -132,8 +132,20 @@ def _register_asset(hash_value: str, asset_type: str, storage_id: str) -> bool:
     return False
 
 
+def _should_exclude_file(filename: str) -> bool:
+    """Check if a file should be excluded from zip archives."""
+    lower = filename.lower()
+    # Exclude .env files (e.g., .env, .env.local, .env.production)
+    if lower.startswith(".env"):
+        return True
+    # Exclude bun lock files
+    if lower.startswith("bun.lock"):
+        return True
+    return False
+
+
 def _zip_eval_source(eval_path: str) -> str | None:
-    """Zip the eval source directory (excluding node_modules, _generated).
+    """Zip the eval source directory (excluding node_modules, _generated, .env*, bun.lock*).
     Returns path to the zip file."""
     if not os.path.exists(eval_path):
         log_info(f"Eval path does not exist: {eval_path}")
@@ -151,6 +163,8 @@ def _zip_eval_source(eval_path: str) -> str | None:
                 dirs[:] = [d for d in dirs if d not in exclude_dirs]
                 
                 for file in files:
+                    if _should_exclude_file(file):
+                        continue
                     file_path = os.path.join(root, file)
                     arcname = os.path.relpath(file_path, eval_path)
                     zf.write(file_path, arcname)
@@ -249,7 +263,7 @@ def record_step(eval_id: str, step_name: str, status: dict) -> str | None:
 
 
 def zip_output_directory(output_dir: str) -> str | None:
-    """Zip the output directory, excluding node_modules and _generated folders.
+    """Zip the output directory, excluding node_modules, _generated, .env*, and bun.lock* files.
     Returns the path to the zip file, or None on error."""
     if not os.path.exists(output_dir):
         log_info(f"Output directory does not exist: {output_dir}")
@@ -266,6 +280,8 @@ def zip_output_directory(output_dir: str) -> str | None:
                 dirs[:] = [d for d in dirs if d not in ('node_modules', '_generated')]
                 
                 for file in files:
+                    if _should_exclude_file(file):
+                        continue
                     file_path = os.path.join(root, file)
                     arcname = os.path.relpath(file_path, output_dir)
                     zf.write(file_path, arcname)

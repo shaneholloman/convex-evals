@@ -64,13 +64,6 @@ export interface Run {
   evals?: Eval[];
 }
 
-// File entry for file browsing
-export interface FileEntry {
-  name: string;
-  isDirectory: boolean;
-  path: string;
-}
-
 // Helper functions
 export function getScoreStatus(
   score: number,
