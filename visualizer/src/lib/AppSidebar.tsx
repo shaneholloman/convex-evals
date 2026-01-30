@@ -10,6 +10,7 @@ import {
   type Eval,
 } from "./types";
 import { formatCategoryName } from "./evalComponents";
+import { formatRunLabel } from "./breadcrumbs";
 
 type SidebarLevel = "home" | "experiment" | "run" | "category" | "eval";
 
@@ -268,7 +269,7 @@ function RunLinkRow({
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-white truncate flex items-center gap-1">
           <span>{statusIcon}</span>
-          {run.model}
+          {formatRunLabel(run._id, run.model)}
         </span>
         <span
           className={`text-xs font-bold ${
@@ -319,7 +320,13 @@ function SidebarRun({
     );
   }
 
-  const evals = [...run.evals].sort((a, b) => a.name.localeCompare(b.name));
+  const evalsByCategory = new Map<string, Eval[]>();
+  for (const evalItem of run.evals) {
+    const cat = evalItem.category;
+    if (!evalsByCategory.has(cat)) evalsByCategory.set(cat, []);
+    evalsByCategory.get(cat)!.push(evalItem);
+  }
+  const categories = Array.from(evalsByCategory.keys()).sort();
 
   return (
     <>
@@ -333,21 +340,39 @@ function SidebarRun({
           >
             <BackIcon />
           </Link>
-          <h1 className="sidebar-header-title">{run.model}</h1>
+          <h1 className="sidebar-header-title">{formatRunLabel(runId, run.model)}</h1>
         </div>
       </div>
       <div className="sidebar-list-section">
-        <p className="sidebar-list-label">Evals ({evals.length})</p>
+        <p className="sidebar-list-label">Categories ({categories.length})</p>
         <nav className="p-2 flex-1 overflow-auto">
-          {evals.map((evalItem) => (
-            <EvalLinkRow
-              key={evalItem._id}
-              experimentId={experimentId}
-              runId={runId}
-              evalItem={evalItem}
-              isActive={false}
-            />
-          ))}
+          {categories.map((category) => {
+            const evals = evalsByCategory.get(category)!;
+            const passed = evals.filter((e) => e.status.kind === "passed").length;
+            const total = evals.length;
+            const icon =
+              passed === total ? "✅" : passed === 0 ? "❌" : "⚠️";
+
+            return (
+              <Link
+                key={category}
+                to="/experiment/$experimentId/run/$runId/$category"
+                params={{ experimentId, runId, category }}
+                className="sidebar-item block mb-1"
+                activeProps={{ className: "sidebar-item active block mb-1" }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-white truncate flex items-center gap-1 min-w-0">
+                    <span className="shrink-0">{icon}</span>
+                    <span className="truncate">{formatCategoryName(category)}</span>
+                  </span>
+                  <span className="text-xs text-slate-500 shrink-0">
+                    {passed}/{total}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </nav>
       </div>
     </>
@@ -391,11 +416,11 @@ function SidebarCategory({
             to="/experiment/$experimentId/run/$runId"
             params={{ experimentId, runId }}
             className="sidebar-header-back-btn"
-            aria-label={`Back to ${run.model}`}
+aria-label={`Back to ${formatRunLabel(runId, run.model)}`}
           >
             <BackIcon />
           </Link>
-          <h1 className="sidebar-header-title">{formatCategoryName(category)}</h1>
+        <h1 className="sidebar-header-title">{formatCategoryName(category)}</h1>
         </div>
       </div>
       <div className="sidebar-list-section">
@@ -452,11 +477,11 @@ function SidebarEvalDetail({
             to="/experiment/$experimentId/run/$runId"
             params={{ experimentId, runId }}
             className="sidebar-header-back-btn"
-            aria-label={`Back to ${run.model}`}
+aria-label={`Back to ${formatRunLabel(runId, run.model)}`}
           >
             <BackIcon />
           </Link>
-          <h1 className="sidebar-header-title">Eval details</h1>
+        <h1 className="sidebar-header-title">Eval details</h1>
         </div>
       </div>
       <div className="sidebar-list-section">

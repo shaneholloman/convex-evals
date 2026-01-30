@@ -3,8 +3,18 @@ import { formatCategoryName } from "./evalComponents";
 
 export type BreadcrumbCurrent = "experiment" | "run" | "category" | "eval";
 
+const RUN_ID_SHORT_LEN = 6;
+
 function experimentDisplayName(experimentId: string): string {
   return experimentId === "default" ? "with_guidelines" : experimentId;
+}
+
+export function shortRunId(runId: string): string {
+  return runId.slice(0, RUN_ID_SHORT_LEN);
+}
+
+export function formatRunLabel(runId: string, model: string): string {
+  return `${shortRunId(runId)} (${model})`;
 }
 
 export function Breadcrumbs({
@@ -51,7 +61,9 @@ export function Breadcrumbs({
           </Link>
           <span className="breadcrumb-separator">→</span>
           {!runId || !runModel ? null : current === "run" ? (
-            <span className="breadcrumb-current">{runModel}</span>
+            <span className="breadcrumb-current">
+              {formatRunLabel(runId, runModel)}
+            </span>
           ) : (
             <>
               <Link
@@ -59,7 +71,7 @@ export function Breadcrumbs({
                 params={{ experimentId, runId }}
                 className="breadcrumb-btn"
               >
-                {runModel}
+                {formatRunLabel(runId, runModel)}
               </Link>
               <span className="breadcrumb-separator">→</span>
               {!category ? null : current === "category" ? (
