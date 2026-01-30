@@ -1,4 +1,4 @@
-import type { Id } from "../../../evalScores/convex/_generated/dataModel";
+import type { Id } from "../convex/types";
 
 // Step name literals
 export type StepName = "filesystem" | "install" | "deploy" | "tsc" | "eslint" | "tests";

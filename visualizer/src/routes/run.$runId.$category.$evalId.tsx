@@ -7,8 +7,8 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "convex/react";
 import JSZip from "jszip";
-import { api } from "../../../evalScores/convex/_generated/api";
-import type { Id } from "../../../evalScores/convex/_generated/dataModel";
+import { api } from "../convex/api";
+import type { Id } from "../convex/types";
 import {
   getTaskContent,
   browseDirectory,

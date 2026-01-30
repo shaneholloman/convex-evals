@@ -5,8 +5,8 @@ import {
   useParams,
 } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { api } from "../../../evalScores/convex/_generated/api";
-import type { Id } from "../../../evalScores/convex/_generated/dataModel";
+import { api } from "../convex/api";
+import type { Id } from "../convex/types";
 import {
   getRunStatusIcon,
   formatDuration,

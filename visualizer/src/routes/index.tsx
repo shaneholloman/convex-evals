@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { api } from "../../../evalScores/convex/_generated/api";
+import { api } from "../convex/api";
 import {
   getScoreStatus,
   getRunStatusIcon,
