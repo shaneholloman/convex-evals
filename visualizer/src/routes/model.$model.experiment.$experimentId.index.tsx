@@ -1,23 +1,19 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../convex/api";
-import {
-  getRunStatusIcon,
-  formatDuration,
-  type Run,
-} from "../lib/types";
+import { getRunStatusIcon, formatDuration, type Run } from "../lib/types";
 import { shortRunId } from "../lib/breadcrumbs";
 
-export const Route = createFileRoute("/experiment/$experimentId/")({
-  component: ExperimentRunsPage,
+export const Route = createFileRoute("/model/$model/experiment/$experimentId/")({
+  component: ModelExperimentRunsPage,
 });
 
-function ExperimentRunsPage() {
-  const { experimentId } = useParams({ from: "/experiment/$experimentId/" });
-  
-  const runs = useQuery(api.runs.listRuns, {
-    experiment: experimentId === "default" ? undefined : experimentId as any,
+function ModelExperimentRunsPage() {
+  const { model, experimentId } = useParams({
+    from: "/model/$model/experiment/$experimentId/",
   });
+
+  const runs = useQuery(api.runs.listRuns, { model });
 
   if (runs === undefined) {
     return (
@@ -27,23 +23,22 @@ function ExperimentRunsPage() {
     );
   }
 
-  // Filter runs for the default experiment
-  const filteredRuns = experimentId === "default"
-    ? runs.filter((r) => !r.experiment)
-    : runs;
+  // Filter runs for this experiment
+  const filteredRuns =
+    experimentId === "default"
+      ? runs.filter((r) => !r.experiment)
+      : runs.filter((r) => r.experiment === experimentId);
 
   const displayName = experimentId === "default" ? "with_guidelines" : experimentId;
 
   return (
     <main className="flex-1 overflow-auto p-6">
       <div className="max-w-6xl mx-auto">
-          <header className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              {displayName}
-            </h1>
-          <p className="text-slate-400">
-            Select a run to view detailed results
-          </p>
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {model} / {displayName}
+          </h1>
+          <p className="text-slate-400">Select a run to view detailed results</p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -59,15 +54,17 @@ function ExperimentRunsPage() {
           </div>
           <div className="stat-card">
             <div className="stat-number">
-              {filteredRuns.filter((r) => r.status.kind === "running" || r.status.kind === "pending").length}
+              {filteredRuns.filter(
+                (r) => r.status.kind === "running" || r.status.kind === "pending"
+              ).length}
             </div>
             <div className="stat-label">In Progress</div>
           </div>
           <div className="stat-card">
             <div className="stat-number">
-              {new Set(filteredRuns.map((r) => r.model)).size}
+              {filteredRuns.filter((r) => r.status.kind === "failed").length}
             </div>
-            <div className="stat-label">Models</div>
+            <div className="stat-label">Failed</div>
           </div>
         </div>
 
@@ -79,7 +76,6 @@ function ExperimentRunsPage() {
                 <tr>
                   <th>Status</th>
                   <th>Run ID</th>
-                  <th>Model</th>
                   <th>Provider</th>
                   <th>Evals</th>
                   <th>Pass Rate</th>
@@ -89,7 +85,12 @@ function ExperimentRunsPage() {
               </thead>
               <tbody>
                 {filteredRuns.map((run) => (
-                  <RunRow key={run._id} experimentId={experimentId} run={run} />
+                  <RunRow
+                    key={run._id}
+                    model={model}
+                    experimentId={experimentId}
+                    run={run}
+                  />
                 ))}
               </tbody>
             </table>
@@ -100,7 +101,15 @@ function ExperimentRunsPage() {
   );
 }
 
-function RunRow({ experimentId, run }: { experimentId: string; run: Run }) {
+function RunRow({
+  model,
+  experimentId,
+  run,
+}: {
+  model: string;
+  experimentId: string;
+  run: Run;
+}) {
   const navigate = useNavigate();
   const statusIcon = getRunStatusIcon(run.status);
   const passRate = run.evalCounts
@@ -121,8 +130,8 @@ function RunRow({ experimentId, run }: { experimentId: string; run: Run }) {
       className="cursor-pointer hover:bg-slate-800/50"
       onClick={() =>
         navigate({
-          to: "/experiment/$experimentId/run/$runId",
-          params: { experimentId, runId: run._id },
+          to: "/model/$model/experiment/$experimentId/run/$runId",
+          params: { model, experimentId, runId: run._id },
         })
       }
     >
@@ -132,7 +141,6 @@ function RunRow({ experimentId, run }: { experimentId: string; run: Run }) {
       <td className="text-slate-400 font-mono text-sm" title={run._id}>
         {shortRunId(run._id)}
       </td>
-      <td className="text-white font-medium">{run.model}</td>
       <td className="text-slate-400">{run.provider || "—"}</td>
       <td className="text-slate-300">
         {run.evalCounts ? (

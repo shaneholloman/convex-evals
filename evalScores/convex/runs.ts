@@ -1,5 +1,6 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 const experimentLiteral = v.union(v.literal("no_guidelines"));
 
@@ -305,6 +306,86 @@ export const listExperiments = query({
       passRate: exp.totalEvals > 0 ? exp.passedEvals / exp.totalEvals : 0,
       completedRuns: exp.completedRuns,
     }));
+    
+    // Sort by latest run (most recent first)
+    result.sort((a, b) => b.latestRun - a.latestRun);
+    
+    return result;
+  },
+});
+
+// List all models with aggregated stats (limited to last 90 days)
+export const listModels = query({
+  args: {},
+  handler: async (ctx) => {
+    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    
+    // Get all runs from the last 90 days
+    const runs = await ctx.db
+      .query("runs")
+      .order("desc")
+      .filter((q) => q.gte(q.field("_creationTime"), ninetyDaysAgo))
+      .collect();
+    
+    // Aggregate stats by model
+    const modelStats = new Map<string, {
+      runCount: number;
+      experiments: Set<string>;
+      latestRunTime: number;
+      runIds: Id<"runs">[];
+    }>();
+    
+    for (const run of runs) {
+      const existing = modelStats.get(run.model);
+      const expName = run.experiment ?? "default";
+      
+      if (existing) {
+        existing.runCount += 1;
+        existing.experiments.add(expName);
+        if (run._creationTime > existing.latestRunTime) {
+          existing.latestRunTime = run._creationTime;
+        }
+        existing.runIds.push(run._id);
+      } else {
+        modelStats.set(run.model, {
+          runCount: 1,
+          experiments: new Set([expName]),
+          latestRunTime: run._creationTime,
+          runIds: [run._id],
+        });
+      }
+    }
+    
+    // Fetch eval counts for pass rate calculation
+    const result = await Promise.all(
+      Array.from(modelStats.entries()).map(async ([model, stats]) => {
+        let totalEvals = 0;
+        let passedEvals = 0;
+        
+        // Only check evals for the most recent 10 runs per model to avoid excessive queries
+        const recentRunIds = stats.runIds.slice(0, 10);
+        for (const runId of recentRunIds) {
+          const evals = await ctx.db
+            .query("evals")
+            .withIndex("by_runId", (q) => q.eq("runId", runId))
+            .collect();
+          
+          totalEvals += evals.length;
+          passedEvals += evals.filter((e) => e.status.kind === "passed").length;
+        }
+        
+        return {
+          name: model,
+          runCount: stats.runCount,
+          experimentCount: stats.experiments.size,
+          experiments: Array.from(stats.experiments),
+          latestRun: stats.latestRunTime,
+          totalEvals,
+          passedEvals,
+          passRate: totalEvals > 0 ? passedEvals / totalEvals : 0,
+        };
+      })
+    );
     
     // Sort by latest run (most recent first)
     result.sort((a, b) => b.latestRun - a.latestRun);

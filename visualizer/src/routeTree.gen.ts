@@ -10,17 +10,31 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ModelModelRouteImport } from './routes/model.$model'
 import { Route as ExperimentExperimentIdRouteImport } from './routes/experiment.$experimentId'
+import { Route as ModelModelIndexRouteImport } from './routes/model.$model.index'
 import { Route as ExperimentExperimentIdIndexRouteImport } from './routes/experiment.$experimentId.index'
+import { Route as ModelModelExperimentExperimentIdRouteImport } from './routes/model.$model.experiment.$experimentId'
 import { Route as ExperimentExperimentIdRunRunIdRouteImport } from './routes/experiment.$experimentId.run.$runId'
+import { Route as ModelModelExperimentExperimentIdIndexRouteImport } from './routes/model.$model.experiment.$experimentId.index'
 import { Route as ExperimentExperimentIdRunRunIdIndexRouteImport } from './routes/experiment.$experimentId.run.$runId.index'
 import { Route as ExperimentExperimentIdRunRunIdCategoryRouteImport } from './routes/experiment.$experimentId.run.$runId.$category'
 import { Route as ExperimentExperimentIdRunRunIdCategoryIndexRouteImport } from './routes/experiment.$experimentId.run.$runId.$category.index'
+import { Route as ModelModelExperimentExperimentIdRunRunIdRouteImport } from './routes/model.$model.experiment.$experimentId.run.$runId'
 import { Route as ExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport } from './routes/experiment.$experimentId.run.$runId.$category.$evalId'
+import { Route as ModelModelExperimentExperimentIdRunRunIdIndexRouteImport } from './routes/model.$model.experiment.$experimentId.run.$runId.index'
+import { Route as ModelModelExperimentExperimentIdRunRunIdCategoryRouteImport } from './routes/model.$model.experiment.$experimentId.run.$runId.$category'
+import { Route as ModelModelExperimentExperimentIdRunRunIdCategoryIndexRouteImport } from './routes/model.$model.experiment.$experimentId.run.$runId.$category.index'
+import { Route as ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport } from './routes/model.$model.experiment.$experimentId.run.$runId.$category.$evalId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModelModelRoute = ModelModelRouteImport.update({
+  id: '/model/$model',
+  path: '/model/$model',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExperimentExperimentIdRoute = ExperimentExperimentIdRouteImport.update({
@@ -28,17 +42,34 @@ const ExperimentExperimentIdRoute = ExperimentExperimentIdRouteImport.update({
   path: '/experiment/$experimentId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModelModelIndexRoute = ModelModelIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ModelModelRoute,
+} as any)
 const ExperimentExperimentIdIndexRoute =
   ExperimentExperimentIdIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => ExperimentExperimentIdRoute,
   } as any)
+const ModelModelExperimentExperimentIdRoute =
+  ModelModelExperimentExperimentIdRouteImport.update({
+    id: '/experiment/$experimentId',
+    path: '/experiment/$experimentId',
+    getParentRoute: () => ModelModelRoute,
+  } as any)
 const ExperimentExperimentIdRunRunIdRoute =
   ExperimentExperimentIdRunRunIdRouteImport.update({
     id: '/run/$runId',
     path: '/run/$runId',
     getParentRoute: () => ExperimentExperimentIdRoute,
+  } as any)
+const ModelModelExperimentExperimentIdIndexRoute =
+  ModelModelExperimentExperimentIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ModelModelExperimentExperimentIdRoute,
   } as any)
 const ExperimentExperimentIdRunRunIdIndexRoute =
   ExperimentExperimentIdRunRunIdIndexRouteImport.update({
@@ -58,74 +89,151 @@ const ExperimentExperimentIdRunRunIdCategoryIndexRoute =
     path: '/',
     getParentRoute: () => ExperimentExperimentIdRunRunIdCategoryRoute,
   } as any)
+const ModelModelExperimentExperimentIdRunRunIdRoute =
+  ModelModelExperimentExperimentIdRunRunIdRouteImport.update({
+    id: '/run/$runId',
+    path: '/run/$runId',
+    getParentRoute: () => ModelModelExperimentExperimentIdRoute,
+  } as any)
 const ExperimentExperimentIdRunRunIdCategoryEvalIdRoute =
   ExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport.update({
     id: '/$evalId',
     path: '/$evalId',
     getParentRoute: () => ExperimentExperimentIdRunRunIdCategoryRoute,
   } as any)
+const ModelModelExperimentExperimentIdRunRunIdIndexRoute =
+  ModelModelExperimentExperimentIdRunRunIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ModelModelExperimentExperimentIdRunRunIdRoute,
+  } as any)
+const ModelModelExperimentExperimentIdRunRunIdCategoryRoute =
+  ModelModelExperimentExperimentIdRunRunIdCategoryRouteImport.update({
+    id: '/$category',
+    path: '/$category',
+    getParentRoute: () => ModelModelExperimentExperimentIdRunRunIdRoute,
+  } as any)
+const ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute =
+  ModelModelExperimentExperimentIdRunRunIdCategoryIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ModelModelExperimentExperimentIdRunRunIdCategoryRoute,
+  } as any)
+const ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute =
+  ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport.update({
+    id: '/$evalId',
+    path: '/$evalId',
+    getParentRoute: () => ModelModelExperimentExperimentIdRunRunIdCategoryRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/experiment/$experimentId': typeof ExperimentExperimentIdRouteWithChildren
+  '/model/$model': typeof ModelModelRouteWithChildren
   '/experiment/$experimentId/': typeof ExperimentExperimentIdIndexRoute
+  '/model/$model/': typeof ModelModelIndexRoute
   '/experiment/$experimentId/run/$runId': typeof ExperimentExperimentIdRunRunIdRouteWithChildren
+  '/model/$model/experiment/$experimentId': typeof ModelModelExperimentExperimentIdRouteWithChildren
   '/experiment/$experimentId/run/$runId/$category': typeof ExperimentExperimentIdRunRunIdCategoryRouteWithChildren
   '/experiment/$experimentId/run/$runId/': typeof ExperimentExperimentIdRunRunIdIndexRoute
+  '/model/$model/experiment/$experimentId/': typeof ModelModelExperimentExperimentIdIndexRoute
   '/experiment/$experimentId/run/$runId/$category/$evalId': typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/model/$model/experiment/$experimentId/run/$runId': typeof ModelModelExperimentExperimentIdRunRunIdRouteWithChildren
   '/experiment/$experimentId/run/$runId/$category/': typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category': typeof ModelModelExperimentExperimentIdRunRunIdCategoryRouteWithChildren
+  '/model/$model/experiment/$experimentId/run/$runId/': typeof ModelModelExperimentExperimentIdRunRunIdIndexRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId': typeof ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category/': typeof ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/experiment/$experimentId': typeof ExperimentExperimentIdIndexRoute
+  '/model/$model': typeof ModelModelIndexRoute
   '/experiment/$experimentId/run/$runId': typeof ExperimentExperimentIdRunRunIdIndexRoute
+  '/model/$model/experiment/$experimentId': typeof ModelModelExperimentExperimentIdIndexRoute
   '/experiment/$experimentId/run/$runId/$category/$evalId': typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
   '/experiment/$experimentId/run/$runId/$category': typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
+  '/model/$model/experiment/$experimentId/run/$runId': typeof ModelModelExperimentExperimentIdRunRunIdIndexRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId': typeof ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category': typeof ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/experiment/$experimentId': typeof ExperimentExperimentIdRouteWithChildren
+  '/model/$model': typeof ModelModelRouteWithChildren
   '/experiment/$experimentId/': typeof ExperimentExperimentIdIndexRoute
+  '/model/$model/': typeof ModelModelIndexRoute
   '/experiment/$experimentId/run/$runId': typeof ExperimentExperimentIdRunRunIdRouteWithChildren
+  '/model/$model/experiment/$experimentId': typeof ModelModelExperimentExperimentIdRouteWithChildren
   '/experiment/$experimentId/run/$runId/$category': typeof ExperimentExperimentIdRunRunIdCategoryRouteWithChildren
   '/experiment/$experimentId/run/$runId/': typeof ExperimentExperimentIdRunRunIdIndexRoute
+  '/model/$model/experiment/$experimentId/': typeof ModelModelExperimentExperimentIdIndexRoute
   '/experiment/$experimentId/run/$runId/$category/$evalId': typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/model/$model/experiment/$experimentId/run/$runId': typeof ModelModelExperimentExperimentIdRunRunIdRouteWithChildren
   '/experiment/$experimentId/run/$runId/$category/': typeof ExperimentExperimentIdRunRunIdCategoryIndexRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category': typeof ModelModelExperimentExperimentIdRunRunIdCategoryRouteWithChildren
+  '/model/$model/experiment/$experimentId/run/$runId/': typeof ModelModelExperimentExperimentIdRunRunIdIndexRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId': typeof ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  '/model/$model/experiment/$experimentId/run/$runId/$category/': typeof ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/experiment/$experimentId'
+    | '/model/$model'
     | '/experiment/$experimentId/'
+    | '/model/$model/'
     | '/experiment/$experimentId/run/$runId'
+    | '/model/$model/experiment/$experimentId'
     | '/experiment/$experimentId/run/$runId/$category'
     | '/experiment/$experimentId/run/$runId/'
+    | '/model/$model/experiment/$experimentId/'
     | '/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/model/$model/experiment/$experimentId/run/$runId'
     | '/experiment/$experimentId/run/$runId/$category/'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category'
+    | '/model/$model/experiment/$experimentId/run/$runId/'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/experiment/$experimentId'
+    | '/model/$model'
     | '/experiment/$experimentId/run/$runId'
+    | '/model/$model/experiment/$experimentId'
     | '/experiment/$experimentId/run/$runId/$category/$evalId'
     | '/experiment/$experimentId/run/$runId/$category'
+    | '/model/$model/experiment/$experimentId/run/$runId'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category'
   id:
     | '__root__'
     | '/'
     | '/experiment/$experimentId'
+    | '/model/$model'
     | '/experiment/$experimentId/'
+    | '/model/$model/'
     | '/experiment/$experimentId/run/$runId'
+    | '/model/$model/experiment/$experimentId'
     | '/experiment/$experimentId/run/$runId/$category'
     | '/experiment/$experimentId/run/$runId/'
+    | '/model/$model/experiment/$experimentId/'
     | '/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/model/$model/experiment/$experimentId/run/$runId'
     | '/experiment/$experimentId/run/$runId/$category/'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category'
+    | '/model/$model/experiment/$experimentId/run/$runId/'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId'
+    | '/model/$model/experiment/$experimentId/run/$runId/$category/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ExperimentExperimentIdRoute: typeof ExperimentExperimentIdRouteWithChildren
+  ModelModelRoute: typeof ModelModelRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -137,12 +245,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/model/$model': {
+      id: '/model/$model'
+      path: '/model/$model'
+      fullPath: '/model/$model'
+      preLoaderRoute: typeof ModelModelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/experiment/$experimentId': {
       id: '/experiment/$experimentId'
       path: '/experiment/$experimentId'
       fullPath: '/experiment/$experimentId'
       preLoaderRoute: typeof ExperimentExperimentIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/model/$model/': {
+      id: '/model/$model/'
+      path: '/'
+      fullPath: '/model/$model/'
+      preLoaderRoute: typeof ModelModelIndexRouteImport
+      parentRoute: typeof ModelModelRoute
     }
     '/experiment/$experimentId/': {
       id: '/experiment/$experimentId/'
@@ -151,12 +273,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExperimentExperimentIdIndexRouteImport
       parentRoute: typeof ExperimentExperimentIdRoute
     }
+    '/model/$model/experiment/$experimentId': {
+      id: '/model/$model/experiment/$experimentId'
+      path: '/experiment/$experimentId'
+      fullPath: '/model/$model/experiment/$experimentId'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdRouteImport
+      parentRoute: typeof ModelModelRoute
+    }
     '/experiment/$experimentId/run/$runId': {
       id: '/experiment/$experimentId/run/$runId'
       path: '/run/$runId'
       fullPath: '/experiment/$experimentId/run/$runId'
       preLoaderRoute: typeof ExperimentExperimentIdRunRunIdRouteImport
       parentRoute: typeof ExperimentExperimentIdRoute
+    }
+    '/model/$model/experiment/$experimentId/': {
+      id: '/model/$model/experiment/$experimentId/'
+      path: '/'
+      fullPath: '/model/$model/experiment/$experimentId/'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdIndexRouteImport
+      parentRoute: typeof ModelModelExperimentExperimentIdRoute
     }
     '/experiment/$experimentId/run/$runId/': {
       id: '/experiment/$experimentId/run/$runId/'
@@ -179,12 +315,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExperimentExperimentIdRunRunIdCategoryIndexRouteImport
       parentRoute: typeof ExperimentExperimentIdRunRunIdCategoryRoute
     }
+    '/model/$model/experiment/$experimentId/run/$runId': {
+      id: '/model/$model/experiment/$experimentId/run/$runId'
+      path: '/run/$runId'
+      fullPath: '/model/$model/experiment/$experimentId/run/$runId'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdRunRunIdRouteImport
+      parentRoute: typeof ModelModelExperimentExperimentIdRoute
+    }
     '/experiment/$experimentId/run/$runId/$category/$evalId': {
       id: '/experiment/$experimentId/run/$runId/$category/$evalId'
       path: '/$evalId'
       fullPath: '/experiment/$experimentId/run/$runId/$category/$evalId'
       preLoaderRoute: typeof ExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport
       parentRoute: typeof ExperimentExperimentIdRunRunIdCategoryRoute
+    }
+    '/model/$model/experiment/$experimentId/run/$runId/': {
+      id: '/model/$model/experiment/$experimentId/run/$runId/'
+      path: '/'
+      fullPath: '/model/$model/experiment/$experimentId/run/$runId/'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdRunRunIdIndexRouteImport
+      parentRoute: typeof ModelModelExperimentExperimentIdRunRunIdRoute
+    }
+    '/model/$model/experiment/$experimentId/run/$runId/$category': {
+      id: '/model/$model/experiment/$experimentId/run/$runId/$category'
+      path: '/$category'
+      fullPath: '/model/$model/experiment/$experimentId/run/$runId/$category'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryRouteImport
+      parentRoute: typeof ModelModelExperimentExperimentIdRunRunIdRoute
+    }
+    '/model/$model/experiment/$experimentId/run/$runId/$category/': {
+      id: '/model/$model/experiment/$experimentId/run/$runId/$category/'
+      path: '/'
+      fullPath: '/model/$model/experiment/$experimentId/run/$runId/$category/'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryIndexRouteImport
+      parentRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryRoute
+    }
+    '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId': {
+      id: '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId'
+      path: '/$evalId'
+      fullPath: '/model/$model/experiment/$experimentId/run/$runId/$category/$evalId'
+      preLoaderRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRouteImport
+      parentRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryRoute
     }
   }
 }
@@ -242,9 +413,79 @@ const ExperimentExperimentIdRouteWithChildren =
     ExperimentExperimentIdRouteChildren,
   )
 
+interface ModelModelExperimentExperimentIdRunRunIdCategoryRouteChildren {
+  ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute
+  ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute
+}
+
+const ModelModelExperimentExperimentIdRunRunIdCategoryRouteChildren: ModelModelExperimentExperimentIdRunRunIdCategoryRouteChildren =
+  {
+    ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute:
+      ModelModelExperimentExperimentIdRunRunIdCategoryEvalIdRoute,
+    ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute:
+      ModelModelExperimentExperimentIdRunRunIdCategoryIndexRoute,
+  }
+
+const ModelModelExperimentExperimentIdRunRunIdCategoryRouteWithChildren =
+  ModelModelExperimentExperimentIdRunRunIdCategoryRoute._addFileChildren(
+    ModelModelExperimentExperimentIdRunRunIdCategoryRouteChildren,
+  )
+
+interface ModelModelExperimentExperimentIdRunRunIdRouteChildren {
+  ModelModelExperimentExperimentIdRunRunIdCategoryRoute: typeof ModelModelExperimentExperimentIdRunRunIdCategoryRouteWithChildren
+  ModelModelExperimentExperimentIdRunRunIdIndexRoute: typeof ModelModelExperimentExperimentIdRunRunIdIndexRoute
+}
+
+const ModelModelExperimentExperimentIdRunRunIdRouteChildren: ModelModelExperimentExperimentIdRunRunIdRouteChildren =
+  {
+    ModelModelExperimentExperimentIdRunRunIdCategoryRoute:
+      ModelModelExperimentExperimentIdRunRunIdCategoryRouteWithChildren,
+    ModelModelExperimentExperimentIdRunRunIdIndexRoute:
+      ModelModelExperimentExperimentIdRunRunIdIndexRoute,
+  }
+
+const ModelModelExperimentExperimentIdRunRunIdRouteWithChildren =
+  ModelModelExperimentExperimentIdRunRunIdRoute._addFileChildren(
+    ModelModelExperimentExperimentIdRunRunIdRouteChildren,
+  )
+
+interface ModelModelExperimentExperimentIdRouteChildren {
+  ModelModelExperimentExperimentIdIndexRoute: typeof ModelModelExperimentExperimentIdIndexRoute
+  ModelModelExperimentExperimentIdRunRunIdRoute: typeof ModelModelExperimentExperimentIdRunRunIdRouteWithChildren
+}
+
+const ModelModelExperimentExperimentIdRouteChildren: ModelModelExperimentExperimentIdRouteChildren =
+  {
+    ModelModelExperimentExperimentIdIndexRoute:
+      ModelModelExperimentExperimentIdIndexRoute,
+    ModelModelExperimentExperimentIdRunRunIdRoute:
+      ModelModelExperimentExperimentIdRunRunIdRouteWithChildren,
+  }
+
+const ModelModelExperimentExperimentIdRouteWithChildren =
+  ModelModelExperimentExperimentIdRoute._addFileChildren(
+    ModelModelExperimentExperimentIdRouteChildren,
+  )
+
+interface ModelModelRouteChildren {
+  ModelModelIndexRoute: typeof ModelModelIndexRoute
+  ModelModelExperimentExperimentIdRoute: typeof ModelModelExperimentExperimentIdRouteWithChildren
+}
+
+const ModelModelRouteChildren: ModelModelRouteChildren = {
+  ModelModelIndexRoute: ModelModelIndexRoute,
+  ModelModelExperimentExperimentIdRoute:
+    ModelModelExperimentExperimentIdRouteWithChildren,
+}
+
+const ModelModelRouteWithChildren = ModelModelRoute._addFileChildren(
+  ModelModelRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ExperimentExperimentIdRoute: ExperimentExperimentIdRouteWithChildren,
+  ModelModelRoute: ModelModelRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

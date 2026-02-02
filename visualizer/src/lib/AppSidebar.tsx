@@ -12,10 +12,21 @@ import {
 import { formatCategoryName } from "./evalComponents";
 import { formatRunLabel } from "./breadcrumbs";
 
-type SidebarLevel = "home" | "experiment" | "run" | "category" | "eval";
+type SidebarLevel = 
+  | "home" 
+  | "experiment" 
+  | "run" 
+  | "category" 
+  | "eval"
+  | "model"
+  | "modelExperiment"
+  | "modelRun"
+  | "modelCategory"
+  | "modelEval";
 
 function parsePath(pathname: string): {
   level: SidebarLevel;
+  model?: string;
   experimentId?: string;
   runId?: string;
   category?: string;
@@ -24,6 +35,37 @@ function parsePath(pathname: string): {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0)
     return { level: "home" };
+
+  // Handle model-based routes: /model/$model/...
+  if (segments[0] === "model" && segments[1]) {
+    const model = decodeURIComponent(segments[1]);
+    
+    if (segments[2] !== "experiment" || !segments[3])
+      return { level: "model", model };
+    
+    const experimentId = segments[3];
+    if (segments[4] !== "run" || !segments[5])
+      return { level: "modelExperiment", model, experimentId };
+    
+    const runId = segments[5];
+    if (!segments[6])
+      return { level: "modelRun", model, experimentId, runId };
+    
+    const category = segments[6];
+    if (!segments[7])
+      return { level: "modelCategory", model, experimentId, runId, category };
+    
+    return {
+      level: "modelEval",
+      model,
+      experimentId,
+      runId,
+      category,
+      evalId: segments[7],
+    };
+  }
+
+  // Handle experiment-based routes: /experiment/$experimentId/...
   if (segments[0] !== "experiment" || !segments[1])
     return { level: "home" };
 
@@ -89,7 +131,7 @@ function BackIcon({ className }: { className?: string }) {
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { level, experimentId, runId, category, evalId } = parsePath(pathname);
+  const { level, model, experimentId, runId, category, evalId } = parsePath(pathname);
 
   const asideClass =
     "w-72 bg-slate-800/50 border-r border-slate-700 overflow-auto flex flex-col shrink-0 sidebar-panel";
@@ -102,6 +144,59 @@ export function AppSidebar() {
     );
   }
 
+  // Model-based navigation
+  if (level === "model" && model) {
+    return (
+      <aside key={pathname} className={asideClass}>
+        <SidebarModel model={model} />
+      </aside>
+    );
+  }
+
+  if (level === "modelExperiment" && model && experimentId) {
+    return (
+      <aside key={pathname} className={asideClass}>
+        <SidebarModelExperiment model={model} experimentId={experimentId} />
+      </aside>
+    );
+  }
+
+  if (level === "modelRun" && model && experimentId && runId) {
+    return (
+      <aside key={pathname} className={asideClass}>
+        <SidebarModelRun model={model} experimentId={experimentId} runId={runId} />
+      </aside>
+    );
+  }
+
+  if (level === "modelCategory" && model && experimentId && runId && category) {
+    return (
+      <aside key={pathname} className={asideClass}>
+        <SidebarModelCategory
+          model={model}
+          experimentId={experimentId}
+          runId={runId}
+          category={category}
+        />
+      </aside>
+    );
+  }
+
+  if (level === "modelEval" && model && experimentId && runId && category && evalId) {
+    return (
+      <aside key={pathname} className={asideClass}>
+        <SidebarModelEvalDetail
+          model={model}
+          experimentId={experimentId}
+          runId={runId}
+          category={category}
+          evalId={evalId}
+        />
+      </aside>
+    );
+  }
+
+  // Experiment-based navigation
   if (level === "experiment" && experimentId) {
     return (
       <aside key={pathname} className={asideClass}>
@@ -152,43 +247,72 @@ export function AppSidebar() {
 
 function SidebarHome() {
   const experiments = useQuery(api.runs.listExperiments, {});
+  const models = useQuery(api.runs.listModels, {});
 
-  if (experiments === undefined) {
+  if (experiments === undefined || models === undefined) {
     return (
-      <div className="p-4 text-slate-400 text-sm">Loading experiments...</div>
+      <div className="p-4 text-slate-400 text-sm">Loading...</div>
     );
   }
 
   return (
     <>
-      <div className="sidebar-header">
-        <h1 className="sidebar-header-title">Experiments</h1>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">By Experiment</p>
+        <nav className="p-2 overflow-auto">
+          {experiments.map((exp) => {
+            const percentage = (exp.passRate * 100).toFixed(1);
+            return (
+              <Link
+                key={exp.name}
+                to="/experiment/$experimentId"
+                params={{ experimentId: exp.name }}
+                className="sidebar-item block mb-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white truncate">
+                    {exp.name === "default" ? "with_guidelines" : exp.name}
+                  </span>
+                  <span className="text-xs font-bold text-cyan-400">
+                    {percentage}%
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {exp.runCount} runs · {exp.modelCount} models
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
-      <nav className="p-2 flex-1 overflow-auto">
-        {experiments.map((exp) => {
-          const percentage = (exp.passRate * 100).toFixed(1);
-          return (
-            <Link
-              key={exp.name}
-              to="/experiment/$experimentId"
-              params={{ experimentId: exp.name }}
-              className="sidebar-item block mb-1"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-white truncate">
-                  {exp.name === "default" ? "with_guidelines" : exp.name}
-                </span>
-                <span className="text-xs font-bold text-cyan-400">
-                  {percentage}%
-                </span>
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {exp.runCount} runs · {exp.modelCount} models
-              </div>
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">By Model <span className="text-slate-600 font-normal">(last 90 days)</span></p>
+        <nav className="p-2 flex-1 overflow-auto">
+          {models.map((model) => {
+            const percentage = (model.passRate * 100).toFixed(1);
+            return (
+              <Link
+                key={model.name}
+                to="/model/$model"
+                params={{ model: model.name }}
+                className="sidebar-item block mb-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white truncate">
+                    {model.name}
+                  </span>
+                  <span className="text-xs font-bold text-cyan-400">
+                    {percentage}%
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {model.runCount} runs · {model.experimentCount} experiments
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </>
   );
 }
@@ -507,23 +631,40 @@ function EvalLinkRow({
   runId,
   evalItem,
   isActive,
+  model,
 }: {
   experimentId: string;
   runId: string;
   evalItem: Eval;
   isActive: boolean;
+  model?: string;
 }) {
   const statusIcon = getEvalStatusIcon(evalItem.status);
 
+  const linkProps = model
+    ? {
+        to: "/model/$model/experiment/$experimentId/run/$runId/$category/$evalId" as const,
+        params: {
+          model,
+          experimentId,
+          runId,
+          category: evalItem.category,
+          evalId: evalItem._id,
+        },
+      }
+    : {
+        to: "/experiment/$experimentId/run/$runId/$category/$evalId" as const,
+        params: {
+          experimentId,
+          runId,
+          category: evalItem.category,
+          evalId: evalItem._id,
+        },
+      };
+
   return (
     <Link
-      to="/experiment/$experimentId/run/$runId/$category/$evalId"
-      params={{
-        experimentId,
-        runId,
-        category: evalItem.category,
-        evalId: evalItem._id,
-      }}
+      {...linkProps}
       search={{ tab: "steps" }}
       className={`sidebar-item block mb-1 ${isActive ? "active" : ""}`}
     >
@@ -539,5 +680,401 @@ function EvalLinkRow({
         </div>
       )}
     </Link>
+  );
+}
+
+// Model-based sidebar components
+
+function SidebarModel({ model }: { model: string }) {
+  const runs = useQuery(api.runs.listRuns, { model });
+
+  if (runs === undefined) {
+    return (
+      <div className="p-4 text-slate-400 text-sm">Loading runs...</div>
+    );
+  }
+
+  // Group runs by experiment
+  const runsByExperiment = new Map<string, typeof runs>();
+  for (const run of runs) {
+    const expName = run.experiment ?? "default";
+    if (!runsByExperiment.has(expName)) runsByExperiment.set(expName, []);
+    runsByExperiment.get(expName)!.push(run);
+  }
+  const experiments = Array.from(runsByExperiment.keys()).sort();
+
+  return (
+    <>
+      <div className="sidebar-header">
+        <div className="sidebar-header-title-row">
+          <Link
+            to="/"
+            className="sidebar-header-back-btn"
+            aria-label="Back to home"
+          >
+            <BackIcon />
+          </Link>
+          <h1 className="sidebar-header-title">{model}</h1>
+        </div>
+      </div>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">Experiments ({experiments.length})</p>
+        <nav className="p-2 flex-1 overflow-auto">
+          {experiments.map((expName) => {
+            const expRuns = runsByExperiment.get(expName)!;
+            const passed = expRuns.reduce((acc, r) => acc + (r.evalCounts?.passed ?? 0), 0);
+            const total = expRuns.reduce((acc, r) => acc + (r.evalCounts?.total ?? 0), 0);
+            const passRate = total > 0 ? passed / total : 0;
+            const percentage = (passRate * 100).toFixed(1);
+
+            return (
+              <Link
+                key={expName}
+                to="/model/$model/experiment/$experimentId"
+                params={{ model, experimentId: expName }}
+                className="sidebar-item block mb-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-white truncate">
+                    {experimentDisplayName(expName)}
+                  </span>
+                  <span className="text-xs font-bold text-cyan-400">
+                    {percentage}%
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {expRuns.length} runs
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    </>
+  );
+}
+
+function SidebarModelExperiment({
+  model,
+  experimentId,
+}: {
+  model: string;
+  experimentId: string;
+}) {
+  const runs = useQuery(api.runs.listRuns, { model });
+
+  const filteredRuns =
+    runs === undefined
+      ? undefined
+      : experimentId === "default"
+        ? runs.filter((r) => !r.experiment)
+        : runs.filter((r) => r.experiment === experimentId);
+
+  const displayName = experimentDisplayName(experimentId);
+
+  return (
+    <>
+      <div className="sidebar-header">
+        <div className="sidebar-header-title-row">
+          <Link
+            to="/model/$model"
+            params={{ model }}
+            className="sidebar-header-back-btn"
+            aria-label={`Back to ${model}`}
+          >
+            <BackIcon />
+          </Link>
+          <h1 className="sidebar-header-title">{displayName}</h1>
+        </div>
+      </div>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">Runs</p>
+        <nav className="p-2 flex-1 overflow-auto">
+          {filteredRuns === undefined ? (
+            <div className="text-slate-400 text-sm px-2">Loading runs...</div>
+          ) : (
+            filteredRuns.slice(0, 50).map((run) => (
+              <ModelRunLinkRow
+                key={run._id}
+                model={model}
+                experimentId={experimentId}
+                run={run}
+                isActive={false}
+              />
+            ))
+          )}
+        </nav>
+      </div>
+    </>
+  );
+}
+
+function ModelRunLinkRow({
+  model,
+  experimentId,
+  run,
+  isActive,
+}: {
+  model: string;
+  experimentId: string;
+  run: Run;
+  isActive: boolean;
+}) {
+  const passRate = run.evalCounts
+    ? run.evalCounts.total > 0
+      ? run.evalCounts.passed / run.evalCounts.total
+      : 0
+    : 0;
+  const percentage = (passRate * 100).toFixed(1);
+  const scoreStatus = getScoreStatus(passRate);
+  const statusIcon = getRunStatusIcon(run.status);
+
+  return (
+    <Link
+      to="/model/$model/experiment/$experimentId/run/$runId"
+      params={{ model, experimentId, runId: run._id }}
+      className={`sidebar-item block mb-1 ${isActive ? "active" : ""}`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-white truncate flex items-center gap-1">
+          <span>{statusIcon}</span>
+          {formatRunLabel(run._id, run.model)}
+        </span>
+        <span
+          className={`text-xs font-bold ${
+            scoreStatus === "excellent"
+              ? "text-green-400"
+              : scoreStatus === "good"
+                ? "text-yellow-400"
+                : scoreStatus === "fair"
+                  ? "text-orange-400"
+                  : "text-red-400"
+          }`}
+        >
+          {percentage}%
+        </span>
+      </div>
+      <div className="text-xs text-slate-500 mt-1 flex items-center justify-between gap-2">
+        <span>
+          {run.evalCounts
+            ? `${run.evalCounts.passed}/${run.evalCounts.total} passed`
+            : "No evals"}
+        </span>
+        <span className="shrink-0">{formatRelativeTime(run._creationTime)}</span>
+      </div>
+    </Link>
+  );
+}
+
+function SidebarModelRun({
+  model,
+  experimentId,
+  runId,
+}: {
+  model: string;
+  experimentId: string;
+  runId: string;
+}) {
+  const run = useQuery(api.runs.getRunDetails, {
+    runId: runId as Id<"runs">,
+  });
+
+  if (run === undefined) {
+    return (
+      <div className="p-4 text-slate-400 text-sm">Loading run...</div>
+    );
+  }
+
+  if (run === null) {
+    return (
+      <div className="p-4 text-red-400 text-sm">Run not found</div>
+    );
+  }
+
+  const evalsByCategory = new Map<string, Eval[]>();
+  for (const evalItem of run.evals) {
+    const cat = evalItem.category;
+    if (!evalsByCategory.has(cat)) evalsByCategory.set(cat, []);
+    evalsByCategory.get(cat)!.push(evalItem);
+  }
+  const categories = Array.from(evalsByCategory.keys()).sort();
+
+  return (
+    <>
+      <div className="sidebar-header">
+        <div className="sidebar-header-title-row">
+          <Link
+            to="/model/$model/experiment/$experimentId"
+            params={{ model, experimentId }}
+            className="sidebar-header-back-btn"
+            aria-label={`Back to ${experimentDisplayName(experimentId)}`}
+          >
+            <BackIcon />
+          </Link>
+          <h1 className="sidebar-header-title">{formatRunLabel(runId, run.model)}</h1>
+        </div>
+      </div>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">Categories ({categories.length})</p>
+        <nav className="p-2 flex-1 overflow-auto">
+          {categories.map((category) => {
+            const evals = evalsByCategory.get(category)!;
+            const passed = evals.filter((e) => e.status.kind === "passed").length;
+            const total = evals.length;
+            const icon =
+              passed === total ? "✅" : passed === 0 ? "❌" : "⚠️";
+
+            return (
+              <Link
+                key={category}
+                to="/model/$model/experiment/$experimentId/run/$runId/$category"
+                params={{ model, experimentId, runId, category }}
+                className="sidebar-item block mb-1"
+                activeProps={{ className: "sidebar-item active block mb-1" }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-white truncate flex items-center gap-1 min-w-0">
+                    <span className="shrink-0">{icon}</span>
+                    <span className="truncate">{formatCategoryName(category)}</span>
+                  </span>
+                  <span className="text-xs text-slate-500 shrink-0">
+                    {passed}/{total}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    </>
+  );
+}
+
+function SidebarModelCategory({
+  model,
+  experimentId,
+  runId,
+  category,
+}: {
+  model: string;
+  experimentId: string;
+  runId: string;
+  category: string;
+}) {
+  const run = useQuery(api.runs.getRunDetails, {
+    runId: runId as Id<"runs">,
+  });
+
+  if (run === undefined) {
+    return (
+      <div className="p-4 text-slate-400 text-sm">Loading...</div>
+    );
+  }
+
+  if (run === null) {
+    return (
+      <div className="p-4 text-red-400 text-sm">Run not found</div>
+    );
+  }
+
+  const categoryEvals = run.evals
+    .filter((e) => e.category === category)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <>
+      <div className="sidebar-header">
+        <div className="sidebar-header-title-row">
+          <Link
+            to="/model/$model/experiment/$experimentId/run/$runId"
+            params={{ model, experimentId, runId }}
+            className="sidebar-header-back-btn"
+            aria-label={`Back to ${formatRunLabel(runId, run.model)}`}
+          >
+            <BackIcon />
+          </Link>
+          <h1 className="sidebar-header-title">{formatCategoryName(category)}</h1>
+        </div>
+      </div>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">Evals ({categoryEvals.length})</p>
+        <nav className="p-2 flex-1 overflow-auto">
+          {categoryEvals.map((evalItem) => (
+            <EvalLinkRow
+              key={evalItem._id}
+              experimentId={experimentId}
+              runId={runId}
+              evalItem={evalItem}
+              isActive={false}
+              model={model}
+            />
+          ))}
+        </nav>
+      </div>
+    </>
+  );
+}
+
+function SidebarModelEvalDetail({
+  model,
+  experimentId,
+  runId,
+  evalId,
+}: {
+  model: string;
+  experimentId: string;
+  runId: string;
+  category: string;
+  evalId: string;
+}) {
+  const run = useQuery(api.runs.getRunDetails, {
+    runId: runId as Id<"runs">,
+  });
+
+  if (run === undefined) {
+    return (
+      <div className="p-4 text-slate-400 text-sm">Loading...</div>
+    );
+  }
+
+  if (run === null) {
+    return (
+      <div className="p-4 text-red-400 text-sm">Run not found</div>
+    );
+  }
+
+  const evals = [...run.evals].sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <>
+      <div className="sidebar-header">
+        <div className="sidebar-header-title-row">
+          <Link
+            to="/model/$model/experiment/$experimentId/run/$runId"
+            params={{ model, experimentId, runId }}
+            className="sidebar-header-back-btn"
+            aria-label={`Back to ${formatRunLabel(runId, run.model)}`}
+          >
+            <BackIcon />
+          </Link>
+          <h1 className="sidebar-header-title">Eval details</h1>
+        </div>
+      </div>
+      <div className="sidebar-list-section">
+        <p className="sidebar-list-label">Evals ({evals.length})</p>
+        <nav className="p-2 flex-1 overflow-auto">
+          {evals.map((evalItem) => (
+            <EvalLinkRow
+              key={evalItem._id}
+              experimentId={experimentId}
+              runId={runId}
+              evalItem={evalItem}
+              isActive={evalItem._id === evalId}
+              model={model}
+            />
+          ))}
+        </nav>
+      </div>
+    </>
   );
 }

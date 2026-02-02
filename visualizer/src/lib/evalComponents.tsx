@@ -26,12 +26,16 @@ export interface ZipFileEntry {
 }
 
 // Route path type for tabs
-type RoutePath = "/run/$runId/$category/$evalId" | "/experiment/$experimentId/run/$runId/$category/$evalId";
+type RoutePath = 
+  | "/run/$runId/$category/$evalId" 
+  | "/experiment/$experimentId/run/$runId/$category/$evalId"
+  | "/model/$model/experiment/$experimentId/run/$runId/$category/$evalId";
 
 export function StepsTab({
   steps,
   evalStatus,
   routePath,
+  model,
   experimentId,
   runId,
   category,
@@ -40,6 +44,7 @@ export function StepsTab({
   steps: Step[];
   evalStatus: { kind: string; failureReason?: string };
   routePath: RoutePath;
+  model?: string;
   experimentId?: string;
   runId: string;
   category: string;
@@ -60,9 +65,11 @@ export function StepsTab({
     return aIndex - bIndex;
   });
 
-  const linkParams = experimentId
-    ? { experimentId, runId, category, evalId }
-    : { runId, category, evalId };
+  const linkParams = model && experimentId
+    ? { model, experimentId, runId, category, evalId }
+    : experimentId
+      ? { experimentId, runId, category, evalId }
+      : { runId, category, evalId };
 
   return (
     <div className="h-full overflow-auto p-6">
@@ -138,6 +145,7 @@ export function StepsTab({
 export function OutputTab({
   evalStatus,
   routePath,
+  model,
   experimentId,
   runId,
   category,
@@ -146,6 +154,7 @@ export function OutputTab({
 }: {
   evalStatus: EvalStatus;
   routePath: RoutePath;
+  model?: string;
   experimentId?: string;
   runId: string;
   category: string;
@@ -158,9 +167,11 @@ export function OutputTab({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const linkParams = experimentId
-    ? { experimentId, runId, category, evalId }
-    : { runId, category, evalId };
+  const linkParams = model && experimentId
+    ? { model, experimentId, runId, category, evalId }
+    : experimentId
+      ? { experimentId, runId, category, evalId }
+      : { runId, category, evalId };
 
   // Update URL when file selection changes
   const handleFileSelect = (filePath: string) => {
@@ -346,6 +357,7 @@ export function OutputTab({
 export function TaskTab({
   evalSourceStorageId,
   routePath,
+  model,
   experimentId,
   runId,
   category,
@@ -354,6 +366,7 @@ export function TaskTab({
 }: {
   evalSourceStorageId?: string;
   routePath: RoutePath;
+  model?: string;
   experimentId?: string;
   runId: string;
   category: string;
@@ -366,9 +379,11 @@ export function TaskTab({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const linkParams = experimentId
-    ? { experimentId, runId, category, evalId }
-    : { runId, category, evalId };
+  const linkParams = model && experimentId
+    ? { model, experimentId, runId, category, evalId }
+    : experimentId
+      ? { experimentId, runId, category, evalId }
+      : { runId, category, evalId };
 
   // Update URL when file selection changes
   const handleFileSelect = (filePath: string) => {
