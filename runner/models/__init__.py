@@ -221,7 +221,7 @@ ALL_MODELS = [
         uses_system_prompt=True,
         provider=ModelProvider.MOONSHOT,
         override_proxy="https://api.moonshot.ai/v1",
-        ci_run_frequency="never",
+        ci_run_frequency="weekly",
     ),
     ModelTemplate(
         name="kimi-k2.5",
@@ -232,7 +232,7 @@ ALL_MODELS = [
         provider=ModelProvider.MOONSHOT,
         override_proxy="https://api.moonshot.ai/v1",
         supports_temperature=False,
-        ci_run_frequency="never",
+        ci_run_frequency="daily",
     ),
     ModelTemplate(
         name="Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
