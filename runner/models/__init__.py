@@ -87,7 +87,7 @@ ALL_MODELS = [
         uses_system_prompt=True,
         provider=ModelProvider.ANTHROPIC,
         override_proxy="https://api.anthropic.com/v1",
-        ci_run_frequency="daily",
+        ci_run_frequency="weekly",
     ),
     ModelTemplate(
         name="claude-opus-4-6",
