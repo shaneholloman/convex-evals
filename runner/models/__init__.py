@@ -89,6 +89,16 @@ ALL_MODELS = [
         override_proxy="https://api.anthropic.com/v1",
         ci_run_frequency="daily",
     ),
+    ModelTemplate(
+        name="claude-opus-4-6",
+        formatted_name="Claude 4.6 Opus",
+        max_concurrency=int(os.getenv("ANTHROPIC_CONCURRENCY", "2")),
+        requires_chain_of_thought=True,
+        uses_system_prompt=True,
+        provider=ModelProvider.ANTHROPIC,
+        override_proxy="https://api.anthropic.com/v1",
+        ci_run_frequency="daily",
+    ),
     # OpenAI models
     ModelTemplate(
         name="o4-mini",
@@ -140,6 +150,20 @@ ALL_MODELS = [
         ci_run_frequency="daily",
         uses_responses_api=True,
     ),
+    # NOTE: gpt-5.3-codex was announced Feb 5, 2026 but API access is not yet available
+    # ("We are working to safely enable API access soon" per OpenAI blog)
+    # Uncomment when API access is enabled:
+    # ModelTemplate(
+    #     name="gpt-5.3-codex",
+    #     formatted_name="GPT-5.3 Codex",
+    #     max_concurrency=int(os.getenv("OPENAI_CONCURRENCY", "4")),
+    #     requires_chain_of_thought=False,
+    #     uses_system_prompt=False,
+    #     provider=ModelProvider.OPENAI,
+    #     supports_temperature=False,
+    #     ci_run_frequency="daily",
+    #     uses_responses_api=True,
+    # ),
     ModelTemplate(
         name="gpt-5",
         formatted_name="GPT-5",
