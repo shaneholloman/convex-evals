@@ -31,9 +31,6 @@ Implement these functions in `convex/index.ts`:
 The implementation should demonstrate:
 - Proper use of Convex actions for external API calls
 - Proper mutation usage from within an action
-- Type safety with `any` data using appropriate ESLint directives:
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
 
 Create only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
 Add return type annotations to the handler functions of `saveFetchResult` and `fetchAndSave` with `Promise<Id<"fetchResults">>`.

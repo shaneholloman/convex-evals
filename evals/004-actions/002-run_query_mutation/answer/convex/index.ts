@@ -25,13 +25,10 @@ export const saveFetchResult = internalMutation({
       .withIndex("by_url", (q) => q.eq("url", args.url))
       .first();
     if (existing) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       await ctx.db.patch(existing._id, { data: args.data });
       return existing._id;
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { url, data } = args;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const id = await ctx.db.insert("fetchRequests", { url, data });
     return id;
   },
@@ -47,7 +44,6 @@ export const fetchIfNeeded = action({
     }
 
     const response = await fetch(args.url);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const data = await response.json();
 
     if (!response.ok) {
@@ -56,7 +52,6 @@ export const fetchIfNeeded = action({
 
     const id = await ctx.runMutation(internal.index.saveFetchResult, {
       url: args.url,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data,
     });
 

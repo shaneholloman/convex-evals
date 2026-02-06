@@ -17,3 +17,15 @@ The evalScores backend has two Convex deployments:
 The runner communicates with the Convex backend via `ConvexClient` using the public mutations/queries in `evalScores/convex/admin.ts`. Authentication is done via a bearer token passed as an argument to each function (validated against the `authTokens` table). The GitHub secret `CONVEX_AUTH_TOKEN` holds this token for CI.
 
 When deploying changes to the evalScores backend, use `npx convex deploy` from the `evalScores/` directory (handled automatically by the release workflow). Do NOT deploy local dev changes to production accidentally.
+
+## Run Analysis Reports
+
+The `reports/` directory contains post-run analysis reports. These are created by analyzing failed evals (using the `analyze-run-failures` agent skill) and recording findings for future reference.
+
+Each report is named `{model}_{run-id-prefix}_{date}.md` and contains:
++ Per-failure classification (model fault, overly strict testing, ambiguous task, known gap)
++ Cross-cutting patterns across failures
++ Actions taken (lint config changes, grader fixes, task updates)
++ Net impact assessment
+
+When investigating a model's performance or deciding whether to adjust eval requirements, check the reports directory for prior analyses of the same model or similar failure patterns.

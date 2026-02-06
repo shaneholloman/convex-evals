@@ -10,9 +10,7 @@ export const fetchFromHttpBin = action({
   returns: v.any(),
   handler: async (ctx) => {
     const response = await fetch("https://httpbin.org/get");
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const data = await response.json();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return data;
   },
 });

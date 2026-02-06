@@ -21,12 +21,10 @@ export const fetchAndSave = action({
   returns: v.id("fetchResults"),
   handler: async (ctx, args): Promise<Id<"fetchResults">> => {
     const response = await fetch(args.url);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const data = await response.json();
 
     return await ctx.runMutation(api.index.saveFetchResult, {
       url: args.url,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data,
     });
   },

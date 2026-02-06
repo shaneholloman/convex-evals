@@ -32,7 +32,9 @@ export default tseslint.config(
       "@typescript-eslint/no-misused-promises": [
         "error",
         {
-          checksVoidReturn: false,
+          checksVoidReturn: {
+            attributes: false,
+          },
         },
       ],
 
@@ -46,10 +48,13 @@ export default tseslint.config(
       ],
 
       // Prevent accidental any
-      "@typescript-eslint/no-unsafe-assignment": "error",
+      // no-unsafe-assignment and no-unsafe-return are disabled because v.any()
+      // is a legitimate Convex pattern and requiring models to place
+      // eslint-disable comments tests eslint fluency, not Convex knowledge.
+      "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "error",
       "@typescript-eslint/no-unsafe-call": "error",
-      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-return": "off",
 
       // Enforce proper error handling
       "no-throw-literal": "error",
