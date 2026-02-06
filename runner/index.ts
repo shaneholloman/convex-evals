@@ -14,6 +14,8 @@
  *   LOCAL_RESULTS    - path to JSONL results file
  *   POST_TO_CONVEX   - set to "1" to post scores to Convex
  *   EVALS_EXPERIMENT - experiment name (e.g. "no_guidelines")
+ *   CONVEX_EVAL_URL  - Convex deployment URL (e.g. "https://xxx.convex.cloud")
+ *   CONVEX_AUTH_TOKEN - auth token for the evalScores Convex backend
  */
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join, resolve } from "path";
@@ -34,6 +36,7 @@ import {
   getOrUploadEvalSource,
   writeLocalResults,
   printEvalSummary,
+  closeClient,
   type EvalIndividualResult,
 } from "./reporting.js";
 import { logInfo } from "./logging.js";
@@ -49,7 +52,7 @@ const testFilter = process.env.TEST_FILTER
   ? new RegExp(process.env.TEST_FILTER)
   : null;
 
-const CONVEX_EVAL_ENDPOINT = process.env.CONVEX_EVAL_ENDPOINT;
+const CONVEX_EVAL_URL = process.env.CONVEX_EVAL_URL;
 const CONVEX_AUTH_TOKEN = process.env.CONVEX_AUTH_TOKEN;
 
 // ── Default models ────────────────────────────────────────────────────
@@ -87,6 +90,8 @@ async function main(): Promise<void> {
     const model = MODELS_BY_NAME[modelName];
     await runEvalsForModel(model);
   }
+
+  await closeClient();
 }
 
 async function runEvalsForModel(model: ModelTemplate): Promise<void> {
@@ -105,7 +110,7 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
   let runId: string | null = null;
   const runStartTime = Date.now();
 
-  if (CONVEX_EVAL_ENDPOINT && CONVEX_AUTH_TOKEN) {
+  if (CONVEX_EVAL_URL && CONVEX_AUTH_TOKEN) {
     const plannedEvals = filteredPaths.map((e) => `${e.category}/${e.name}`);
     const experiment = process.env.EVALS_EXPERIMENT;
     runId = await startRun(

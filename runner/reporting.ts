@@ -1,64 +1,47 @@
 /**
- * Reporting: post results to Convex HTTP API and write local JSONL files.
- * No Braintrust integration.
+ * Reporting: post results to Convex via ConvexClient and write local JSONL files.
  */
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, unlinkSync, mkdirSync, appendFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync, unlinkSync, appendFileSync } from "fs";
 import { join, relative } from "path";
 import { tmpdir } from "os";
 import { createHash } from "crypto";
 import JSZip from "jszip";
+import { ConvexClient } from "convex/browser";
 import { logInfo } from "./logging.js";
+import { api } from "../evalScores/convex/_generated/api.js";
+import type { Id } from "../evalScores/convex/_generated/dataModel.js";
 
 // ── Config ────────────────────────────────────────────────────────────
 
 const OUTPUT_RESULTS_FILE = process.env.LOCAL_RESULTS ?? "local_results.jsonl";
-const CONVEX_EVAL_ENDPOINT = process.env.CONVEX_EVAL_ENDPOINT;
+const CONVEX_EVAL_URL = process.env.CONVEX_EVAL_URL;
 const CONVEX_AUTH_TOKEN = process.env.CONVEX_AUTH_TOKEN;
 const EVALS_EXPERIMENT = process.env.EVALS_EXPERIMENT;
 
 // Cache for eval source hashes to avoid re-uploading
 const evalSourceCache = new Map<string, string>();
 
-// ── Convex HTTP helpers ───────────────────────────────────────────────
+// ── Convex client (lazy-initialized) ─────────────────────────────────
 
-async function makeConvexRequest(
-  endpointSuffix: string,
-  payload: Record<string, unknown>,
-): Promise<Record<string, unknown> | null> {
-  if (!CONVEX_EVAL_ENDPOINT || !CONVEX_AUTH_TOKEN) {
-    logInfo(`Skipping ${endpointSuffix}: CONVEX_EVAL_ENDPOINT or CONVEX_AUTH_TOKEN not set`);
-    return null;
+let _client: ConvexClient | null = null;
+
+function getClient(): ConvexClient | null {
+  if (!CONVEX_EVAL_URL) return null;
+  if (!_client) {
+    _client = new ConvexClient(CONVEX_EVAL_URL);
   }
+  return _client;
+}
 
-  const baseUrl = CONVEX_EVAL_ENDPOINT.replace(/\/$/, "");
-  let url: string;
-  if (!baseUrl.endsWith("/updateScores")) {
-    url = `${baseUrl}/${endpointSuffix}`;
-  } else {
-    url = baseUrl.replace("/updateScores", `/${endpointSuffix}`);
-  }
+function isConfigured(): boolean {
+  return !!(CONVEX_EVAL_URL && CONVEX_AUTH_TOKEN);
+}
 
-  logInfo(`POST ${url} with payload keys: ${Object.keys(payload).join(", ")}`);
-  try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${CONVEX_AUTH_TOKEN}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (resp.ok) {
-      const result = (await resp.json()) as Record<string, unknown>;
-      logInfo(`Successfully posted to ${endpointSuffix}`);
-      return result;
-    }
-    logInfo(`Failed to post to ${endpointSuffix}: HTTP ${resp.status}`);
-    logInfo(`Response: ${await resp.text()}`);
-    return null;
-  } catch (e) {
-    logInfo(`Error posting to ${endpointSuffix}: ${String(e)}`);
-    return null;
+/** Close the Convex client. Call at process shutdown. */
+export async function closeClient(): Promise<void> {
+  if (_client) {
+    await _client.close();
+    _client = null;
   }
 }
 
@@ -70,27 +53,51 @@ export async function startRun(
   provider?: string,
   experiment?: string,
 ): Promise<string | null> {
-  const payload: Record<string, unknown> = {
-    model,
-    plannedEvals,
-  };
-  if (provider) payload.provider = provider;
-  if (experiment) payload.experiment = experiment;
-  else if (EVALS_EXPERIMENT) payload.experiment = EVALS_EXPERIMENT;
-
-  const result = await makeConvexRequest("startRun", payload);
-  if (result?.success && typeof result.runId === "string") {
-    return result.runId;
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) {
+    logInfo("Skipping startRun: CONVEX_EVAL_URL or CONVEX_AUTH_TOKEN not set");
+    return null;
   }
-  return null;
+
+  const exp = experiment ?? EVALS_EXPERIMENT;
+
+  try {
+    const runId = await client.mutation(api.admin.startRun, {
+      token: CONVEX_AUTH_TOKEN,
+      model,
+      plannedEvals,
+      provider,
+      experiment: exp as "no_guidelines" | undefined,
+    });
+    logInfo("Successfully called startRun");
+    return runId as string;
+  } catch (e) {
+    logInfo(`Error calling startRun: ${String(e)}`);
+    return null;
+  }
 }
 
 export async function completeRun(
   runId: string,
-  status: Record<string, unknown>,
+  status:
+    | { kind: "completed"; durationMs: number }
+    | { kind: "failed"; failureReason: string; durationMs: number },
 ): Promise<boolean> {
-  const result = await makeConvexRequest("completeRun", { runId, status });
-  return result?.success === true;
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return false;
+
+  try {
+    await client.mutation(api.admin.completeRun, {
+      token: CONVEX_AUTH_TOKEN,
+      runId: runId as Id<"runs">,
+      status,
+    });
+    logInfo("Successfully called completeRun");
+    return true;
+  } catch (e) {
+    logInfo(`Error calling completeRun: ${String(e)}`);
+    return false;
+  }
 }
 
 // ── Eval lifecycle ────────────────────────────────────────────────────
@@ -103,31 +110,51 @@ export async function startEval(
   task?: string,
   evalSourceStorageId?: string,
 ): Promise<string | null> {
-  const payload: Record<string, unknown> = {
-    runId,
-    evalPath,
-    category,
-    name,
-  };
-  if (task) payload.task = task;
-  if (evalSourceStorageId) payload.evalSourceStorageId = evalSourceStorageId;
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return null;
 
-  const result = await makeConvexRequest("startEval", payload);
-  if (result?.success && typeof result.evalId === "string") {
-    return result.evalId;
+  try {
+    const evalId = await client.mutation(api.admin.startEval, {
+      token: CONVEX_AUTH_TOKEN,
+      runId: runId as Id<"runs">,
+      evalPath,
+      category,
+      name,
+      task,
+      evalSourceStorageId: evalSourceStorageId as Id<"_storage"> | undefined,
+    });
+    logInfo("Successfully called startEval");
+    return evalId as string;
+  } catch (e) {
+    logInfo(`Error calling startEval: ${String(e)}`);
+    return null;
   }
-  return null;
 }
+
+type StepName = "filesystem" | "install" | "deploy" | "tsc" | "eslint" | "tests";
+type StepStatus =
+  | { kind: "running" }
+  | { kind: "passed"; durationMs: number }
+  | { kind: "failed"; failureReason: string; durationMs: number }
+  | { kind: "skipped" };
 
 export function recordStep(
   evalId: string,
-  stepName: string,
-  status: Record<string, unknown>,
+  stepName: StepName,
+  status: StepStatus,
 ): void {
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return;
+
   // Fire and forget - don't block the scorer
-  makeConvexRequest("recordStep", { evalId, name: stepName, status }).catch(
-    () => {},
-  );
+  client
+    .mutation(api.admin.recordStep, {
+      token: CONVEX_AUTH_TOKEN,
+      evalId: evalId as Id<"evals">,
+      name: stepName,
+      status,
+    })
+    .catch(() => {});
 }
 
 /**
@@ -139,13 +166,20 @@ export async function uploadEvalOutput(
   evalId: string,
   outputDir: string,
 ): Promise<void> {
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return;
+
   try {
     const zipPath = await zipOutputDirectory(outputDir);
     if (!zipPath) return;
     try {
       const storageId = await uploadToConvexStorage(zipPath);
       if (storageId) {
-        await makeConvexRequest("updateEvalOutput", { evalId, outputStorageId: storageId });
+        await client.mutation(api.admin.updateEvalOutput, {
+          token: CONVEX_AUTH_TOKEN,
+          evalId: evalId as Id<"evals">,
+          outputStorageId: storageId as Id<"_storage">,
+        });
       }
     } finally {
       try { unlinkSync(zipPath); } catch { /* ignore */ }
@@ -155,26 +189,47 @@ export async function uploadEvalOutput(
   }
 }
 
+type EvalCompleteStatus =
+  | { kind: "passed"; durationMs: number; outputStorageId?: Id<"_storage"> }
+  | { kind: "failed"; failureReason: string; durationMs: number; outputStorageId?: Id<"_storage"> };
+
 export async function completeEval(
   evalId: string,
-  status: Record<string, unknown>,
+  status: { kind: "passed"; durationMs: number } | { kind: "failed"; failureReason: string; durationMs: number },
   outputDir?: string,
 ): Promise<boolean> {
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return false;
+
+  let outputStorageId: Id<"_storage"> | undefined;
   if (outputDir) {
     const zipPath = await zipOutputDirectory(outputDir);
     if (zipPath) {
       try {
-        const storageId = await uploadToConvexStorage(zipPath);
-        if (storageId) {
-          status.outputStorageId = storageId;
-        }
+        const sid = await uploadToConvexStorage(zipPath);
+        if (sid) outputStorageId = sid as Id<"_storage">;
       } finally {
         try { unlinkSync(zipPath); } catch { /* ignore */ }
       }
     }
   }
-  const result = await makeConvexRequest("completeEval", { evalId, status });
-  return result?.success === true;
+
+  const fullStatus: EvalCompleteStatus = outputStorageId
+    ? { ...status, outputStorageId }
+    : status;
+
+  try {
+    await client.mutation(api.admin.completeEval, {
+      token: CONVEX_AUTH_TOKEN,
+      evalId: evalId as Id<"evals">,
+      status: fullStatus,
+    });
+    logInfo("Successfully called completeEval");
+    return true;
+  } catch (e) {
+    logInfo(`Error calling completeEval: ${String(e)}`);
+    return false;
+  }
 }
 
 // ── Eval source upload with dedup ─────────────────────────────────────
@@ -182,7 +237,7 @@ export async function completeEval(
 export async function getOrUploadEvalSource(
   evalPath: string,
 ): Promise<{ taskContent: string | null; storageId: string | null }> {
-  if (!CONVEX_EVAL_ENDPOINT || !CONVEX_AUTH_TOKEN) {
+  if (!isConfigured()) {
     return { taskContent: null, storageId: null };
   }
 
@@ -222,31 +277,20 @@ export async function postScoresToConvex(
   const postToConvex = process.env.POST_TO_CONVEX === "1";
   if (!postToConvex) return;
 
-  const payload: Record<string, unknown> = {
-    model: modelName,
-    scores: categoryScores,
-    totalScore,
-  };
-  if (EVALS_EXPERIMENT) payload.experiment = EVALS_EXPERIMENT;
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return;
 
-  if (CONVEX_EVAL_ENDPOINT && CONVEX_AUTH_TOKEN) {
-    try {
-      const resp = await fetch(CONVEX_EVAL_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${CONVEX_AUTH_TOKEN}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (resp.ok) {
-        logInfo(`Successfully posted scores for model ${modelName} to Convex`);
-      } else {
-        logInfo(`Failed to post scores: HTTP ${resp.status}`);
-      }
-    } catch (e) {
-      logInfo(`Error posting scores to Convex: ${String(e)}`);
-    }
+  try {
+    await client.mutation(api.admin.updateScores, {
+      token: CONVEX_AUTH_TOKEN,
+      model: modelName,
+      scores: categoryScores,
+      totalScore,
+      experiment: EVALS_EXPERIMENT as "no_guidelines" | undefined,
+    });
+    logInfo(`Successfully posted scores for model ${modelName} to Convex`);
+  } catch (e) {
+    logInfo(`Error posting scores to Convex: ${String(e)}`);
   }
 }
 
@@ -456,17 +500,17 @@ function walkDirForZip(
 async function uploadToConvexStorage(
   zipPath: string,
 ): Promise<string | null> {
-  if (!CONVEX_EVAL_ENDPOINT || !CONVEX_AUTH_TOKEN) return null;
-
-  const result = await makeConvexRequest("generateUploadUrl", {});
-  if (!result?.success || typeof result.uploadUrl !== "string") {
-    logInfo("Failed to get upload URL");
-    return null;
-  }
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return null;
 
   try {
+    const uploadUrl: string = await client.mutation(
+      api.admin.generateUploadUrl,
+      { token: CONVEX_AUTH_TOKEN },
+    );
+
     const fileData = Bun.file(zipPath);
-    const resp = await fetch(result.uploadUrl, {
+    const resp = await fetch(uploadUrl, {
       method: "POST",
       headers: { "Content-Type": "application/zip" },
       body: fileData,
@@ -522,29 +566,46 @@ function walkForHash(
 
 async function checkAssetHash(hash: string): Promise<string | null> {
   if (evalSourceCache.has(hash)) return evalSourceCache.get(hash)!;
-  const result = await makeConvexRequest("checkAssetHash", { hash });
-  if (result?.exists && typeof result.storageId === "string") {
-    evalSourceCache.set(hash, result.storageId);
-    return result.storageId;
+
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return null;
+
+  try {
+    const result = await client.mutation(api.admin.checkAssetHash, {
+      token: CONVEX_AUTH_TOKEN,
+      hash,
+    });
+    if (result?.exists && typeof result.storageId === "string") {
+      evalSourceCache.set(hash, result.storageId);
+      return result.storageId;
+    }
+  } catch (e) {
+    logInfo(`Error checking asset hash: ${String(e)}`);
   }
   return null;
 }
 
 async function registerAsset(
   hash: string,
-  assetType: string,
+  assetType: "evalSource" | "output",
   storageId: string,
 ): Promise<boolean> {
-  const result = await makeConvexRequest("registerAsset", {
-    hash,
-    assetType,
-    storageId,
-  });
-  if (result?.success) {
+  const client = getClient();
+  if (!client || !CONVEX_AUTH_TOKEN) return false;
+
+  try {
+    await client.mutation(api.admin.registerAsset, {
+      token: CONVEX_AUTH_TOKEN,
+      hash,
+      assetType,
+      storageId: storageId as Id<"_storage">,
+    });
     evalSourceCache.set(hash, storageId);
     return true;
+  } catch (e) {
+    logInfo(`Error registering asset: ${String(e)}`);
+    return false;
   }
-  return false;
 }
 
 function getTaskContent(evalPath: string): string | null {

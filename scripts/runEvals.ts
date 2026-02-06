@@ -205,7 +205,7 @@ interface RunOptions {
 }
 
 function isConvexPostingConfigured(): boolean {
-  return Boolean(process.env.CONVEX_EVAL_ENDPOINT && process.env.CONVEX_AUTH_TOKEN);
+  return Boolean(process.env.CONVEX_EVAL_URL && process.env.CONVEX_AUTH_TOKEN);
 }
 
 function buildEnvVars(options: RunOptions): Record<string, string> {
@@ -258,7 +258,7 @@ async function runEvals(options: RunOptions): Promise<void> {
   console.log(`  Filter: ${options.filter || "(all)"}`);
   console.log(`  Experiment: ${options.experiment || "(none)"}`);
   console.log(
-    `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (warning: CONVEX_EVAL_ENDPOINT or CONVEX_AUTH_TOKEN not set)" : ""}`,
+    `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (warning: CONVEX_EVAL_URL or CONVEX_AUTH_TOKEN not set)" : ""}`,
   );
   console.log(`  Verbose: ${options.verbose ? "yes" : "no"}`);
   console.log("");

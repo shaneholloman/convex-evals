@@ -62,11 +62,11 @@ Updates the scores for a specific model.
 Set the following environment variables to enable automatic submission of scores:
 
 ```
-CONVEX_EVAL_ENDPOINT=https://your-convex-deployment.convex.site/api/updateScores
+CONVEX_EVAL_URL=https://your-convex-deployment.convex.cloud
 CONVEX_AUTH_TOKEN=your-auth-token-value
 ```
 
-The evaluation script will then automatically submit results to your Convex deployment.
+The runner uses a `ConvexClient` to call public admin mutations directly on the deployment.
 
 ## Token Management
 
