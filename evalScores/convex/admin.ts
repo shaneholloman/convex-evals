@@ -31,8 +31,8 @@ export const startRun = mutation({
   args: {
     token: v.string(),
     model: v.string(),
-    formattedName: v.optional(v.string()),
-    provider: v.optional(v.string()),
+    formattedName: v.string(),
+    provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
     experiment: v.optional(experimentLiteral),

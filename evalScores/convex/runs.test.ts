@@ -14,13 +14,15 @@ async function createCompletedRunWithEvals(
   opts: {
     model: string;
     formattedName?: string;
+    provider?: string;
     experiment?: "no_guidelines";
     evals: Array<{ category: string; name: string; passed: boolean }>;
   },
 ): Promise<Id<"runs">> {
   const runId = await t.mutation(internal.runs.createRun, {
     model: opts.model,
-    formattedName: opts.formattedName,
+    formattedName: opts.formattedName ?? opts.model,
+    provider: opts.provider ?? "test",
     plannedEvals: opts.evals.map((e) => `${e.category}/${e.name}`),
     experiment: opts.experiment,
   });
@@ -69,6 +71,8 @@ describe("leaderboardScores", () => {
     // Create a run but don't complete it
     await t.mutation(internal.runs.createRun, {
       model: "test-model",
+      formattedName: "test-model",
+      provider: "test",
       plannedEvals: ["cat1/eval1"],
     });
 
@@ -284,22 +288,6 @@ describe("leaderboardScores", () => {
     expect(results).toHaveLength(1);
     expect(results[0].model).toBe("claude-opus-4-5");
     expect(results[0].formattedName).toBe("Claude 4.5 Opus");
-  });
-
-  it("falls back to model name when formattedName is not set", async () => {
-    const t = convexTest(schema, modules);
-
-    await createCompletedRunWithEvals(t, {
-      model: "claude-opus-4-5",
-      // No formattedName
-      evals: [{ category: "cat1", name: "eval1", passed: true }],
-    });
-
-    const results = await t.query(api.runs.leaderboardScores, {});
-
-    expect(results).toHaveLength(1);
-    expect(results[0].model).toBe("claude-opus-4-5");
-    expect(results[0].formattedName).toBe("claude-opus-4-5");
   });
 
   it("returns latestRunId for deep linking", async () => {
@@ -536,6 +524,8 @@ describe("leaderboardModelHistory", () => {
     // Create a pending run (not completed)
     await t.mutation(internal.runs.createRun, {
       model: "test-model",
+      formattedName: "test-model",
+      provider: "test",
       plannedEvals: ["cat1/eval1"],
     });
 

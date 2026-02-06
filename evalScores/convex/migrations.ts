@@ -107,17 +107,6 @@ export const backfillRunFields = migrations.define({
   },
 });
 
-/**
- * Delete all documents from the deprecated evalScores table.
- * After this migration completes, the table can be removed from the schema.
- */
-export const deleteEvalScores = migrations.define({
-  table: "evalScores",
-  migrateOne: async (ctx, doc) => {
-    await ctx.db.delete(doc._id);
-  },
-});
-
 // ── Runner functions ─────────────────────────────────────────────────
 
 /** Run a single named migration via CLI: npx convex run migrations:run '{fn: "migrations:backfillRunFields"}' */
@@ -126,5 +115,4 @@ export const run = migrations.runner();
 /** Run all migrations in order: npx convex run migrations:runAll --prod */
 export const runAll = migrations.runner([
   internal.migrations.backfillRunFields,
-  internal.migrations.deleteEvalScores,
 ]);

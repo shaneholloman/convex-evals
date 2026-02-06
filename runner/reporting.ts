@@ -90,7 +90,7 @@ export async function startRun(
   model: string,
   formattedName: string,
   plannedEvals: string[],
-  provider?: string,
+  provider: string,
   experiment?: string,
 ): Promise<string | null> {
   if (!getClient() || !CONVEX_AUTH_TOKEN) {

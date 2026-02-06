@@ -52,21 +52,6 @@ export default defineSchema({
   })
     .index("by_name", ["name"]),
 
-  // @deprecated — This table is superseded by on-demand computation from `runs` + `evals`.
-  // Kept temporarily so the deleteEvalScores migration can remove remaining data.
-  // Remove this table definition entirely after the migration has run.
-  evalScores: defineTable({
-    model: v.string(),
-    scores: v.record(v.string(), v.number()),
-    totalScore: v.number(),
-    // Optional run identifier (e.g. git sha, date string)
-    runId: v.optional(v.string()),
-    // Optional experiment tag for A/B testing different configurations
-    experiment: v.optional(experimentLiteral),
-  })
-    .index("by_model", ["model"])
-    .index("by_experiment", ["experiment"]),
-
   authTokens: defineTable({
     name: v.string(),
     value: v.string(),
@@ -78,9 +63,9 @@ export default defineSchema({
 
   runs: defineTable({
     model: v.string(),
-    // Display name for UI (e.g., "Claude 4.5 Opus"). Falls back to model if not set.
-    formattedName: v.optional(v.string()),
-    provider: v.optional(v.string()),
+    // Display name for UI (e.g., "Claude 4.5 Opus")
+    formattedName: v.string(),
+    provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
     status: runStatus,

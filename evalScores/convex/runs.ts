@@ -12,8 +12,8 @@ const LEADERBOARD_MAX_AGE_MS = 60 * 24 * 60 * 60 * 1000;
 export const createRun = internalMutation({
   args: {
     model: v.string(),
-    formattedName: v.optional(v.string()),
-    provider: v.optional(v.string()),
+    formattedName: v.string(),
+    provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
     experiment: v.optional(experimentLiteral),
@@ -121,7 +121,7 @@ export const getRunDetails = query({
     v.object({
       _id: v.id("runs"),
       model: v.string(),
-      provider: v.optional(v.string()),
+      provider: v.string(),
       runId: v.optional(v.string()),
       plannedEvals: v.array(v.string()),
       status: runStatus,
@@ -460,7 +460,7 @@ export const leaderboardScores = query({
 
       results.push({
         model,
-        formattedName: latest.formattedName ?? model,
+        formattedName: latest.formattedName,
         totalScore,
         totalScoreErrorBar,
         scores,
