@@ -23,20 +23,19 @@ export async function runEvals(options: RunOptions): Promise<EvalRunResult> {
     CUSTOM_GUIDELINES_PATH: options.guidelinesPath,
     OUTPUT_TEMPDIR: outputDir,
     LOCAL_RESULTS: resultsPath,
-    DISABLE_BRAINTRUST: '1',
     VERBOSE_INFO_LOGS: '1',
   };
 
-  // Spawn Python runner with timeout
+  // Spawn TypeScript runner with timeout
   await new Promise<void>((resolve, reject) => {
-    const child = spawn('pdm', ['run', 'python', '-m', 'runner.eval_convex_coding'], {
+    const child = spawn('bun', ['run', 'runner/index.ts'], {
       env,
       cwd: join(import.meta.dir, '..', '..'),
       stdio: ['inherit', 'inherit', 'pipe'], // Capture stderr
     });
 
     let stderr = '';
-    child.stderr?.on('data', (data) => {
+    child.stderr?.on('data', (data: Buffer) => {
       stderr += data.toString();
       process.stderr.write(data); // Still show in console
     });
@@ -46,16 +45,16 @@ export async function runEvals(options: RunOptions): Promise<EvalRunResult> {
       reject(new Error(`Eval runner timed out after ${EVAL_TIMEOUT_MS / 1000}s`));
     }, EVAL_TIMEOUT_MS);
 
-    child.on('close', (code) => {
+    child.on('close', (code: number | null) => {
       clearTimeout(timeout);
       // Save stderr for debugging
       if (stderr) writeFileSync(stderrPath, stderr, 'utf-8');
 
       if (code === 0) resolve();
-      else reject(new Error(`Python eval runner exited with code ${code}. Check ${stderrPath} for details.`));
+      else reject(new Error(`Eval runner exited with code ${code}. Check ${stderrPath} for details.`));
     });
 
-    child.on('error', (err) => {
+    child.on('error', (err: Error) => {
       clearTimeout(timeout);
       reject(err);
     });
@@ -94,7 +93,7 @@ function parseResults(resultsPath: string, outputDir: string): EvalRunResult {
     return parseSummaryFormat(data as unknown as SummaryResult, outputDir);
   }
 
-  // Fall back to JSONL format (multiple lines, each a separate result - old braintrust format)
+  // Fall back to JSONL format (multiple lines, each a separate result)
   return parseJsonlFormat(content, outputDir);
 }
 

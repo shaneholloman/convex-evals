@@ -12,18 +12,13 @@ jobs:
       models: ${{ steps.set-models.outputs.models }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install PDM
-        run: curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -
-      - name: Install Python dependencies
-        run: pdm install
+      - name: Install Bun
+        run: npm install -g bun@1.3.8
+      - name: Install dependencies
+        run: bun install
       - id: set-models
         run: |
-          # Get models marked for weekly CI runs (daily models are covered by daily workflow)
-          models=$(pdm run python -m runner.list_models --frequency weekly --format json)
+          models=$(bun run runner/listModels.ts --frequency weekly --format json)
           echo "models=$models" >> $GITHUB_OUTPUT
 
   run-evals:
@@ -38,7 +33,6 @@ jobs:
 
     env:
       ENVIRONMENT: ci
-      BRAINTRUST_API_KEY: ${{ secrets.BRAINTRUST_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
@@ -56,21 +50,9 @@ jobs:
           node-version: "20"
 
       - name: Install Bun
-        run: npm install -g bun@1.2.1
+        run: npm install -g bun@1.3.8
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PDM
-        run: |
-          curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -
-
-      - name: Install Python dependencies
-        run: pdm install
-
-      - name: Install Bun dependencies
+      - name: Install dependencies
         run: bun install
 
       - name: Create temp directory
@@ -89,12 +71,11 @@ jobs:
       - name: Run evaluations
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals
-        run: pdm run braintrust eval runner/eval_convex_coding.py
+        run: bun run runner/index.ts
 
       - name: Run evaluations (no_guidelines experiment)
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines
-          DISABLE_BRAINTRUST: 1
           POST_TO_CONVEX: 1
-        run: pdm run braintrust eval runner/eval_convex_coding.py
+        run: bun run runner/index.ts

@@ -10,6 +10,7 @@ import { select, checkbox, confirm, input } from "@inquirer/prompts";
 import { readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
 import { spawn } from "child_process";
+import { ALL_MODELS } from "../runner/models/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -54,10 +55,9 @@ interface EvalInfo {
 
 const EVALS_DIR = "evals";
 const LOCAL_RESULTS_FILE = "local_results.jsonl";
-const MODELS_FILE = "runner/models/__init__.py";
 const DEFAULT_MODEL = "claude-sonnet-4-5";
 
-// Valid experiment values (must match the Python/Convex schema)
+// Valid experiment values
 const VALID_EXPERIMENTS = ["no_guidelines"] as const;
 type Experiment = (typeof VALID_EXPERIMENTS)[number];
 
@@ -68,66 +68,28 @@ interface ModelChoice {
 }
 
 /**
- * Parses the Python models file to extract available models.
- * This keeps the CLI in sync with the Python runner without duplication.
+ * Discover available models directly from TypeScript model definitions.
  */
-async function discoverModels(): Promise<ModelChoice[]> {
-  try {
-    const content = await readFile(MODELS_FILE, "utf-8");
-
-    const models: ModelChoice[] = [];
-
-    // Match ModelTemplate entries - the format spans multiple lines
-    // We match each ModelTemplate block and extract the fields
-    const modelBlockRegex =
-      /ModelTemplate\([\s\S]*?provider=ModelProvider\.(\w+)[\s\S]*?\),/g;
-
-    let blockMatch;
-    while ((blockMatch = modelBlockRegex.exec(content)) !== null) {
-      const block = blockMatch[0];
-      const provider = blockMatch[1];
-
-      // Extract name and formatted_name from the block
-      const nameMatch = block.match(/name="([^"]+)"/);
-      const formattedNameMatch = block.match(/formatted_name="([^"]+)"/);
-
-      if (nameMatch && formattedNameMatch) {
-        models.push({
-          name: formattedNameMatch[1],
-          value: nameMatch[1],
-          provider: provider.toLowerCase(),
-        });
-      }
-    }
-
-    return models;
-  } catch (error) {
-    console.error("Warning: Could not read models from Python file:", error);
-    return [];
-  }
+function discoverModels(): ModelChoice[] {
+  return ALL_MODELS.map((m) => ({
+    name: m.formattedName,
+    value: m.name,
+    provider: m.provider,
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Converts a directory name like "001-data_modeling" to "Data Modeling"
- * Strips leading number prefix and converts underscores to spaces with title case
- */
 function formatDisplayName(dirName: string): string {
-  // Remove leading number prefix (e.g., "001-" or "000-")
   const withoutPrefix = dirName.replace(/^\d+-/, "");
-  // Replace underscores with spaces and convert to title case
   return withoutPrefix
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 }
 
-/**
- * Converts a provider enum value like "anthropic" to "Anthropic"
- */
 function formatProviderName(provider: string): string {
   const providerNames: Record<string, string> = {
     anthropic: "Anthropic",
@@ -135,6 +97,7 @@ function formatProviderName(provider: string): string {
     together: "Together",
     google: "Google",
     xai: "xAI",
+    moonshot: "Moonshot",
   };
   return providerNames[provider] ?? provider;
 }
@@ -235,7 +198,6 @@ async function getLastRunSummary(): Promise<string | null> {
 interface RunOptions {
   models: string[];
   filter?: string;
-  disableBraintrust: boolean;
   verbose: boolean;
   outputTempdir?: string;
   postToConvex: boolean;
@@ -247,10 +209,7 @@ function isConvexPostingConfigured(): boolean {
 }
 
 function buildEnvVars(options: RunOptions): Record<string, string> {
-  const env: Record<string, string> = { ...process.env } as Record<
-    string,
-    string
-  >;
+  const env: Record<string, string> = { ...process.env } as Record<string, string>;
 
   if (options.models.length > 0) {
     env.MODELS = options.models.join(",");
@@ -258,10 +217,6 @@ function buildEnvVars(options: RunOptions): Record<string, string> {
 
   if (options.filter) {
     env.TEST_FILTER = options.filter;
-  }
-
-  if (options.disableBraintrust) {
-    env.DISABLE_BRAINTRUST = "1";
   }
 
   if (options.verbose) {
@@ -303,23 +258,16 @@ async function runEvals(options: RunOptions): Promise<void> {
   console.log(`  Filter: ${options.filter || "(all)"}`);
   console.log(`  Experiment: ${options.experiment || "(none)"}`);
   console.log(
-    `  Braintrust: ${options.disableBraintrust ? "disabled" : "enabled"}`,
-  );
-  console.log(
-    `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (⚠️  CONVEX_EVAL_ENDPOINT or CONVEX_AUTH_TOKEN not set)" : ""}`,
+    `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (warning: CONVEX_EVAL_ENDPOINT or CONVEX_AUTH_TOKEN not set)" : ""}`,
   );
   console.log(`  Verbose: ${options.verbose ? "yes" : "no"}`);
   console.log("");
 
-  const child = spawn(
-    "pdm",
-    ["run", "python", "-m", "runner.eval_convex_coding"],
-    {
-      env,
-      stdio: "inherit",
-      shell: true,
-    },
-  );
+  const child = spawn("bun", ["run", "runner/index.ts"], {
+    env,
+    stdio: "inherit",
+    shell: true,
+  });
 
   return new Promise((resolve, reject) => {
     child.on("close", (code) => {
@@ -365,7 +313,6 @@ async function selectFilter(
   });
 
   if (action === "back") return BACK;
-
   if (action === "all") return undefined;
 
   if (action === "categories") {
@@ -431,7 +378,7 @@ async function selectModels(): Promise<SelectResult<string[]>> {
   if (modelChoice === "back") return BACK;
 
   if (modelChoice === "choose") {
-    const availableModels = await discoverModels();
+    const availableModels = discoverModels();
     const selected = await checkbox({
       message: "Select models (space to toggle, enter to confirm):",
       choices: availableModels.map((m) => ({ name: m.name, value: m.value })),
@@ -464,15 +411,10 @@ async function selectExperiment(): Promise<SelectResult<Experiment | undefined>>
 }
 
 async function selectOptions(): Promise<
-  SelectResult<{ useBraintrust: boolean; verbose: boolean; postToConvex: boolean; experiment?: Experiment }>
+  SelectResult<{ verbose: boolean; postToConvex: boolean; experiment?: Experiment }>
 > {
   const experiment = await selectExperiment();
   if (experiment === BACK) return BACK;
-
-  const useBraintrust = await confirm({
-    message: "Send results to Braintrust?",
-    default: false,
-  });
 
   // Only ask about Convex posting if the env vars are configured
   let postToConvex = false;
@@ -488,13 +430,12 @@ async function selectOptions(): Promise<
     default: true,
   });
 
-  return { useBraintrust, verbose, postToConvex, experiment };
+  return { verbose, postToConvex, experiment };
 }
 
 interface LastRunConfig {
   models: string[];
   filter: string | undefined;
-  useBraintrust: boolean;
   verbose: boolean;
   postToConvex: boolean;
   experiment?: Experiment;
@@ -508,7 +449,7 @@ function formatRunConfigSummary(config: LastRunConfig): string {
 }
 
 async function interactiveMode(): Promise<void> {
-  console.log("\n🧪 Convex Evals Runner\n");
+  console.log("\n Convex Evals Runner\n");
 
   const lastRunSummary = await getLastRunSummary();
   if (lastRunSummary) {
@@ -519,9 +460,7 @@ async function interactiveMode(): Promise<void> {
   let failedEvals = await getFailedEvals();
   let lastRunConfig: LastRunConfig | null = null;
 
-  // Main loop with back navigation
   while (true) {
-    // Build menu choices dynamically based on whether we have a previous run config
     const menuChoices = [
       { name: "Run evals", value: "run" },
       ...(lastRunConfig
@@ -538,7 +477,7 @@ async function interactiveMode(): Promise<void> {
     });
 
     if (mainAction === "exit") {
-      console.log("Goodbye! 👋\n");
+      console.log("Goodbye!\n");
       return;
     }
 
@@ -557,13 +496,13 @@ async function interactiveMode(): Promise<void> {
       );
 
       for (const result of individual_results) {
-        const status = result.passed ? "✅" : "❌";
+        const status = result.passed ? "PASS" : "FAIL";
         const score = (result.tests_pass_score * 100).toFixed(0);
         const reason = result.failure_reason
           ? ` (${result.failure_reason})`
           : "";
         console.log(
-          `  ${status} ${result.category}/${result.name} - ${score}%${reason}`,
+          `  [${status}] ${result.category}/${result.name} - ${score}%${reason}`,
         );
       }
       console.log("");
@@ -571,11 +510,11 @@ async function interactiveMode(): Promise<void> {
     }
 
     if (mainAction === "list") {
-      console.log("\n📋 Available Evals\n");
+      console.log("\nAvailable Evals\n");
       for (const category of categories) {
         console.log(`${category.displayName} (${category.name})`);
         for (const evalInfo of category.evals) {
-          console.log(`  └─ ${evalInfo.name}`);
+          console.log(`  - ${evalInfo.name}`);
         }
         console.log("");
       }
@@ -591,7 +530,7 @@ async function interactiveMode(): Promise<void> {
             value: "same",
           },
           { name: "Change values", value: "change" },
-          { name: "← Back", value: "back" },
+          { name: "Back", value: "back" },
         ],
       });
 
@@ -602,23 +541,18 @@ async function interactiveMode(): Promise<void> {
           await runEvals({
             models: lastRunConfig.models,
             filter: lastRunConfig.filter,
-            disableBraintrust: !lastRunConfig.useBraintrust,
             verbose: lastRunConfig.verbose,
             postToConvex: lastRunConfig.postToConvex,
             experiment: lastRunConfig.experiment,
           });
-          // Refresh failed evals after run
           failedEvals = await getFailedEvals();
         } catch (error) {
           console.error("\nEval run failed:", error);
         }
         continue;
       }
-
-      // runAgainChoice === "change" - fall through to run flow but with pre-filled defaults
     }
 
-    // Run evals flow with back navigation
     const filter = await selectFilter(categories, failedEvals);
     if (filter === BACK) continue;
 
@@ -628,7 +562,6 @@ async function interactiveMode(): Promise<void> {
     const options = await selectOptions();
     if (options === BACK) continue;
 
-    // Confirm and run
     const shouldRun = await confirm({
       message: "Ready to run. Proceed?",
       default: true,
@@ -639,11 +572,9 @@ async function interactiveMode(): Promise<void> {
       continue;
     }
 
-    // Save the run config for "Run again" option
     lastRunConfig = {
       models,
       filter,
-      useBraintrust: options.useBraintrust,
       verbose: options.verbose,
       postToConvex: options.postToConvex,
       experiment: options.experiment,
@@ -653,12 +584,10 @@ async function interactiveMode(): Promise<void> {
       await runEvals({
         models,
         filter,
-        disableBraintrust: !options.useBraintrust,
         verbose: options.verbose,
         postToConvex: options.postToConvex,
         experiment: options.experiment,
       });
-      // Refresh failed evals after run
       failedEvals = await getFailedEvals();
     } catch (error) {
       console.error("\nEval run failed:", error);
@@ -685,20 +614,17 @@ program
   .option("-c, --category <categories...>", "Run specific categories")
   .option("--failed", "Re-run only failed evals from last run")
   .option("-e, --experiment <name>", `Run an experiment (${VALID_EXPERIMENTS.join(", ")})`)
-  .option("--braintrust", "Send results to Braintrust")
   .option("--post-to-convex", "Post results to Convex database")
   .option("-v, --verbose", "Enable verbose logging", true)
   .option("--no-verbose", "Disable verbose logging")
   .option("-o, --output <dir>", "Output directory for results")
   .action(async (options) => {
-    // Validate experiment if provided
     if (options.experiment && !VALID_EXPERIMENTS.includes(options.experiment)) {
       console.error(`Invalid experiment: ${options.experiment}`);
       console.error(`Valid experiments: ${VALID_EXPERIMENTS.join(", ")}`);
       process.exit(1);
     }
 
-    // If no filtering options provided, enter interactive mode
     const hasFilterOptions =
       options.model || options.filter || options.category || options.failed;
 
@@ -707,7 +633,6 @@ program
       return;
     }
 
-    // Build filter from options
     let filter: string | undefined = options.filter;
 
     if (options.category) {
@@ -727,7 +652,6 @@ program
     await runEvals({
       models: options.model || [],
       filter,
-      disableBraintrust: !options.braintrust,
       verbose: options.verbose,
       outputTempdir: options.output,
       postToConvex: options.postToConvex || false,
@@ -742,14 +666,14 @@ program
   .action(async (options) => {
     const categories = await discoverCategories();
 
-    console.log("\n📋 Available Evals\n");
+    console.log("\nAvailable Evals\n");
 
     for (const category of categories) {
       if (options.category && category.name !== options.category) continue;
 
       console.log(`${category.displayName} (${category.name})`);
       for (const evalInfo of category.evals) {
-        console.log(`  └─ ${evalInfo.name}`);
+        console.log(`  - ${evalInfo.name}`);
       }
       console.log("");
     }
@@ -774,7 +698,7 @@ program
 
     const { run_stats, model_name, individual_results, tempdir } = lastRun;
 
-    console.log("\n📊 Last Run Status\n");
+    console.log("\nLast Run Status\n");
     console.log(`Model: ${model_name}`);
     console.log(`Output: ${tempdir}`);
     console.log(`Score: ${(run_stats.overall_score * 100).toFixed(1)}%`);
@@ -786,17 +710,17 @@ program
       : individual_results;
 
     if (options.failed && resultsToShow.length === 0) {
-      console.log("All evals passed! 🎉\n");
+      console.log("All evals passed!\n");
       return;
     }
 
     console.log(options.failed ? "Failed Evals:" : "Results:");
     for (const result of resultsToShow) {
-      const status = result.passed ? "✅" : "❌";
+      const status = result.passed ? "PASS" : "FAIL";
       const score = (result.tests_pass_score * 100).toFixed(0);
       const reason = result.failure_reason ? ` (${result.failure_reason})` : "";
       console.log(
-        `  ${status} ${result.category}/${result.name} - ${score}%${reason}`,
+        `  [${status}] ${result.category}/${result.name} - ${score}%${reason}`,
       );
     }
     console.log("");
@@ -806,11 +730,10 @@ program
   .command("models")
   .description("List available models")
   .action(async () => {
-    const availableModels = await discoverModels();
+    const availableModels = discoverModels();
 
-    console.log("\n🤖 Available Models\n");
+    console.log("\nAvailable Models\n");
 
-    // Group by provider (from the parsed Python data)
     const byProvider: Record<string, ModelChoice[]> = {};
     for (const model of availableModels) {
       const providerName = formatProviderName(model.provider);
@@ -821,7 +744,7 @@ program
     for (const [provider, models] of Object.entries(byProvider)) {
       console.log(`${provider}:`);
       for (const model of models) {
-        console.log(`  └─ ${model.name} (${model.value})`);
+        console.log(`  - ${model.name} (${model.value})`);
       }
       console.log("");
     }

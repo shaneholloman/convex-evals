@@ -25,9 +25,6 @@ We use these evals to tune our [Convex Guidelines](https://docs.convex.dev/ai/),
 First, install dependencies:
 
 ```bash
-pip install pdm
-pdm install
-
 npm install -g bun
 bun install
 
@@ -84,30 +81,29 @@ bun run evals run --failed
 # Filter by regex pattern
 bun run evals run -f "pagination"
 
-# Send results to Braintrust
-bun run evals run --braintrust -c 000-fundamentals
+# Post results to Convex database
+bun run evals run --post-to-convex -c 000-fundamentals
 ```
 
-### Using Braintrust directly
+### Running directly
 
-Get a Braintrust API key from [the dashboard](https://www.braintrust.dev/app/Convex/settings/api-keys).
-You can run the `eval_convex_coding.py` evals with the `braintrust` CLI:
+You can run the eval runner directly:
 
 ```bash
-BRAINTRUST_API_KEY=<your BRAINTRUST_API_KEY> pdm run braintrust eval runner/eval_convex_coding.py
+bun run runner/index.ts
 ```
 
-It'll print out a URL for viewing the report online. You can specify a test filter regex via an environment variable:
+You can specify a test filter regex via an environment variable:
 
 ```bash
-TEST_FILTER='data_modeling' pdm run braintrust eval runner/eval_convex_coding.py
+TEST_FILTER='data_modeling' bun run runner/index.ts
 ```
 
 The test will also print out what temporary directory it's using for storing the generated files. You can override this
 with the `OUTPUT_TEMPDIR` environment variable.
 
 ```bash
-OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust eval runner/eval_convex_coding.py
+OUTPUT_TEMPDIR=/tmp/convex-codegen-evals bun run runner/index.ts
 ```
 
 ### Environment variables
@@ -116,7 +112,6 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust eval runner/eval_con
 | ---------------------- | ------------------------------------------------------------------- |
 | `MODELS`               | Comma-separated list of models to run                               |
 | `TEST_FILTER`          | Regex pattern to filter evals                                       |
-| `DISABLE_BRAINTRUST`   | Set to `1` to disable Braintrust upload                             |
 | `VERBOSE_INFO_LOGS`    | Set to `1` for verbose logging                                      |
 | `LOCAL_RESULTS`        | Path to write local results JSONL file                              |
 | `OUTPUT_TEMPDIR`       | Directory for generated output files                                |
@@ -127,62 +122,37 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals pdm run braintrust eval runner/eval_con
 ### Output
 
 - Per-step progress lines with the eval id
-- Per-eval result with ✅/❌ and a clickable output dir
+- Per-eval result with pass/fail status and a clickable output dir
 - `local_results.jsonl` with detailed results (used by `bun run evals status`)
 
 ## AI grading helper
 
 Grader tests can include an AI-based assessment that provides concise reasoning on failure. See the "AI grading" section in `EVAL_WORKFLOW.md` for details and usage with `createAIGraderTest(import.meta.url)`.
 
-## Rerunning grading
-
-After running the evals, you may want to dig into a particular test failure. You can use the `run_grader.py` script to grade the evaluations again without regenerating them:
-
-```bash
-pdm run python -m runner.run_grader /tmp/convex-codegen-evals
-```
-
-You can also pass in a path to a specific evaluation.
-
-```bash
-pdm run python -m runner.run_grader /tmp/convex-codegen-evals/output/claude-3-5-sonnet-latest/000-fundamentals/000-http_actions_file_storage
-```
-
 ## Adding a new evaluation
-
-Use the `create_eval.py` script to create a new evaluation.
-
-```bash
-pdm run python -m runner.create_eval <category> <name>
-```
 
 Note that test or category names cannot contain dashes.
 
-It will walk you through things step by step. You can start at a given step by passing a 3rd argument of the step number to start from.
-At each step, it will generate some content and have you edit it.
-It will generally open the files to review automatically with `cursor`,
-meaning you should have that utility installed in your shell.
+1. Create a new directory under `evals/<category>/<name>/`
+2. Add a `TASK.txt` file describing what the LLM should do
+3. Add an `answer/` directory with the human-curated solution
+4. Add a `grader.test.ts` file with unit tests
+5. Run the eval to verify it works
 
-1. Generates a `TASK.txt` file for what the LLM should do.
-2. Generates an `answer/` directory with the human-curated answer.
-3. Generates a `grader.test.ts` file with unit tests.
-4. Interactively runs the backend and tests
-5. Runs the eval with braintrust. At this point edit `GAPS.txt` to capture what needs improvement.
-6. Commits it to git.
-
-Be sure that your answer passes tests:
+## Generating guidelines
 
 ```bash
-pdm run python -m runner.run_grader evals/<category>/<name>/answer
+bun run build:release
 ```
 
-# Generating guidelines
+This will generate guideline files in the `dist/` directory for various AI coding assistants.
+
+## Listing models
 
 ```bash
-pdm run python -m runner.models.guidelines <outdir>
+bun run list:models
+bun run runner/listModels.ts --frequency daily --format json
 ```
-
-This will generate guidelines for Anthropic and OpenAI in the specified directory.
 
 # Outstanding Evals
 
