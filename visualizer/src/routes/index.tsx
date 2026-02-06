@@ -56,8 +56,6 @@ function HomePage() {
           </p>
         </header>
 
-        <StatsBar />
-
         <div className="mt-6">
           <div className="tab-nav mb-0 rounded-t-xl bg-slate-800/50 border border-b-0 border-slate-700">
             {tabs.map((tab) => (
@@ -81,40 +79,6 @@ function HomePage() {
         </div>
       </div>
     </main>
-  );
-}
-
-function StatsBar() {
-  const experiments = useQuery(api.runs.listExperiments, {});
-  const models = useQuery(api.runs.listModels, {});
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div className="stat-card">
-        <div className="stat-number">{experiments?.length ?? "..."}</div>
-        <div className="stat-label">Experiments</div>
-      </div>
-      <div className="stat-card">
-        <div className="stat-number">
-          {experiments
-            ? experiments.reduce((acc, e) => acc + e.runCount, 0)
-            : "..."}
-        </div>
-        <div className="stat-label">Total Runs</div>
-      </div>
-      <div className="stat-card">
-        <div className="stat-number">
-          {experiments
-            ? experiments.reduce((acc, e) => acc + e.totalEvals, 0)
-            : "..."}
-        </div>
-        <div className="stat-label">Total Evals</div>
-      </div>
-      <div className="stat-card">
-        <div className="stat-number">{models?.length ?? "..."}</div>
-        <div className="stat-label">Models</div>
-      </div>
-    </div>
   );
 }
 
