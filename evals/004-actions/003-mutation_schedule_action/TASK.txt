@@ -28,8 +28,8 @@ Implement these functions in `convex/index.ts`:
 2. Create an internal action `performHttpbinFetch` that:
    - Takes arguments:  `{ url: string, requestId: Id<"requests"> }`
    - Makes a POST request to the URL
-   - Updates the requests record with an exported mutation `updateRequest`
-     - Define `updateRequest` to take arguments: `{ requestId: Id<"requests">, status: "completed", completedAt: number }`
+   - Updates the requests record by calling an internal mutation `updateRequest` via `ctx.runMutation(internal.index.updateRequest, ...)`
+     - Define `updateRequest` as an `internalMutation` that takes arguments: `{ requestId: Id<"requests">, status: "completed", completedAt: number }`
      - It should set the status to "completed" and set `completedAt` to the provided timestamp
    - Returns nothing
 
@@ -44,4 +44,4 @@ The implementation should demonstrate:
 
 Create only the `convex/schema.ts`, `convex/index.ts`, and `package.json` files. Do not generate any other files.
 
-Do not export any functions from `convex/index.ts` other than `initiateRequest`, `updateRequest`, and `performHttpbinFetch`.
+The only public function should be `initiateRequest`. Both `updateRequest` and `performHttpbinFetch` should be internal (using `internalMutation` and `internalAction` respectively). Do not export any other functions from `convex/index.ts`.

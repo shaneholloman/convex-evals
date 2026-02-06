@@ -23,6 +23,16 @@ Extract the run ID from the visualizer URL. The URL pattern is:
 
 The `$runId` is the Convex document ID (e.g. `jn7922j1w29pdxm76bj9ps0enx80mg9e`).
 
+## Step 1b: Check previous reports for this model
+
+Reports are stored in `reports/{provider}/{model}/` (e.g. `reports/anthropic/claude-opus-4-6/`).
+List the directory for the model being analyzed and read the most recent report(s). This gives you:
+- Known recurring failures for this model
+- Actions already taken (lint config changes, grader fixes, task updates)
+- Classifications from prior analysis that may still apply
+
+Reference prior findings when the same eval fails again — note whether it's a repeat and whether any prior fix should have resolved it.
+
 ## Step 2: Fetch the failure summary
 
 Run from the `evalScores/` directory:
@@ -104,3 +114,22 @@ Present the full analysis to the user. End with:
 "These are my findings. Would you like me to implement any of these recommendations, or would you like to discuss specific failures in more detail?"
 
 Do NOT make any changes until the user explicitly asks.
+
+## Step 6: Create a report (when the user asks you to act on findings)
+
+When the user asks you to implement changes, also create a report file at:
+
+```
+reports/{provider}/{model}/{runIdPrefix}_{date}.md
+```
+
+For example: `reports/anthropic/claude-opus-4-6/jn72t14a_2026-02-06.md`
+
+The report should contain:
+- Run metadata (ID, model, experiment, date, pass rate)
+- Failure summary table (by step type)
+- Per-failure analysis with classification, reasoning, and code snippets
+- Cross-cutting patterns (especially recurring failures from prior reports)
+- Actions taken in this session
+- Genuine model faults (no action taken)
+- Net impact assessment

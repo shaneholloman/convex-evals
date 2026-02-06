@@ -14,8 +14,15 @@ if (!responsePortStr) {
 }
 const responsePort = Number(responsePortStr);
 
-export const cloudUrl = `http://0.0.0.0:${responsePort}`;
-export const siteUrl = `http://0.0.0.0:${responsePort + 1}`;
+// Use the explicitly-provided site proxy port when available, falling back to
+// port + 1 for backwards compatibility.  Always use `localhost` (not 0.0.0.0)
+// because 0.0.0.0 is not a valid outbound destination on Windows.
+const sitePort = process.env.CONVEX_SITE_PORT
+  ? Number(process.env.CONVEX_SITE_PORT)
+  : responsePort + 1;
+
+export const cloudUrl = `http://localhost:${responsePort}`;
+export const siteUrl = `http://localhost:${sitePort}`;
 
 const answerPort = process.env.CONVEX_ANSWER_PORT;
 
@@ -24,13 +31,13 @@ export const responseClient = new ConvexClient(cloudUrl);
 const adminKey =
   "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd";
 export const responseAdminClient = new ConvexClient(
-  `http://0.0.0.0:${responsePort}`,
+  `http://localhost:${responsePort}`,
 );
 (responseAdminClient as any).setAdminAuth(adminKey);
 
 let answerAdminClient: ConvexClient | null = null;
 if (answerPort) {
-  answerAdminClient = new ConvexClient(`http://0.0.0.0:${answerPort}`);
+  answerAdminClient = new ConvexClient(`http://localhost:${answerPort}`);
   (answerAdminClient as any).setAdminAuth(adminKey);
 }
 

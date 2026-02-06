@@ -630,6 +630,7 @@ async function runTests(
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
     CONVEX_PORT: String(backend.port),
+    CONVEX_SITE_PORT: String(backend.siteProxyPort),
     CONVEX_ANSWER_PORT: String(answerBackend.port),
   };
 

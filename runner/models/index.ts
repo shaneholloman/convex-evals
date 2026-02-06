@@ -65,7 +65,7 @@ export const ALL_MODELS: ModelTemplate[] = [
     provider: ModelProvider.ANTHROPIC,
     overrideProxy: "https://api.anthropic.com/v1",
     supportsTemperature: true,
-    ciRunFrequency: "weekly",
+    ciRunFrequency: "monthly",
     usesResponsesApi: false,
   },
   {

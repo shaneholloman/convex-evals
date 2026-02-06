@@ -38,14 +38,21 @@ export default tseslint.config(
         },
       ],
 
-      // Enforce proper function return types
+      // Enforce proper function return types (warn only — models sometimes
+      // extract DRY helpers without an explicit return type annotation and
+      // that's acceptable code quality).
       "@typescript-eslint/explicit-function-return-type": [
-        "error",
+        "warn",
         {
           allowExpressions: true,
           allowTypedFunctionExpressions: true,
         },
       ],
+
+      // prefer-const is a stylistic nit — not a correctness issue. Downgrade
+      // to warning so models aren't penalised for using `let` on variables
+      // they don't reassign.
+      "prefer-const": "warn",
 
       // Prevent accidental any
       // no-unsafe-assignment and no-unsafe-return are disabled because v.any()

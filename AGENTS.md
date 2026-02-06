@@ -39,9 +39,15 @@ The general pattern is: deploy code first (with loose/compatible schema), run da
 
 ## Run Analysis Reports
 
-The `reports/` directory contains post-run analysis reports. These are created by analyzing failed evals (using the `analyze-run-failures` agent skill) and recording findings for future reference.
+The `reports/` directory contains post-run analysis reports organised by provider and model:
 
-Each report is named `{model}_{run-id-prefix}_{date}.md` and contains:
+```
+reports/{provider}/{model}/{run-id-prefix}_{date}.md
+```
+
+For example: `reports/anthropic/claude-opus-4-6/jn72t14a_2026-02-06.md`
+
+Each report contains:
 + Per-failure classification (model fault, overly strict testing, ambiguous task, known gap)
 + Cross-cutting patterns across failures
 + Actions taken (lint config changes, grader fixes, task updates)
