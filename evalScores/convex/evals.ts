@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 const evalStatus = v.union(
   v.object({ kind: v.literal("pending") }),
-  v.object({ kind: v.literal("running") }),
+  v.object({ kind: v.literal("running"), outputStorageId: v.optional(v.id("_storage")) }),
   v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
   v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
 );
@@ -59,6 +59,26 @@ export const updateEvalStatus = internalMutation({
     await ctx.db.patch(args.evalId, {
       status: args.status,
     });
+    return null;
+  },
+});
+
+export const updateEvalOutput = internalMutation({
+  args: {
+    evalId: v.id("evals"),
+    outputStorageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const evalDoc = await ctx.db.get(args.evalId);
+    if (!evalDoc) return null;
+
+    // Only update if the eval is still running
+    if (evalDoc.status.kind === "running") {
+      await ctx.db.patch(args.evalId, {
+        status: { ...evalDoc.status, outputStorageId: args.outputStorageId },
+      });
+    }
     return null;
   },
 });

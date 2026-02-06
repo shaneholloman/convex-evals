@@ -361,6 +361,52 @@ http.route({
 });
 
 http.route({
+  path: "/updateEvalOutput",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const tokenValue = await validateAuth(ctx, request);
+      if (!tokenValue) {
+        return new Response(JSON.stringify({ error: "Invalid authentication token" }), {
+          status: 401,
+          headers: corsHeaders,
+        });
+      }
+
+      const body: unknown = await request.json();
+      const UpdateEvalOutputBody = z.object({
+        evalId: z.string(),
+        outputStorageId: z.string(),
+      });
+
+      const parsed = UpdateEvalOutputBody.safeParse(body);
+      if (!parsed.success) {
+        return new Response(JSON.stringify({ error: parsed.error.issues[0].message }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      await ctx.runMutation(internal.evals.updateEvalOutput, {
+        evalId: parsed.data.evalId as any,
+        outputStorageId: parsed.data.outputStorageId as any,
+      });
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: corsHeaders,
+      });
+    } catch (error) {
+      console.error("Error updating eval output:", error);
+      return new Response(JSON.stringify({ error: "Internal server error" }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+  }),
+});
+
+http.route({
   path: "/completeEval",
   method: "POST",
   handler: httpAction(async (ctx, request) => {

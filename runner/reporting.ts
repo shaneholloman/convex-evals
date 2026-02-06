@@ -130,6 +130,31 @@ export function recordStep(
   );
 }
 
+/**
+ * Upload current output directory and attach to a running eval.
+ * This enables the visualizer to show partial output before the eval completes.
+ * Fire-and-forget: errors are logged but don't block the scorer.
+ */
+export async function uploadEvalOutput(
+  evalId: string,
+  outputDir: string,
+): Promise<void> {
+  try {
+    const zipPath = await zipOutputDirectory(outputDir);
+    if (!zipPath) return;
+    try {
+      const storageId = await uploadToConvexStorage(zipPath);
+      if (storageId) {
+        await makeConvexRequest("updateEvalOutput", { evalId, outputStorageId: storageId });
+      }
+    } finally {
+      try { unlinkSync(zipPath); } catch { /* ignore */ }
+    }
+  } catch {
+    // Best-effort: don't block scoring if incremental upload fails
+  }
+}
+
 export async function completeEval(
   evalId: string,
   status: Record<string, unknown>,

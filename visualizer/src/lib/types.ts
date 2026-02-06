@@ -12,7 +12,7 @@ export type RunStatus =
 
 export type EvalStatus =
   | { kind: "pending" }
-  | { kind: "running" }
+  | { kind: "running"; outputStorageId?: string }
   | { kind: "passed"; durationMs: number; outputStorageId?: string }
   | { kind: "failed"; failureReason: string; durationMs: number; outputStorageId?: string };
 

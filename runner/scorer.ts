@@ -17,7 +17,7 @@ import {
   logVitestResults,
   runCommandStep,
 } from "./logging.js";
-import { recordStep, completeEval } from "./reporting.js";
+import { recordStep, completeEval, uploadEvalOutput } from "./reporting.js";
 
 // ── Timeout constants (ms) ───────────────────────────────────────────
 
@@ -88,7 +88,11 @@ export async function convexScorer(
     scores.push({ name: "Valid filesystem output", score: 1 });
     passedFilesystem = true;
     appendLog(runLogPath, "[ok] write_filesystem");
-    if (evalId) void recordStep(evalId, "filesystem", { kind: "passed", durationMs: Date.now() - stepStart });
+    if (evalId) {
+      void recordStep(evalId, "filesystem", { kind: "passed", durationMs: Date.now() - stepStart });
+      // Upload initial output so visualizer can show generated files while eval is still running
+      void uploadEvalOutput(evalId, outputProjectDir);
+    }
   } catch (e) {
     scores.push({ name: "Valid filesystem output", score: 0 });
     appendLog(runLogPath, `[error] write_filesystem: ${String(e)}`);

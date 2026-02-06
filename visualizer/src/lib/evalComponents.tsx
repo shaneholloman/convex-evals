@@ -184,9 +184,9 @@ export function OutputTab({
     });
   };
 
-  // Get the storage ID from the status
+  // Get the storage ID from the status (available during running, passed, or failed)
   const storageId = useMemo(() => {
-    if (evalStatus.kind === "passed" || evalStatus.kind === "failed") {
+    if (evalStatus.kind === "running" || evalStatus.kind === "passed" || evalStatus.kind === "failed") {
       return evalStatus.outputStorageId;
     }
     return undefined;

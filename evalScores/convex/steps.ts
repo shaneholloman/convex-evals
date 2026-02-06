@@ -25,6 +25,14 @@ export const recordStep = internalMutation({
   },
   returns: v.id("steps"),
   handler: async (ctx, args) => {
+    // Transition eval to "running" on first step if it's still pending
+    const evalDoc = await ctx.db.get(args.evalId);
+    if (evalDoc && evalDoc.status.kind === "pending") {
+      await ctx.db.patch(args.evalId, {
+        status: { kind: "running" as const },
+      });
+    }
+
     const id = await ctx.db.insert("steps", {
       evalId: args.evalId,
       name: args.name,

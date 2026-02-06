@@ -23,7 +23,7 @@ const runStatus = v.union(
 
 const evalStatus = v.union(
   v.object({ kind: v.literal("pending") }),
-  v.object({ kind: v.literal("running") }),
+  v.object({ kind: v.literal("running"), outputStorageId: v.optional(v.id("_storage")) }),
   v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
   v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
 );
