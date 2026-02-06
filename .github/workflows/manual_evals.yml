@@ -22,8 +22,6 @@ jobs:
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
       MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-      CONVEX_EVAL_URL: ${{ secrets.CONVEX_EVAL_URL }}
-      CONVEX_AUTH_TOKEN: ${{ secrets.CONVEX_AUTH_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
