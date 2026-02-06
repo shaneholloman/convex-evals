@@ -104,6 +104,7 @@ export async function startRun(
     experiment: (experiment ?? EVALS_EXPERIMENT) as
       | "no_guidelines"
       | "web_search"
+      | "web_search_no_guidelines"
       | undefined,
   });
 }

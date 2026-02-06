@@ -4,6 +4,7 @@ import { v } from "convex/values";
 export const experimentLiteral = v.union(
   v.literal("no_guidelines"),
   v.literal("web_search"),
+  v.literal("web_search_no_guidelines"),
 );
 
 // Step name as union of literals

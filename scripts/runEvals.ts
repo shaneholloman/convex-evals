@@ -36,7 +36,7 @@ const EVALS_DIR = "evals";
 const DEFAULT_MODEL = "claude-sonnet-4-5";
 
 // Valid experiment values
-const VALID_EXPERIMENTS = ["no_guidelines", "web_search"] as const;
+const VALID_EXPERIMENTS = ["no_guidelines", "web_search", "web_search_no_guidelines"] as const;
 type Experiment = (typeof VALID_EXPERIMENTS)[number];
 
 interface ModelChoice {
@@ -309,6 +309,7 @@ async function selectExperiment(): Promise<SelectResult<Experiment | undefined>>
       { name: "No experiment (use guidelines)", value: "none" },
       { name: "no_guidelines (skip Convex guidelines)", value: "no_guidelines" },
       { name: "web_search (give model a web search tool)", value: "web_search" },
+      { name: "web_search_no_guidelines (web search, no guidelines)", value: "web_search_no_guidelines" },
       { name: "← Back", value: "back" },
     ],
   });

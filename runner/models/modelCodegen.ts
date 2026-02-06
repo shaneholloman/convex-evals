@@ -32,7 +32,8 @@ import { stepCountIs } from "ai";
 // ── Experiment helpers ────────────────────────────────────────────────
 
 function isWebSearchEnabled(): boolean {
-  return process.env.EVALS_EXPERIMENT === "web_search";
+  const exp = process.env.EVALS_EXPERIMENT;
+  return exp === "web_search" || exp === "web_search_no_guidelines";
 }
 
 // ── Guidelines helpers ────────────────────────────────────────────────
@@ -42,7 +43,8 @@ function getGuidelinesContent(): string {
   if (customPath && existsSync(customPath)) {
     return readFileSync(customPath, "utf-8");
   }
-  if (process.env.EVALS_EXPERIMENT === "no_guidelines") return "";
+  const exp = process.env.EVALS_EXPERIMENT;
+  if (exp === "no_guidelines" || exp === "web_search_no_guidelines") return "";
   return renderGuidelines(CONVEX_GUIDELINES);
 }
 
