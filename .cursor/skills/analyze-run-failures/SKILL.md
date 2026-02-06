@@ -1,0 +1,106 @@
+---
+name: analyze-run-failures
+description: Analyze all failures in a convex-evals run, spawning parallel sub-agents to investigate each failure and producing a critical assessment of whether failures are model issues or testing procedure issues. Use when the user asks to analyze an entire run, review all failures in a run, or wants to understand why a model scored poorly. This skill is READ-ONLY -- it presents findings for discussion and does not make changes.
+---
+
+# Analyze Run Failures
+
+## When to use
+
+- User asks "analyze this run" or "why did this model score poorly?"
+- User shares a run URL like `https://convex-evals.netlify.app/experiment/.../run/$runId/...`
+- User wants to review all failures across an entire eval run
+
+IMPORTANT: This skill is read-only. Present findings and recommendations for discussion. Do NOT make any code changes, config changes, or commits.
+
+## Step 1: Get the run ID
+
+Extract the run ID from the visualizer URL. The URL pattern is:
+
+```
+/experiment/$experimentId/run/$runId/...
+```
+
+The `$runId` is the Convex document ID (e.g. `jn7922j1w29pdxm76bj9ps0enx80mg9e`).
+
+## Step 2: Fetch the failure summary
+
+Run from the `evalScores/` directory:
+
+```bash
+npx convex run --prod debugQueries:getFailedEvalsForRun '{"runId": "<runId>"}'
+```
+
+This returns:
+- `run` -- model name, provider, experiment, status
+- `totalEvals`, `passedCount`, `failedCount` -- overall stats
+- `failedEvals` -- array of failed evals, each with `_id`, `evalPath`, `category`, `name`, `failureReason`, and `failedStep` (which step failed and its error)
+
+If there are no failures, report that all evals passed and stop.
+
+## Step 3: Fan out sub-agents to analyze each failure
+
+For each failed eval, spawn a sub-agent (up to 4 in parallel) with this prompt template:
+
+```
+You are investigating a failing eval from the convex-evals system.
+
+The workspace is at c:\dev\convex\convex-evals
+Run this command from the evalScores/ directory:
+
+npx convex run --prod debug:getEvalDebugInfo '{"evalId": "<EVAL_ID>"}'
+
+Then analyze the result:
+1. Which step failed and what was the exact error?
+2. Look at the model's generated code in outputFiles.
+3. Look at the expected answer and grader in evalSourceFiles.
+4. Look at the task description in eval.task.
+5. Is this a genuine model mistake, or is the test/lint/task unfair?
+
+Classify the failure as one of:
+- MODEL_FAULT: The model genuinely got it wrong
+- OVERLY_STRICT: The eval/lint/test requirements are unreasonable for what was asked
+- AMBIGUOUS_TASK: The task description is unclear and the model's interpretation was reasonable
+- KNOWN_GAP: Check evalSourceFiles for a GAPS.txt that documents this issue
+
+Return a structured summary:
+- Eval: <name> (<category>)
+- Failed step: <step name>
+- Error: <one-line error summary>
+- Classification: <one of the above>
+- Reasoning: <2-3 sentences explaining your classification>
+- Model output snippet: <the relevant problematic code, if applicable>
+- Expected code snippet: <what the answer looks like, if applicable>
+```
+
+## Step 4: Collate and critically assess
+
+Once all sub-agents return, build the analysis:
+
+### 4a. Overall summary
+- Model, experiment, pass rate (X/Y evals passed)
+- Breakdown by failure type: how many eslint, tsc, deploy, test failures
+
+### 4b. Failure classification table
+For each failure, list: eval name, failed step, classification, one-line reasoning.
+
+### 4c. Cross-cutting patterns
+Look for patterns across failures:
+- Are multiple failures caused by the same root issue? (e.g. same lint rule, same API misunderstanding, same missing pattern)
+- Are there categories of evals that are systematically harder?
+- Do the GAPS.txt files already acknowledge these issues?
+
+### 4d. Recommendations
+Group recommendations by type:
+- **Eval improvements**: Tasks that should be clarified, tests that should be relaxed
+- **Lint/config changes**: Rules that are too strict for what we're testing
+- **Model-specific notes**: Patterns this model struggles with that other models might not
+- **No action needed**: Failures that are genuinely the model's fault
+
+## Step 5: Present for discussion
+
+Present the full analysis to the user. End with:
+
+"These are my findings. Would you like me to implement any of these recommendations, or would you like to discuss specific failures in more detail?"
+
+Do NOT make any changes until the user explicitly asks.

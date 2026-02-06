@@ -28,3 +28,69 @@ export const getRunRecord = internalQuery({
     return await ctx.db.get(args.runId);
   },
 });
+
+/**
+ * Get a lightweight summary of all failed evals for a run.
+ * Returns the eval IDs, names, categories, and failure reasons
+ * without unzipping any output files.
+ */
+export const getFailedEvalsForRun = internalQuery({
+  args: { runId: v.id("runs") },
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run) return null;
+
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("by_runId", (q) => q.eq("runId", args.runId))
+      .collect();
+
+    const failed = evals.filter((e) => e.status.kind === "failed");
+
+    const failedWithSteps = await Promise.all(
+      failed.map(async (evalDoc) => {
+        const steps = await ctx.db
+          .query("steps")
+          .withIndex("by_evalId", (q) => q.eq("evalId", evalDoc._id))
+          .collect();
+
+        // Find which step actually failed
+        const failedStep = steps.find((s) => s.status.kind === "failed");
+
+        return {
+          _id: evalDoc._id,
+          evalPath: evalDoc.evalPath,
+          category: evalDoc.category,
+          name: evalDoc.name,
+          failureReason:
+            evalDoc.status.kind === "failed"
+              ? evalDoc.status.failureReason
+              : "unknown",
+          failedStep: failedStep
+            ? {
+                name: failedStep.name,
+                failureReason:
+                  failedStep.status.kind === "failed"
+                    ? failedStep.status.failureReason
+                    : "unknown",
+              }
+            : null,
+        };
+      }),
+    );
+
+    return {
+      run: {
+        _id: run._id,
+        model: run.model,
+        provider: run.provider ?? null,
+        experiment: run.experiment ?? "default",
+        status: run.status,
+      },
+      totalEvals: evals.length,
+      passedCount: evals.filter((e) => e.status.kind === "passed").length,
+      failedCount: failed.length,
+      failedEvals: failedWithSteps,
+    };
+  },
+});

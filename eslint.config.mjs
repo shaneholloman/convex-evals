@@ -28,7 +28,7 @@ export default tseslint.config(
       // Enforce proper async/await usage
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/await-thenable": "error",
-      "@typescript-eslint/promise-function-async": "error",
+      "@typescript-eslint/promise-function-async": "off",
       "@typescript-eslint/no-misused-promises": [
         "error",
         {

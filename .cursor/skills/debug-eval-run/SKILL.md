@@ -52,7 +52,7 @@ With the data returned, compare:
 4. **What was the task?** — Check `eval.task` for the TASK.txt content.
 
 Common failure patterns:
-- **eslint fail** — Usually `@typescript-eslint/promise-function-async` (callback returning Promise not marked `async`) or unused variable errors. Compare the model output against the answer to spot the lint issue.
+- **eslint fail** — Check the failure reason for the specific lint rule violated. Compare the model output against the answer to spot the lint issue.
 - **tsc fail** — TypeScript compilation error. Check the failure reason for the specific type error.
 - **convex dev fail** — Schema or function definition issues that prevent Convex from deploying.
 - **tests fail** — The grader tests didn't pass. Compare `outputFiles` against `evalSourceFiles` (look for files like `grader.test.ts` or `answer/`) to understand what the tests expected.
