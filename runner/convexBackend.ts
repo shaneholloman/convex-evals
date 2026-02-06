@@ -114,6 +114,8 @@ async function healthCheck(port: number): Promise<void> {
 
 // ── Binary download ──────────────────────────────────────────────────
 
+const DOWNLOAD_TIMEOUT = 120_000; // 2 minutes for binary download
+
 let cachedReleases: unknown[] | null = null;
 
 async function fetchConvexReleases(): Promise<unknown[]> {
@@ -126,7 +128,20 @@ async function fetchConvexReleases(): Promise<unknown[]> {
   return cachedReleases;
 }
 
+// Serialize concurrent download requests so only one download happens at a time
+let downloadPromise: Promise<string> | null = null;
+
 async function downloadConvexBinary(): Promise<string> {
+  if (downloadPromise) return downloadPromise;
+  downloadPromise = downloadConvexBinaryImpl();
+  try {
+    return await downloadPromise;
+  } finally {
+    downloadPromise = null;
+  }
+}
+
+async function downloadConvexBinaryImpl(): Promise<string> {
   const releases = await fetchConvexReleases();
 
   const archMap: Record<string, string> = {
@@ -177,38 +192,47 @@ async function downloadConvexBinary(): Promise<string> {
   logInfo(`Latest release: ${version}`);
   logInfo(`Downloading: ${matchingAsset.browser_download_url}`);
 
-  const resp = await fetch(matchingAsset.browser_download_url);
-  if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-
-  const zipPath = join(binaryDir, matchingAsset.name);
-  await Bun.write(zipPath, resp);
-  logInfo(`Downloaded: ${matchingAsset.name}`);
-
-  // Unzip (cross-platform, pure JS)
-  const zipData = await Bun.file(zipPath).arrayBuffer();
-  const zip = await JSZip.loadAsync(zipData);
-  const expectedName = `convex-local-backend${isWindows ? ".exe" : ""}`;
-
-  const entry = zip.file(expectedName);
-  if (!entry) {
-    throw new Error(`Expected '${expectedName}' in zip but not found. Contents: ${Object.keys(zip.files).join(", ")}`);
-  }
-
-  const content = await entry.async("nodebuffer");
-  writeFileSync(binaryPath, content);
-
-  // Make executable on Unix
-  if (!isWindows) {
-    chmodSync(binaryPath, 0o755);
-  }
-
-  // Clean up zip
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT);
   try {
-    unlinkSync(zipPath);
-  } catch {
-    // ignore
-  }
+    const resp = await fetch(matchingAsset.browser_download_url, {
+      signal: controller.signal,
+    });
+    if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
 
-  logInfo(`Extracted binary to: ${binaryPath}`);
-  return binaryPath;
+    // Read the full response body as an ArrayBuffer to avoid streaming hangs
+    const data = await resp.arrayBuffer();
+    const zipPath = join(binaryDir, matchingAsset.name);
+    writeFileSync(zipPath, Buffer.from(data));
+    logInfo(`Downloaded: ${matchingAsset.name} (${(data.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+
+    // Unzip (cross-platform, pure JS)
+    const zip = await JSZip.loadAsync(data);
+    const expectedName = `convex-local-backend${isWindows ? ".exe" : ""}`;
+
+    const entry = zip.file(expectedName);
+    if (!entry) {
+      throw new Error(`Expected '${expectedName}' in zip but not found. Contents: ${Object.keys(zip.files).join(", ")}`);
+    }
+
+    const content = await entry.async("nodebuffer");
+    writeFileSync(binaryPath, content);
+
+    // Make executable on Unix
+    if (!isWindows) {
+      chmodSync(binaryPath, 0o755);
+    }
+
+    // Clean up zip
+    try {
+      unlinkSync(zipPath);
+    } catch {
+      // ignore
+    }
+
+    logInfo(`Extracted binary to: ${binaryPath}`);
+    return binaryPath;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
