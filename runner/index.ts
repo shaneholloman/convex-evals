@@ -337,11 +337,15 @@ function discoverEvals(): Array<{
 
   const results: Array<{ category: string; name: string; evalPath: string }> =
     [];
-  for (const category of readdirSync(evalsDir, { withFileTypes: true })) {
-    if (!category.isDirectory()) continue;
+  const categories = readdirSync(evalsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name));
+  for (const category of categories) {
     const categoryPath = join(evalsDir, category.name);
-    for (const evalDir of readdirSync(categoryPath, { withFileTypes: true })) {
-      if (!evalDir.isDirectory()) continue;
+    const evalDirs = readdirSync(categoryPath, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const evalDir of evalDirs) {
       const evalPath = join(categoryPath, evalDir.name);
       if (existsSync(join(evalPath, "TASK.txt"))) {
         results.push({
