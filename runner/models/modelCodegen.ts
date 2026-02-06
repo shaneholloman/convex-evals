@@ -1,7 +1,17 @@
 /**
  * LLM code generation: builds prompts, calls provider APIs, parses responses.
+ *
+ * Uses the Vercel AI SDK (generateText) as a unified interface across all
+ * providers. When the "web_search" experiment is active, a Tavily-powered
+ * search tool is made available to every model.
  */
-import OpenAI from "openai";
+import { generateText, type LanguageModel } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createXai } from "@ai-sdk/xai";
+import { createTogetherAI } from "@ai-sdk/togetherai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
 import { readFileSync, readdirSync, statSync, existsSync } from "fs";
 import { join, relative } from "path";
@@ -9,17 +19,21 @@ import {
   type ModelTemplate,
   ModelProvider,
   SYSTEM_PROMPT,
-  getProviderBaseUrl,
 } from "./index.js";
 import { CONVEX_GUIDELINES, renderGuidelines } from "./guidelines.js";
+import {
+  webSearchTool,
+  WEB_SEARCH_SYSTEM_SUPPLEMENT,
+  MAX_TOOL_STEPS,
+} from "./webSearch.js";
+import { logInfo } from "../logging.js";
+import { stepCountIs } from "ai";
 
-// ── Retry config ──────────────────────────────────────────────────────
+// ── Experiment helpers ────────────────────────────────────────────────
 
-const MAX_RETRIES = 5;
-const INITIAL_RETRY_DELAY_MS = 2000;
-const MAX_RETRY_DELAY_MS = 60000;
-const RETRY_JITTER_FACTOR = 0.25;
-const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+function isWebSearchEnabled(): boolean {
+  return process.env.EVALS_EXPERIMENT === "web_search";
+}
 
 // ── Guidelines helpers ────────────────────────────────────────────────
 
@@ -32,127 +46,146 @@ function getGuidelinesContent(): string {
   return renderGuidelines(CONVEX_GUIDELINES);
 }
 
+// ── AI SDK model construction ────────────────────────────────────────
+
+/**
+ * Create an AI SDK LanguageModel from our ModelTemplate + API key.
+ * Each provider gets its own SDK constructor; Moonshot uses the
+ * OpenAI-compatible adapter.
+ */
+function createLanguageModel(
+  template: ModelTemplate,
+  apiKey: string,
+): LanguageModel {
+  switch (template.provider) {
+    case ModelProvider.OPENAI: {
+      const openai = createOpenAI({ apiKey });
+      if (template.usesResponsesApi) {
+        return openai.responses(template.name);
+      }
+      return openai(template.name);
+    }
+
+    case ModelProvider.ANTHROPIC: {
+      const anthropic = createAnthropic({ apiKey });
+      return anthropic(template.name);
+    }
+
+    case ModelProvider.GOOGLE: {
+      const google = createGoogleGenerativeAI({
+        apiKey,
+        ...(template.overrideProxy
+          ? { baseURL: template.overrideProxy }
+          : {}),
+      });
+      return google(template.name);
+    }
+
+    case ModelProvider.XAI: {
+      const xai = createXai({ apiKey });
+      return xai(template.name);
+    }
+
+    case ModelProvider.TOGETHER: {
+      const together = createTogetherAI({ apiKey });
+      return together(template.name);
+    }
+
+    case ModelProvider.MOONSHOT: {
+      const moonshot = createOpenAICompatible({
+        name: "moonshot",
+        baseURL: template.overrideProxy ?? "https://api.moonshot.ai/v1",
+        apiKey,
+      });
+      return moonshot.chatModel(template.name);
+    }
+
+    default: {
+      const _exhaustive: never = template.provider;
+      throw new Error(`Unsupported provider: ${_exhaustive}`);
+    }
+  }
+}
+
+// ── Token limit helpers ──────────────────────────────────────────────
+
+function getMaxOutputTokens(template: ModelTemplate): number {
+  if (template.provider === ModelProvider.TOGETHER) return 4096;
+  if (template.name === "claude-3-5-sonnet-latest") return 8192;
+  return 16384;
+}
+
 // ── Model class ───────────────────────────────────────────────────────
 
 export class Model {
-  private client: OpenAI;
-  private model: ModelTemplate;
+  private languageModel: LanguageModel;
+  private template: ModelTemplate;
 
   constructor(apiKey: string, model: ModelTemplate) {
-    this.model = model;
-    this.client = new OpenAI({
-      baseURL: model.overrideProxy ?? getProviderBaseUrl(model.provider),
-      apiKey,
-      maxRetries: MAX_RETRIES,
-      timeout: 300_000, // 5 min read timeout
-    });
+    this.template = model;
+    this.languageModel = createLanguageModel(model, apiKey);
   }
 
   async generate(prompt: string): Promise<Record<string, string>> {
-    const userPrompt = renderPrompt(this.model.requiresChainOfThought, prompt);
+    const userPrompt = renderPrompt(this.template.requiresChainOfThought, prompt);
+    const useWebSearch = isWebSearchEnabled();
 
-    if (this.model.usesResponsesApi) {
-      return this.generateWithResponsesApi(userPrompt);
-    }
-    return this.generateWithChatApi(userPrompt);
-  }
+    const systemContent = useWebSearch
+      ? `${SYSTEM_PROMPT}\n\n${WEB_SEARCH_SYSTEM_SUPPLEMENT}`
+      : SYSTEM_PROMPT;
 
-  private async generateWithChatApi(
-    userPrompt: string,
-  ): Promise<Record<string, string>> {
-    const systemMessage: OpenAI.ChatCompletionMessageParam = this.model
-      .usesSystemPrompt
-      ? { role: "system", content: SYSTEM_PROMPT }
-      : { role: "user", content: SYSTEM_PROMPT };
+    const maxTokens = getMaxOutputTokens(this.template);
 
-    const maxTokenLimit = this.getMaxTokenLimit();
-
-    const params: Record<string, unknown> = {
-      model: this.model.name,
-      messages: [systemMessage, { role: "user", content: userPrompt }],
+    // Build the base options shared across both prompt styles
+    const baseOptions = {
+      model: this.languageModel,
+      maxOutputTokens: maxTokens,
+      maxRetries: 5,
+      ...(this.template.supportsTemperature
+        ? {
+            temperature: parseFloat(
+              process.env.EVAL_TEMPERATURE ?? "0.7",
+            ),
+          }
+        : {}),
     };
 
-    if (this.model.supportsTemperature) {
-      params.temperature = parseFloat(process.env.EVAL_TEMPERATURE ?? "0.7");
-    }
-
-    // Newer models use max_completion_tokens instead of max_tokens
-    const tokenKey = this.usesCompletionTokensParam()
-      ? "max_completion_tokens"
-      : "max_tokens";
-    params[tokenKey] = maxTokenLimit;
-
-    const response = await this.callWithRetry(() =>
-      this.client.chat.completions.create(
-        params as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming,
-      ),
-    );
-    const content = (response as OpenAI.ChatCompletion).choices[0]?.message
-      ?.content;
-    return parseMarkdownResponse(content ?? "");
-  }
-
-  private async generateWithResponsesApi(
-    userPrompt: string,
-  ): Promise<Record<string, string>> {
-    const params = {
-      model: this.model.name,
-      instructions: SYSTEM_PROMPT,
-      input: userPrompt,
-      max_output_tokens: 16384,
-      store: false,
-    };
-
-    const response = await this.callWithRetry(() =>
-      (
-        this.client.responses as { create: (p: unknown) => Promise<unknown> }
-      ).create(params),
-    );
-    return parseMarkdownResponse(
-      (response as { output_text: string }).output_text ?? "",
-    );
-  }
-
-  private getMaxTokenLimit(): number {
-    if (this.model.provider === ModelProvider.TOGETHER) return 4096;
-    if (this.model.name === "claude-3-5-sonnet-latest") return 8192;
-    return 16384;
-  }
-
-  private usesCompletionTokensParam(): boolean {
-    return (
-      this.model.name.startsWith("gpt-5") ||
-      this.model.name.startsWith("o4")
-    );
-  }
-
-  /** Generic retry wrapper with exponential backoff for transient API errors. */
-  private async callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
-    let lastError: Error = new Error("All retries exhausted");
-    let delay = INITIAL_RETRY_DELAY_MS;
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        return await fn();
-      } catch (e) {
-        if (
-          e instanceof OpenAI.APIError &&
-          RETRYABLE_STATUS_CODES.has(Number(e.status))
-        ) {
-          lastError = e;
-          const jitter = delay * RETRY_JITTER_FACTOR * Math.random();
-          const sleepMs = Math.min(delay + jitter, MAX_RETRY_DELAY_MS);
-          console.log(
-            `API error ${e.status}, retrying in ${(sleepMs / 1000).toFixed(1)}s (attempt ${attempt + 1}/${MAX_RETRIES})`,
-          );
-          await Bun.sleep(sleepMs);
-          delay *= 2;
-          continue;
+    // For models that support a system prompt, use `system` + `prompt`.
+    // For models that don't, prepend system content as the first user
+    // message via the `messages` API instead.
+    const promptOptions = this.template.usesSystemPrompt
+      ? {
+          system: systemContent,
+          prompt: userPrompt,
         }
-        throw e;
-      }
+      : {
+          messages: [
+            { role: "user" as const, content: systemContent },
+            { role: "user" as const, content: userPrompt },
+          ],
+        };
+
+    const options: Parameters<typeof generateText>[0] = {
+      ...baseOptions,
+      ...promptOptions,
+    };
+
+    // When the web search experiment is active, provide the tool and
+    // allow multiple steps so the model can search then generate.
+    if (useWebSearch) {
+      options.tools = { web_search: webSearchTool };
+      options.stopWhen = stepCountIs(MAX_TOOL_STEPS);
+      options.onStepFinish = ({ toolCalls }) => {
+        if (toolCalls && toolCalls.length > 0) {
+          logInfo(
+            `  [web_search] Model made ${toolCalls.length} tool call(s)`,
+          );
+        }
+      };
     }
-    throw lastError;
+
+    const result = await generateText(options);
+    return parseMarkdownResponse(result.text);
   }
 }
 

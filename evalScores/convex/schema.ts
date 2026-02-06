@@ -1,7 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-export const experimentLiteral = v.union(v.literal("no_guidelines"));
+export const experimentLiteral = v.union(
+  v.literal("no_guidelines"),
+  v.literal("web_search"),
+);
 
 // Step name as union of literals
 export const stepNameLiteral = v.union(
