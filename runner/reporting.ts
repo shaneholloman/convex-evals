@@ -88,6 +88,7 @@ async function safeMutate<T>(
 
 export async function startRun(
   model: string,
+  formattedName: string,
   plannedEvals: string[],
   provider?: string,
   experiment?: string,
@@ -99,6 +100,7 @@ export async function startRun(
 
   return safeMutate<string>("startRun", api.admin.startRun, {
     model,
+    formattedName,
     plannedEvals,
     provider,
     experiment: (experiment ?? EVALS_EXPERIMENT) as
@@ -290,23 +292,6 @@ export async function getOrUploadEvalSource(
   return { taskContent, storageId: null };
 }
 
-// ── Score posting ─────────────────────────────────────────────────────
-
-export async function postScoresToConvex(
-  modelName: string,
-  categoryScores: Record<string, number>,
-  totalScore: number,
-): Promise<void> {
-  if (process.env.POST_TO_CONVEX !== "1") return;
-
-  await safeMutate("postScores", api.admin.updateScores, {
-    model: modelName,
-    scores: categoryScores,
-    totalScore,
-    experiment: EVALS_EXPERIMENT as "no_guidelines" | undefined,
-  });
-}
-
 // ── Local JSONL results ───────────────────────────────────────────────
 
 export interface EvalIndividualResult {
@@ -443,13 +428,6 @@ export function printEvalSummary(
     );
   }
   logInfo(`Results written to: ${OUTPUT_RESULTS_FILE}`);
-
-  // Post aggregate scores to Convex
-  const categoryScoreMap: Record<string, number> = {};
-  for (const [category, cat] of stats) {
-    categoryScoreMap[category] = cat.count > 0 ? cat.score / cat.count : 0;
-  }
-  postScoresToConvex(modelName, categoryScoreMap, overallRate).catch(() => {});
 }
 
 // ── Upload / zip helpers ──────────────────────────────────────────────

@@ -5,6 +5,7 @@
     "": {
       "name": "evalscores",
       "dependencies": {
+        "@convex-dev/migrations": "^0.3.1",
         "@types/jszip": "^3.4.1",
         "convex": "^1.31.2",
         "jszip": "^3.10.1",
@@ -22,6 +23,8 @@
     },
   },
   "packages": {
+    "@convex-dev/migrations": ["@convex-dev/migrations@0.3.1", "", { "peerDependencies": { "convex": "^1.24.8" } }, "sha512-dGiN82vWMN415/AGMcVooDOJk8iTousZahBBs27uA03pL74Uo3ksucUW3CiCfPx75rv+x9UnenEakimQYYNIrA=="],
+
     "@edge-runtime/primitives": ["@edge-runtime/primitives@6.0.0", "", {}, "sha512-FqoxaBT+prPBHBwE1WXS1ocnu/VLTQyZ6NMUBAdbP7N2hsFTTxMC/jMu2D/8GAlMQfxeuppcPuCUk/HO3fpIvA=="],
 
     "@edge-runtime/vm": ["@edge-runtime/vm@5.0.0", "", { "dependencies": { "@edge-runtime/primitives": "6.0.0" } }, "sha512-NKBGBSIKUG584qrS1tyxVpX/AKJKQw5HgjYEnPLC0QsTw79JrGn+qUr8CXFb955Iy7GUdiiUv1rJ6JBGvaKb6w=="],

@@ -52,10 +52,9 @@ export default defineSchema({
   })
     .index("by_name", ["name"]),
 
-  // Each record is a single eval run for a model (append-only for history)
-  // Note: _creationTime is automatically appended to all indexes, so:
-  // - by_model is effectively ["model", "_creationTime"]
-  // - by_experiment is effectively ["experiment", "_creationTime"]
+  // @deprecated — This table is superseded by on-demand computation from `runs` + `evals`.
+  // Kept temporarily so the deleteEvalScores migration can remove remaining data.
+  // Remove this table definition entirely after the migration has run.
   evalScores: defineTable({
     model: v.string(),
     scores: v.record(v.string(), v.number()),
@@ -79,6 +78,8 @@ export default defineSchema({
 
   runs: defineTable({
     model: v.string(),
+    // Display name for UI (e.g., "Claude 4.5 Opus"). Falls back to model if not set.
+    formattedName: v.optional(v.string()),
     provider: v.optional(v.string()),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),

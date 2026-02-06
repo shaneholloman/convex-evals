@@ -53,12 +53,10 @@ jobs:
       - name: Run evaluations
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals
-          POST_TO_CONVEX: 1
         run: bun run runner/index.ts
 
       - name: Run evaluations (no_guidelines experiment)
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines
-          POST_TO_CONVEX: 1
         run: bun run runner/index.ts

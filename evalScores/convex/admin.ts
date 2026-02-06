@@ -31,6 +31,7 @@ export const startRun = mutation({
   args: {
     token: v.string(),
     model: v.string(),
+    formattedName: v.optional(v.string()),
     provider: v.optional(v.string()),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
@@ -149,25 +150,6 @@ export const completeEval = mutation({
       status: args.status,
     });
     return null;
-  },
-});
-
-// ── Scores ───────────────────────────────────────────────────────────
-
-export const updateScores = mutation({
-  args: {
-    token: v.string(),
-    model: v.string(),
-    scores: v.record(v.string(), v.number()),
-    totalScore: v.number(),
-    runId: v.optional(v.string()),
-    experiment: v.optional(experimentLiteral),
-  },
-  returns: v.id("evalScores"),
-  handler: async (ctx, args): Promise<Id<"evalScores">> => {
-    await assertValidToken(ctx, args.token);
-    const { token: _, ...rest } = args;
-    return await ctx.runMutation(internal.evalScores.updateScores, rest);
   },
 });
 

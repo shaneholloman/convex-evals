@@ -199,12 +199,7 @@ interface RunOptions {
   models: string[];
   filter?: string;
   outputTempdir?: string;
-  postToConvex: boolean;
   experiment?: Experiment;
-}
-
-function isConvexPostingConfigured(): boolean {
-  return Boolean(process.env.CONVEX_EVAL_URL && process.env.CONVEX_AUTH_TOKEN);
 }
 
 function buildEnvVars(options: RunOptions): Record<string, string> {
@@ -216,10 +211,6 @@ function buildEnvVars(options: RunOptions): Record<string, string> {
 
   if (options.filter) {
     env.TEST_FILTER = options.filter;
-  }
-
-  if (options.postToConvex) {
-    env.POST_TO_CONVEX = "1";
   }
 
   if (options.experiment) {
@@ -252,9 +243,6 @@ async function runEvals(options: RunOptions): Promise<void> {
   console.log(`  Models: ${options.models.join(", ") || "(default)"}`);
   console.log(`  Filter: ${options.filter || "(all)"}`);
   console.log(`  Experiment: ${options.experiment || "(none)"}`);
-  console.log(
-    `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (warning: CONVEX_EVAL_URL or CONVEX_AUTH_TOKEN not set)" : ""}`,
-  );
   console.log("");
 
   const child = spawn("bun", ["run", "runner/index.ts"], {
@@ -405,27 +393,17 @@ async function selectExperiment(): Promise<SelectResult<Experiment | undefined>>
 }
 
 async function selectOptions(): Promise<
-  SelectResult<{ postToConvex: boolean; experiment?: Experiment }>
+  SelectResult<{ experiment?: Experiment }>
 > {
   const experiment = await selectExperiment();
   if (experiment === BACK) return BACK;
 
-  // Only ask about Convex posting if the env vars are configured
-  let postToConvex = false;
-  if (isConvexPostingConfigured()) {
-    postToConvex = await confirm({
-      message: "Post results to Convex database?",
-      default: true,
-    });
-  }
-
-  return { postToConvex, experiment };
+  return { experiment };
 }
 
 interface LastRunConfig {
   models: string[];
   filter: string | undefined;
-  postToConvex: boolean;
   experiment?: Experiment;
 }
 
@@ -529,7 +507,6 @@ async function interactiveMode(): Promise<void> {
           await runEvals({
             models: lastRunConfig.models,
             filter: lastRunConfig.filter,
-            postToConvex: lastRunConfig.postToConvex,
             experiment: lastRunConfig.experiment,
           });
           failedEvals = await getFailedEvals();
@@ -562,7 +539,6 @@ async function interactiveMode(): Promise<void> {
     lastRunConfig = {
       models,
       filter,
-      postToConvex: options.postToConvex,
       experiment: options.experiment,
     };
 
@@ -570,7 +546,6 @@ async function interactiveMode(): Promise<void> {
       await runEvals({
         models,
         filter,
-        postToConvex: options.postToConvex,
         experiment: options.experiment,
       });
       failedEvals = await getFailedEvals();
@@ -599,7 +574,6 @@ program
   .option("-c, --category <categories...>", "Run specific categories")
   .option("--failed", "Re-run only failed evals from last run")
   .option("-e, --experiment <name>", `Run an experiment (${VALID_EXPERIMENTS.join(", ")})`)
-  .option("--post-to-convex", "Post results to Convex database")
   .option("-o, --output <dir>", "Output directory for results")
   .action(async (options) => {
     if (options.experiment && !VALID_EXPERIMENTS.includes(options.experiment)) {
@@ -636,7 +610,6 @@ program
       models: options.model || [],
       filter,
       outputTempdir: options.output,
-      postToConvex: options.postToConvex || false,
       experiment: options.experiment,
     });
   });

@@ -10,10 +10,9 @@
  *   TEST_FILTER      - regex to filter evals by "category/name"
  *   OUTPUT_TEMPDIR   - output directory (default: OS temp dir)
  *   LOCAL_RESULTS    - path to JSONL results file
- *   POST_TO_CONVEX   - set to "1" to post scores to Convex
  *   EVALS_EXPERIMENT - experiment name (e.g. "no_guidelines")
  *   CONVEX_EVAL_URL  - Convex deployment URL (e.g. "https://xxx.convex.cloud")
- *   CONVEX_AUTH_TOKEN - auth token for the evalScores Convex backend
+ *   CONVEX_AUTH_TOKEN - auth token for the Convex backend
  */
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
@@ -160,6 +159,7 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
     const plannedEvals = filteredPaths.map((e) => `${e.category}/${e.name}`);
     runId = await startRun(
       model.name,
+      model.formattedName,
       plannedEvals,
       model.provider,
       process.env.EVALS_EXPERIMENT,

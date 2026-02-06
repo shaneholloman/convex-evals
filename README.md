@@ -114,9 +114,8 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals bun run runner/index.ts
 | `TEST_FILTER`          | Regex pattern to filter evals                                       |
 | `LOCAL_RESULTS`        | Path to write local results JSONL file                              |
 | `OUTPUT_TEMPDIR`       | Directory for generated output files                                |
-| `POST_TO_CONVEX`       | Set to `1` to post results to Convex (with CLI: `--post-to-convex`) |
 | `CONVEX_EVAL_URL`      | Convex deployment URL (e.g. `https://xxx.convex.cloud`)             |
-| `CONVEX_AUTH_TOKEN`    | Auth token for Convex summary posting                               |
+| `CONVEX_AUTH_TOKEN`    | Auth token for the Convex backend                                   |
 
 ### Output
 

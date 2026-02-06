@@ -18,6 +18,25 @@ The runner communicates with the Convex backend via `ConvexClient` using the pub
 
 When deploying changes to the evalScores backend, use `npx convex deploy` from the `evalScores/` directory (handled automatically by the release workflow). Do NOT deploy local dev changes to production accidentally.
 
+## Deployment & Migration Workflow
+
+When making schema or data changes to the Convex backend that require migrations:
+
+1. **Never deploy directly to production** from your local dev environment.
+2. **Commit and push to `main`** to trigger the `release.yml` workflow, which auto-deploys the Convex backend to production.
+3. **Monitor the deploy** via: `gh run list --workflow=release.yml --limit=1 --watch`
+4. **After the deploy completes**, run any pending migrations via the CLI:
+   ```bash
+   cd evalScores && npx convex run migrations:runAll --prod
+   ```
+5. **Monitor migration progress**:
+   ```bash
+   npx convex run --component migrations lib:getStatus --watch --prod
+   ```
+6. **If the migration enables further schema tightening** (e.g. making optional fields required, removing deprecated tables), make those changes in a **second commit** and push again to deploy the tightened schema.
+
+The general pattern is: deploy code first (with loose/compatible schema), run data migrations, then deploy tightened schema.
+
 ## Run Analysis Reports
 
 The `reports/` directory contains post-run analysis reports. These are created by analyzing failed evals (using the `analyze-run-failures` agent skill) and recording findings for future reference.
