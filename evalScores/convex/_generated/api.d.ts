@@ -10,6 +10,8 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as debug from "../debug.js";
+import type * as debugQueries from "../debugQueries.js";
 import type * as evalAssets from "../evalAssets.js";
 import type * as evalScores from "../evalScores.js";
 import type * as evals from "../evals.js";
@@ -26,6 +28,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  debug: typeof debug;
+  debugQueries: typeof debugQueries;
   evalAssets: typeof evalAssets;
   evalScores: typeof evalScores;
   evals: typeof evals;
