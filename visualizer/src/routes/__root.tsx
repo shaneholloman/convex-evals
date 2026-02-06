@@ -3,6 +3,7 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from "@tanstack/react-router";
 import { ConvexProvider } from "convex/react";
 import { convex } from "../lib/convex";
@@ -24,6 +25,9 @@ export const Route = createRootRoute({
 });
 
 function RootComponent() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isHome = pathname === "/" || pathname === "";
+
   return (
     <html lang="en">
       <head>
@@ -34,7 +38,7 @@ function RootComponent() {
           <div className="flex flex-col h-screen">
             <AppTopBar />
             <div className="flex flex-1 min-h-0">
-              <AppSidebar />
+              {!isHome && <AppSidebar />}
               <Outlet />
             </div>
           </div>
