@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 /**
  * Main evaluation orchestrator.
- * Replaces the Python Braintrust Eval() framework with a simple async loop.
  *
  * Usage:
  *   bun run runner/index.ts
@@ -17,7 +16,7 @@
  *   CONVEX_AUTH_TOKEN - auth token for the evalScores Convex backend
  */
 import { readdirSync, readFileSync, existsSync } from "fs";
-import { join, resolve } from "path";
+import { join } from "path";
 import { tmpdir } from "os";
 import { config } from "dotenv";
 
@@ -44,7 +43,8 @@ config(); // Load .env
 
 // ── Configuration ─────────────────────────────────────────────────────
 
-const tempdir = process.env.OUTPUT_TEMPDIR ?? join(tmpdir(), `convex-evals-${Date.now()}`);
+const tempdir =
+  process.env.OUTPUT_TEMPDIR ?? join(tmpdir(), `convex-evals-${Date.now()}`);
 logInfo(`Using tempdir: ${tempdir}`);
 
 const testFilter = process.env.TEST_FILTER
@@ -71,6 +71,54 @@ const DEFAULT_MODEL_NAMES = [
   "grok-3-mini-beta",
 ];
 
+// ── Eval discovery ────────────────────────────────────────────────────
+
+interface EvalInfo {
+  category: string;
+  name: string;
+  evalPath: string;
+}
+
+function discoverEvals(): EvalInfo[] {
+  const evalsDir = "evals";
+  if (!existsSync(evalsDir)) return [];
+
+  const results: EvalInfo[] = [];
+  const categories = readdirSync(evalsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const category of categories) {
+    const categoryPath = join(evalsDir, category.name);
+    const evalDirs = readdirSync(categoryPath, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const evalDir of evalDirs) {
+      const evalPath = join(categoryPath, evalDir.name);
+      if (existsSync(join(evalPath, "TASK.txt"))) {
+        results.push({
+          category: category.name,
+          name: evalDir.name,
+          evalPath,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+// ── Score name to failure reason mapping ──────────────────────────────
+
+const SCORE_FAILURE_REASONS: Record<string, string> = {
+  "Valid filesystem output": "filesystem fail",
+  "`bun install` succeeds": "install fail",
+  "`convex dev` succeeds": "convex dev fail",
+  "Passes tsc": "tsc fail",
+  "Passes eslint": "eslint fail",
+  "Tests pass": "tests fail",
+};
+
 // ── Main ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -86,20 +134,19 @@ async function main(): Promise<void> {
   }
 
   for (const modelName of modelNames) {
-    const model = MODELS_BY_NAME[modelName];
-    await runEvalsForModel(model);
+    await runEvalsForModel(MODELS_BY_NAME[modelName]);
   }
 
   await closeClient();
 }
 
 async function runEvalsForModel(model: ModelTemplate): Promise<void> {
-  // Discover evals
   const evalPaths = discoverEvals();
-  const filteredPaths = evalPaths.filter(
-    ({ category, name }) =>
-      !testFilter || testFilter.test(`${category}/${name}`),
-  );
+  const filteredPaths = testFilter
+    ? evalPaths.filter(({ category, name }) =>
+        testFilter.test(`${category}/${name}`),
+      )
+    : evalPaths;
 
   logInfo(
     `Running ${filteredPaths.length} evals for model ${model.formattedName}`,
@@ -111,12 +158,11 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
 
   if (CONVEX_EVAL_URL && CONVEX_AUTH_TOKEN) {
     const plannedEvals = filteredPaths.map((e) => `${e.category}/${e.name}`);
-    const experiment = process.env.EVALS_EXPERIMENT;
     runId = await startRun(
       model.name,
       plannedEvals,
       model.provider,
-      experiment,
+      process.env.EVALS_EXPERIMENT,
     );
     if (runId) {
       logInfo(
@@ -141,12 +187,11 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
   const allResults: EvalIndividualResult[] = [];
 
   // Process evals with concurrency control
-  const concurrency = model.maxConcurrency;
   const queue = [...filteredPaths];
   const inFlight = new Set<Promise<void>>();
 
   while (queue.length > 0 || inFlight.size > 0) {
-    while (queue.length > 0 && inFlight.size < concurrency) {
+    while (queue.length > 0 && inFlight.size < model.maxConcurrency) {
       const evalInfo = queue.shift()!;
       const promise = processOneEval(
         model,
@@ -169,8 +214,10 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
 
   // Complete run
   if (runId) {
-    const runDuration = Date.now() - runStartTime;
-    await completeRun(runId, { kind: "completed", durationMs: runDuration });
+    await completeRun(runId, {
+      kind: "completed",
+      durationMs: Date.now() - runStartTime,
+    });
     logInfo(`Completed run ${runId}`);
   }
 }
@@ -178,7 +225,7 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
 async function processOneEval(
   model: ModelTemplate,
   modelImpl: Model,
-  evalInfo: { category: string; name: string; evalPath: string },
+  evalInfo: EvalInfo,
   runId: string | null,
   allResults: EvalIndividualResult[],
   totalEvals: number,
@@ -188,24 +235,9 @@ async function processOneEval(
 
   logInfo(`[${evalPathStr}] Calling model ${model.formattedName}...`);
 
-  // Read task description
-  const taskDescription = readFileSync(
-    join(evalPath, "TASK.txt"),
-    "utf-8",
-  );
-
-  // Read expected files
-  const answerPaths = [...walkAnswer(join(evalPath, "answer"))].sort(
-    (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b),
-  );
-  const expected: Record<string, string> = {};
-  for (const filePath of answerPaths) {
-    const basePath = join(evalPath, "answer");
-    const relativePath = filePath
-      .slice(basePath.length + 1)
-      .replace(/\\/g, "/");
-    expected[relativePath] = readFileSync(filePath, "utf-8").trim();
-  }
+  // Read task description and expected files
+  const taskDescription = readFileSync(join(evalPath, "TASK.txt"), "utf-8");
+  const expected = readExpectedFiles(evalPath);
 
   // Start eval in Convex if available
   let evalId: string | null = null;
@@ -235,12 +267,12 @@ async function processOneEval(
   const evalStartTime = Date.now();
 
   try {
-    // Call the model
     const output = await modelImpl.generate(taskDescription);
     const generateDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
-    logInfo(`[${evalPathStr}] Model responded (${generateDuration}s), scoring...`);
+    logInfo(
+      `[${evalPathStr}] Model responded (${generateDuration}s), scoring...`,
+    );
 
-    // Score
     const scores = await convexScorer(
       tempdir,
       taskDescription,
@@ -249,61 +281,9 @@ async function processOneEval(
       output,
     );
 
-    // Convert scores to individual result
-    const scoresMap: Record<string, number> = {};
-    for (const s of scores) {
-      scoresMap[s.name] = s.score;
-    }
-
-    const testsPassScore = scoresMap["Tests pass"] ?? 0;
-    const passed = testsPassScore >= 1;
-    let failureReason: string | null = null;
-
-    if (!passed) {
-      // Find first failing score
-      for (const s of scores) {
-        if (s.score < 1) {
-          if (s.name === "Valid filesystem output") failureReason = "filesystem fail";
-          else if (s.name === "`bun install` succeeds") failureReason = "install fail";
-          else if (s.name === "`convex dev` succeeds") failureReason = "convex dev fail";
-          else if (s.name === "Passes tsc") failureReason = "tsc fail";
-          else if (s.name === "Passes eslint") failureReason = "eslint fail";
-          else if (s.name === "Tests pass") failureReason = "tests fail";
-          if (failureReason) break;
-        }
-      }
-      if (!failureReason) failureReason = "unknown fail";
-    }
-
-    const dirPath = join(
-      tempdir,
-      "output",
-      model.name,
-      category,
-      name,
-    );
-
-    allResults.push({
-      category,
-      name,
-      passed,
-      tests_pass_score: testsPassScore,
-      failure_reason: failureReason,
-      directory_path: dirPath,
-      scores: scoresMap,
-    });
-
-    // Log result and running progress
-    const totalDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
-    const status = passed ? "PASS" : "FAIL";
-    const reason = passed ? "" : ` (${failureReason})`;
-    const completed = allResults.length;
-    const passedCount = allResults.filter((r) => r.passed).length;
-    const failedCount = completed - passedCount;
-    const pct = ((completed / totalEvals) * 100).toFixed(0);
-    logInfo(
-      `[${evalPathStr}] ${status}${reason} (${totalDuration}s) | Progress: ${completed}/${totalEvals} (${pct}%) - ${passedCount} passed, ${failedCount} failed`,
-    );
+    const result = buildEvalResult(category, name, model.name, scores);
+    allResults.push(result);
+    logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
   } catch (e) {
     console.error(`[${evalPathStr}] ERROR: ${String(e)}`);
     allResults.push({
@@ -315,48 +295,87 @@ async function processOneEval(
       directory_path: null,
       scores: {},
     });
-
-    // Log error and running progress
-    const completed = allResults.length;
-    const passedCount = allResults.filter((r) => r.passed).length;
-    const failedCount = completed - passedCount;
-    const pct = ((completed / totalEvals) * 100).toFixed(0);
-    logInfo(
-      `[${evalPathStr}] FAIL (error) | Progress: ${completed}/${totalEvals} (${pct}%) - ${passedCount} passed, ${failedCount} failed`,
+    logProgress(
+      evalPathStr,
+      allResults[allResults.length - 1],
+      allResults,
+      totalEvals,
+      evalStartTime,
     );
   }
 }
 
-function discoverEvals(): Array<{
-  category: string;
-  name: string;
-  evalPath: string;
-}> {
-  const evalsDir = "evals";
-  if (!existsSync(evalsDir)) return [];
+// ── Helpers ───────────────────────────────────────────────────────────
 
-  const results: Array<{ category: string; name: string; evalPath: string }> =
-    [];
-  const categories = readdirSync(evalsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .sort((a, b) => a.name.localeCompare(b.name));
-  for (const category of categories) {
-    const categoryPath = join(evalsDir, category.name);
-    const evalDirs = readdirSync(categoryPath, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .sort((a, b) => a.name.localeCompare(b.name));
-    for (const evalDir of evalDirs) {
-      const evalPath = join(categoryPath, evalDir.name);
-      if (existsSync(join(evalPath, "TASK.txt"))) {
-        results.push({
-          category: category.name,
-          name: evalDir.name,
-          evalPath,
-        });
+function readExpectedFiles(evalPath: string): Record<string, string> {
+  const answerPaths = [...walkAnswer(join(evalPath, "answer"))].sort(
+    (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b),
+  );
+  const expected: Record<string, string> = {};
+  const basePath = join(evalPath, "answer");
+  for (const filePath of answerPaths) {
+    const relativePath = filePath
+      .slice(basePath.length + 1)
+      .replace(/\\/g, "/");
+    expected[relativePath] = readFileSync(filePath, "utf-8").trim();
+  }
+  return expected;
+}
+
+function buildEvalResult(
+  category: string,
+  name: string,
+  modelName: string,
+  scores: Array<{ name: string; score: number }>,
+): EvalIndividualResult {
+  const scoresMap: Record<string, number> = {};
+  for (const s of scores) {
+    scoresMap[s.name] = s.score;
+  }
+
+  const testsPassScore = scoresMap["Tests pass"] ?? 0;
+  const passed = testsPassScore >= 1;
+
+  let failureReason: string | null = null;
+  if (!passed) {
+    for (const s of scores) {
+      if (s.score < 1 && SCORE_FAILURE_REASONS[s.name]) {
+        failureReason = SCORE_FAILURE_REASONS[s.name];
+        break;
       }
     }
+    failureReason ??= "unknown fail";
   }
-  return results;
+
+  return {
+    category,
+    name,
+    passed,
+    tests_pass_score: testsPassScore,
+    failure_reason: failureReason,
+    directory_path: join(tempdir, "output", modelName, category, name),
+    scores: scoresMap,
+  };
+}
+
+function logProgress(
+  evalPathStr: string,
+  result: EvalIndividualResult,
+  allResults: EvalIndividualResult[],
+  totalEvals: number,
+  evalStartTime: number,
+): void {
+  const totalDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
+  const status = result.passed ? "PASS" : "FAIL";
+  const reason = result.passed ? "" : ` (${result.failure_reason})`;
+  const completed = allResults.length;
+  const passedCount = allResults.filter((r) => r.passed).length;
+  const failedCount = completed - passedCount;
+  const pct = ((completed / totalEvals) * 100).toFixed(0);
+
+  logInfo(
+    `[${evalPathStr}] ${status}${reason} (${totalDuration}s) | Progress: ${completed}/${totalEvals} (${pct}%) - ${passedCount} passed, ${failedCount} failed`,
+  );
 }
 
 // ── Run ───────────────────────────────────────────────────────────────

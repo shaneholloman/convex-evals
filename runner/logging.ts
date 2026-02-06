@@ -20,14 +20,22 @@ export function sanitizeOutput(text: string): string {
 export function appendLog(logPath: string, text: string): void {
   try {
     const sanitized = sanitizeOutput(text);
-    appendFileSync(logPath, sanitized.endsWith("\n") ? sanitized : sanitized + "\n", "utf-8");
+    appendFileSync(
+      logPath,
+      sanitized.endsWith("\n") ? sanitized : sanitized + "\n",
+      "utf-8",
+    );
   } catch {
     // Best-effort logging
   }
 }
 
 /** Append a block of content to a log file with a prefix on each line. */
-export function appendLogBlock(logPath: string, prefix: string, content: string | null): void {
+export function appendLogBlock(
+  logPath: string,
+  prefix: string,
+  content: string | null,
+): void {
   if (!content) return;
   for (const line of sanitizeOutput(content).split("\n")) {
     appendLog(logPath, `[${prefix}] ${line}`);
@@ -47,14 +55,9 @@ export function logCmdResults(
   }
 }
 
-/** Print an info message. */
+/** Print an info message to stdout. */
 export function logInfo(message: string): void {
-  try {
-    console.log(message);
-  } catch {
-    // Windows console may not support Unicode
-    console.log(message.replace(/✅/g, "[PASS]").replace(/❌/g, "[FAIL]"));
-  }
+  console.log(message);
 }
 
 /** Log vitest results to a file. */

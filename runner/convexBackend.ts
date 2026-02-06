@@ -2,7 +2,13 @@
  * Manages local Convex backend instances for testing.
  * Downloads the binary from GitHub releases and runs it on dynamic ports.
  */
-import { mkdirSync, existsSync, chmodSync, unlinkSync, writeFileSync } from "fs";
+import {
+  mkdirSync,
+  existsSync,
+  chmodSync,
+  unlinkSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import { homedir, platform, arch } from "os";
 import JSZip from "jszip";
@@ -24,8 +30,7 @@ export interface ConvexBackend {
 
 /**
  * Start a local Convex backend in the given directory.
- * Returns an object with port info and the process handle.
- * Caller must call `.process.kill()` when done.
+ * Caller must call `stopConvexBackend()` when done.
  */
 export async function startConvexBackend(
   backendDir: string,
@@ -33,6 +38,7 @@ export async function startConvexBackend(
   const storageDir = join(backendDir, "convex_local_storage");
   mkdirSync(storageDir, { recursive: true });
   const sqlitePath = join(backendDir, "convex_local_backend.sqlite3");
+
   logInfo(`[backend] Downloading/locating binary...`);
   const binary = await downloadConvexBinary();
   logInfo(`[backend] Binary ready: ${binary}`);
@@ -44,11 +50,16 @@ export async function startConvexBackend(
   const proc = Bun.spawn(
     [
       binary,
-      "--port", String(port),
-      "--site-proxy-port", String(siteProxyPort),
-      "--instance-name", INSTANCE_NAME,
-      "--instance-secret", INSTANCE_SECRET,
-      "--local-storage", storageDir,
+      "--port",
+      String(port),
+      "--site-proxy-port",
+      String(siteProxyPort),
+      "--instance-name",
+      INSTANCE_NAME,
+      "--instance-secret",
+      INSTANCE_SECRET,
+      "--local-storage",
+      storageDir,
       sqlitePath,
     ],
     {
@@ -61,7 +72,6 @@ export async function startConvexBackend(
   await healthCheck(port);
   logInfo(`[backend] Healthy on port ${port}`);
 
-  // Make sure process is still running
   if (proc.exitCode !== null) {
     throw new Error("Convex backend process failed to start");
   }
@@ -78,9 +88,7 @@ export function stopConvexBackend(backend: ConvexBackend): void {
   }
 }
 
-/**
- * Convenience wrapper: start a backend, run a callback, then stop it.
- */
+/** Start a backend, run a callback, then stop it. */
 export async function withConvexBackend<T>(
   backendDir: string,
   fn: (backend: ConvexBackend) => Promise<T>,
@@ -93,8 +101,12 @@ export async function withConvexBackend<T>(
   }
 }
 
+// ── Health check ─────────────────────────────────────────────────────
+
+const HEALTH_CHECK_TIMEOUT_MS = 10_000;
+
 async function healthCheck(port: number): Promise<void> {
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + HEALTH_CHECK_TIMEOUT_MS;
   let attempts = 0;
   while (true) {
     try {
@@ -114,17 +126,34 @@ async function healthCheck(port: number): Promise<void> {
 
 // ── Binary download ──────────────────────────────────────────────────
 
-const DOWNLOAD_TIMEOUT = 120_000; // 2 minutes for binary download
+const DOWNLOAD_TIMEOUT_MS = 120_000;
 
-let cachedReleases: unknown[] | null = null;
+const ARCH_MAP: Record<string, string> = {
+  x64: "x86_64",
+  arm64: "aarch64",
+  ia32: "x86_64",
+};
 
-async function fetchConvexReleases(): Promise<unknown[]> {
+const OS_MAP: Record<string, string> = {
+  darwin: "apple-darwin",
+  linux: "unknown-linux-gnu",
+  win32: "pc-windows-msvc",
+};
+
+interface GitHubRelease {
+  tag_name: string;
+  assets: Array<{ name: string; browser_download_url: string }>;
+}
+
+let cachedReleases: GitHubRelease[] | null = null;
+
+async function fetchConvexReleases(): Promise<GitHubRelease[]> {
   if (cachedReleases) return cachedReleases;
   const resp = await fetch(
     "https://api.github.com/repos/get-convex/convex-backend/releases?per_page=50",
   );
   if (!resp.ok) throw new Error(`Failed to fetch releases: ${resp.status}`);
-  cachedReleases = (await resp.json()) as unknown[];
+  cachedReleases = (await resp.json()) as GitHubRelease[];
   return cachedReleases;
 }
 
@@ -144,39 +173,12 @@ async function downloadConvexBinary(): Promise<string> {
 async function downloadConvexBinaryImpl(): Promise<string> {
   const releases = await fetchConvexReleases();
 
-  const archMap: Record<string, string> = {
-    x64: "x86_64",
-    arm64: "aarch64",
-    ia32: "x86_64",
-  };
-  const osMap: Record<string, string> = {
-    darwin: "apple-darwin",
-    linux: "unknown-linux-gnu",
-    win32: "pc-windows-msvc",
-  };
-
-  const cpuArch = archMap[arch()] ?? arch();
-  const osTriple = osMap[platform()] ?? platform();
+  const cpuArch = ARCH_MAP[arch()] ?? arch();
+  const osTriple = OS_MAP[platform()] ?? platform();
   const targetPattern = `convex-local-backend-${cpuArch}-${osTriple}`;
 
-  let matchingAsset: { name: string; browser_download_url: string } | null = null;
-  let version: string | null = null;
-
-  for (const release of releases as Array<{
-    tag_name: string;
-    assets: Array<{ name: string; browser_download_url: string }>;
-  }>) {
-    for (const asset of release.assets ?? []) {
-      if (asset.name.includes(targetPattern)) {
-        matchingAsset = asset;
-        version = release.tag_name;
-        break;
-      }
-    }
-    if (matchingAsset) break;
-  }
-
-  if (!matchingAsset || !version) {
+  const match = findMatchingAsset(releases, targetPattern);
+  if (!match) {
     throw new Error(`Could not find matching asset for ${targetPattern}`);
   }
 
@@ -184,41 +186,42 @@ async function downloadConvexBinaryImpl(): Promise<string> {
   mkdirSync(binaryDir, { recursive: true });
 
   const isWindows = platform() === "win32";
-  const binaryName = `convex-local-backend-${version}${isWindows ? ".exe" : ""}`;
+  const binaryName = `convex-local-backend-${match.version}${isWindows ? ".exe" : ""}`;
   const binaryPath = join(binaryDir, binaryName);
 
   if (existsSync(binaryPath)) return binaryPath;
 
-  logInfo(`Latest release: ${version}`);
-  logInfo(`Downloading: ${matchingAsset.browser_download_url}`);
+  logInfo(`Latest release: ${match.version}`);
+  logInfo(`Downloading: ${match.asset.browser_download_url}`);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT);
+  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
   try {
-    const resp = await fetch(matchingAsset.browser_download_url, {
+    const resp = await fetch(match.asset.browser_download_url, {
       signal: controller.signal,
     });
     if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
 
-    // Read the full response body as an ArrayBuffer to avoid streaming hangs
     const data = await resp.arrayBuffer();
-    const zipPath = join(binaryDir, matchingAsset.name);
+    const zipPath = join(binaryDir, match.asset.name);
     writeFileSync(zipPath, Buffer.from(data));
-    logInfo(`Downloaded: ${matchingAsset.name} (${(data.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+    logInfo(
+      `Downloaded: ${match.asset.name} (${(data.byteLength / 1024 / 1024).toFixed(1)} MB)`,
+    );
 
-    // Unzip (cross-platform, pure JS)
+    // Extract binary from zip
     const zip = await JSZip.loadAsync(data);
     const expectedName = `convex-local-backend${isWindows ? ".exe" : ""}`;
-
     const entry = zip.file(expectedName);
     if (!entry) {
-      throw new Error(`Expected '${expectedName}' in zip but not found. Contents: ${Object.keys(zip.files).join(", ")}`);
+      throw new Error(
+        `Expected '${expectedName}' in zip but not found. Contents: ${Object.keys(zip.files).join(", ")}`,
+      );
     }
 
     const content = await entry.async("nodebuffer");
     writeFileSync(binaryPath, content);
 
-    // Make executable on Unix
     if (!isWindows) {
       chmodSync(binaryPath, 0o755);
     }
@@ -235,4 +238,18 @@ async function downloadConvexBinaryImpl(): Promise<string> {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function findMatchingAsset(
+  releases: GitHubRelease[],
+  targetPattern: string,
+): { asset: GitHubRelease["assets"][number]; version: string } | null {
+  for (const release of releases) {
+    for (const asset of release.assets ?? []) {
+      if (asset.name.includes(targetPattern)) {
+        return { asset, version: release.tag_name };
+      }
+    }
+  }
+  return null;
 }

@@ -6,7 +6,11 @@
  * Usage:
  *   bun run runner/listModels.ts --frequency daily --format json
  */
-import { ALL_MODELS, ModelProvider, type CIRunFrequency } from "./models/index.js";
+import {
+  ALL_MODELS,
+  ModelProvider,
+  type CIRunFrequency,
+} from "./models/index.js";
 
 function getModels(
   provider?: ModelProvider,
@@ -18,7 +22,11 @@ function getModels(
   return models.map((m) => m.name);
 }
 
-function main(): void {
+function parseArgs(): {
+  provider?: string;
+  frequency?: string;
+  format: string;
+} {
   const args = process.argv.slice(2);
   let provider: string | undefined;
   let frequency: string | undefined;
@@ -30,12 +38,29 @@ function main(): void {
     if (args[i] === "--format" && args[i + 1]) format = args[++i];
   }
 
-  const providerEnum =
-    provider && provider !== "all"
-      ? (ModelProvider as Record<string, ModelProvider>)[
-          provider.toUpperCase()
-        ] ?? (Object.values(ModelProvider).find((v) => v === (provider as ModelProvider)) as ModelProvider | undefined)
-      : undefined;
+  return { provider, frequency, format };
+}
+
+function resolveProvider(input?: string): ModelProvider | undefined {
+  if (!input || input === "all") return undefined;
+
+  // Try enum key (e.g. "ANTHROPIC")
+  const byKey = (ModelProvider as Record<string, ModelProvider>)[
+    input.toUpperCase()
+  ];
+  if (byKey) return byKey;
+
+  // Try enum value (e.g. "anthropic")
+  const byValue = Object.values(ModelProvider).find(
+    (v) => v === (input as ModelProvider),
+  );
+  return byValue as ModelProvider | undefined;
+}
+
+function main(): void {
+  const { provider, frequency, format } = parseArgs();
+
+  const providerEnum = resolveProvider(provider);
   const freq =
     frequency && frequency !== "all"
       ? (frequency as CIRunFrequency)

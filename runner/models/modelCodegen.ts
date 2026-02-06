@@ -19,19 +19,16 @@ const MAX_RETRIES = 5;
 const INITIAL_RETRY_DELAY_MS = 2000;
 const MAX_RETRY_DELAY_MS = 60000;
 const RETRY_JITTER_FACTOR = 0.25;
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
 // ── Guidelines helpers ────────────────────────────────────────────────
-
-function shouldSkipGuidelines(): boolean {
-  return process.env.EVALS_EXPERIMENT === "no_guidelines";
-}
 
 function getGuidelinesContent(): string {
   const customPath = process.env.CUSTOM_GUIDELINES_PATH;
   if (customPath && existsSync(customPath)) {
     return readFileSync(customPath, "utf-8");
   }
-  if (shouldSkipGuidelines()) return "";
+  if (process.env.EVALS_EXPERIMENT === "no_guidelines") return "";
   return renderGuidelines(CONVEX_GUIDELINES);
 }
 
@@ -43,11 +40,8 @@ export class Model {
 
   constructor(apiKey: string, model: ModelTemplate) {
     this.model = model;
-
-    const baseURL = model.overrideProxy ?? getProviderBaseUrl(model.provider);
-
     this.client = new OpenAI({
-      baseURL,
+      baseURL: model.overrideProxy ?? getProviderBaseUrl(model.provider),
       apiKey,
       maxRetries: MAX_RETRIES,
       timeout: 300_000, // 5 min read timeout
@@ -60,19 +54,18 @@ export class Model {
     if (this.model.usesResponsesApi) {
       return this.generateWithResponsesApi(userPrompt);
     }
+    return this.generateWithChatApi(userPrompt);
+  }
 
+  private async generateWithChatApi(
+    userPrompt: string,
+  ): Promise<Record<string, string>> {
     const systemMessage: OpenAI.ChatCompletionMessageParam = this.model
       .usesSystemPrompt
       ? { role: "system", content: SYSTEM_PROMPT }
       : { role: "user", content: SYSTEM_PROMPT };
 
-    // Token limit varies by provider
-    const maxTokenLimit =
-      this.model.provider === ModelProvider.TOGETHER
-        ? 4096
-        : this.model.name === "claude-3-5-sonnet-latest"
-          ? 8192
-          : 16384;
+    const maxTokenLimit = this.getMaxTokenLimit();
 
     const params: Record<string, unknown> = {
       model: this.model.name,
@@ -80,22 +73,20 @@ export class Model {
     };
 
     if (this.model.supportsTemperature) {
-      params.temperature = parseFloat(
-        process.env.EVAL_TEMPERATURE ?? "0.7",
-      );
+      params.temperature = parseFloat(process.env.EVAL_TEMPERATURE ?? "0.7");
     }
 
     // Newer models use max_completion_tokens instead of max_tokens
-    if (
-      this.model.name.startsWith("gpt-5") ||
-      this.model.name.startsWith("o4")
-    ) {
-      params.max_completion_tokens = maxTokenLimit;
-    } else {
-      params.max_tokens = maxTokenLimit;
-    }
+    const tokenKey = this.usesCompletionTokensParam()
+      ? "max_completion_tokens"
+      : "max_tokens";
+    params[tokenKey] = maxTokenLimit;
 
-    const response = await this.callWithRetry(params);
+    const response = await this.callWithRetry(() =>
+      this.client.chat.completions.create(
+        params as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming,
+      ),
+    );
     const content = (response as OpenAI.ChatCompletion).choices[0]?.message
       ?.content;
     return parseMarkdownResponse(content ?? "");
@@ -112,59 +103,47 @@ export class Model {
       store: false,
     };
 
-    const response = await this.callResponsesApiWithRetry(params);
+    const response = await this.callWithRetry(() =>
+      (
+        this.client.responses as { create: (p: unknown) => Promise<unknown> }
+      ).create(params),
+    );
     return parseMarkdownResponse(
       (response as { output_text: string }).output_text ?? "",
     );
   }
 
-  private async callWithRetry(
-    params: Record<string, unknown>,
-  ): Promise<unknown> {
-    let lastError: Error = new Error("All retries exhausted");
-    let delay = INITIAL_RETRY_DELAY_MS;
-    const retryStatuses = new Set([429, 500, 502, 503, 504]);
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        return await this.client.chat.completions.create(
-          params as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming,
-        );
-      } catch (e) {
-        if (e instanceof OpenAI.APIError && retryStatuses.has(Number(e.status))) {
-          lastError = e;
-          const jitter = delay * RETRY_JITTER_FACTOR * Math.random();
-          const sleepMs = Math.min(delay + jitter, MAX_RETRY_DELAY_MS);
-          console.log(
-            `API error ${String(e.status)}, retrying in ${(sleepMs / 1000).toFixed(1)}s (attempt ${String(attempt + 1)}/${String(MAX_RETRIES)})`,
-          );
-          await Bun.sleep(sleepMs);
-          delay *= 2;
-          continue;
-        }
-        throw e;
-      }
-    }
-    throw lastError;
+  private getMaxTokenLimit(): number {
+    if (this.model.provider === ModelProvider.TOGETHER) return 4096;
+    if (this.model.name === "claude-3-5-sonnet-latest") return 8192;
+    return 16384;
   }
 
-  private async callResponsesApiWithRetry(
-    params: Record<string, unknown>,
-  ): Promise<unknown> {
+  private usesCompletionTokensParam(): boolean {
+    return (
+      this.model.name.startsWith("gpt-5") ||
+      this.model.name.startsWith("o4")
+    );
+  }
+
+  /** Generic retry wrapper with exponential backoff for transient API errors. */
+  private async callWithRetry<T>(fn: () => Promise<T>): Promise<T> {
     let lastError: Error = new Error("All retries exhausted");
     let delay = INITIAL_RETRY_DELAY_MS;
-    const retryStatuses = new Set([429, 500, 502, 503, 504]);
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        return await (this.client.responses as { create: (p: unknown) => Promise<unknown> }).create(params);
+        return await fn();
       } catch (e) {
-        if (e instanceof OpenAI.APIError && retryStatuses.has(Number(e.status))) {
+        if (
+          e instanceof OpenAI.APIError &&
+          RETRYABLE_STATUS_CODES.has(Number(e.status))
+        ) {
           lastError = e;
           const jitter = delay * RETRY_JITTER_FACTOR * Math.random();
           const sleepMs = Math.min(delay + jitter, MAX_RETRY_DELAY_MS);
           console.log(
-            `Responses API error ${String(e.status)}, retrying in ${(sleepMs / 1000).toFixed(1)}s (attempt ${String(attempt + 1)}/${String(MAX_RETRIES)})`,
+            `API error ${e.status}, retrying in ${(sleepMs / 1000).toFixed(1)}s (attempt ${attempt + 1}/${MAX_RETRIES})`,
           );
           await Bun.sleep(sleepMs);
           delay *= 2;
@@ -216,154 +195,134 @@ export function parseMarkdownResponse(
 
 // ── Prompt rendering ──────────────────────────────────────────────────
 
+const FILE_FORMAT_EXAMPLE = [
+  "# Files",
+  "## package.json",
+  "```\n...\n```",
+  "## tsconfig.json",
+  "```\n...\n```",
+  "## convex/schema.ts",
+  "```\n...\n```",
+].join("\n");
+
 export function renderPrompt(
   chainOfThought: boolean,
   taskDescription: string,
 ): string {
-  const parts: string[] = [];
-  parts.push(
-    "Your task is to generate a Convex backend from a task description.\n",
-  );
+  const sections: string[] = [
+    "Your task is to generate a Convex backend from a task description.",
+  ];
 
   if (chainOfThought) {
-    parts.push(
-      "Before writing any code, analyze the task and think through your approach. Use the Analysis section to show your thought process, covering the following areas:\n",
-      "1. Summarize the task requirements\n",
-      "2. List out the main components needed for the backend\n",
-      "3. Design the public API and internal functions:\n",
-      "   - List each function with its file path, argument validators, and return validator, and purpose.\n",
-      "4. Plan the schema design (if needed):\n",
-      "   - List each table with its validator (excluding the included _id and _creationTime fields) and its indexes\n",
-      "5. Outline background processing requirements (if any):\n",
-      "After your analysis, output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.\n",
-      "For example, correct output looks like\n",
-      "# Analysis\n",
-      "...\n",
-      "# Files\n",
-      "## package.json\n",
-      "```\n...\n```\n",
-      "## tsconfig.json\n",
-      "```\n...\n```\n",
-      "## convex/schema.ts\n",
-      "```\n...\n```\n",
+    sections.push(
+      `Before writing any code, analyze the task and think through your approach. Use the Analysis section to show your thought process, covering the following areas:
+
+1. Summarize the task requirements
+2. List out the main components needed for the backend
+3. Design the public API and internal functions:
+   - List each function with its file path, argument validators, and return validator, and purpose.
+4. Plan the schema design (if needed):
+   - List each table with its validator (excluding the included _id and _creationTime fields) and its indexes
+5. Outline background processing requirements (if any):
+After your analysis, output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.
+For example, correct output looks like
+# Analysis
+...
+${FILE_FORMAT_EXAMPLE}`,
     );
   } else {
-    parts.push(
-      "Output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.\n",
-      "For example, correct output looks like\n",
-      "# Files\n",
-      "## package.json\n",
-      "```\n...\n```\n",
-      "## tsconfig.json\n",
-      "```\n...\n```\n",
-      "## convex/schema.ts\n",
-      "```\n...\n```\n",
+    sections.push(
+      `Output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.
+For example, correct output looks like
+${FILE_FORMAT_EXAMPLE}`,
     );
   }
 
-  parts.push(renderExamples());
-  parts.push("\n");
+  sections.push(renderExamples());
 
-  parts.push("# General Coding Standards\n");
-  parts.push("- Use 2 spaces for code indentation.\n");
-  parts.push(
-    "- Ensure your code is clear, efficient, concise, and innovative.\n",
-  );
-  parts.push(
-    "- Maintain a friendly and approachable tone in any comments or documentation.\n\n",
-  );
+  sections.push(`# General Coding Standards
+- Use 2 spaces for code indentation.
+- Ensure your code is clear, efficient, concise, and innovative.
+- Maintain a friendly and approachable tone in any comments or documentation.`);
 
   const guidelinesContent = getGuidelinesContent();
   if (guidelinesContent) {
-    parts.push(guidelinesContent, "\n");
+    sections.push(guidelinesContent);
   }
 
-  parts.push("\n# File Structure\n");
-  parts.push(
-    "- You can write to `package.json`, `tsconfig.json`, and any files within the `convex/` folder.\n",
-  );
-  parts.push(
-    "- Do NOT write to the `convex/_generated` folder. You can assume that `npx convex dev` will populate this folder.\n",
-  );
-  parts.push(
-    "- It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.\n",
-  );
-  parts.push(
-    "- Always start with `package.json` and `tsconfig.json` files.\n",
-  );
-  parts.push('- Use Convex version "^1.31.2".\n\n');
-  parts.push('- Use Typescript version "^5.7.3".\n\n');
+  sections.push(`# File Structure
+- You can write to \`package.json\`, \`tsconfig.json\`, and any files within the \`convex/\` folder.
+- Do NOT write to the \`convex/_generated\` folder. You can assume that \`npx convex dev\` will populate this folder.
+- It's VERY IMPORTANT to output files to the correct paths, as specified in the task description.
+- Always start with \`package.json\` and \`tsconfig.json\` files.
+- Use Convex version "^1.31.2".
+- Use Typescript version "^5.7.3".`);
 
   if (chainOfThought) {
-    parts.push(
-      "Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.\n",
+    sections.push(
+      "Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.",
     );
   }
 
-  parts.push(
-    "Now, implement a Convex backend that satisfies the following task description:\n",
+  sections.push(
+    `Now, implement a Convex backend that satisfies the following task description:\n\`\`\`\n${taskDescription}\n\`\`\``,
   );
-  parts.push(`\`\`\`\n${taskDescription}\n\`\`\`\n`);
 
-  return parts.join("");
+  return sections.join("\n\n") + "\n";
 }
 
 function renderExamples(): string {
-  const parts: string[] = ["# Examples:\n"];
   const examplesDir = "examples";
+  if (!existsSync(examplesDir)) return "";
 
-  if (!existsSync(examplesDir)) return parts.join("");
+  const parts: string[] = ["# Examples:"];
 
   for (const example of readdirSync(examplesDir)) {
     const examplePath = join(examplesDir, example);
     if (!statSync(examplePath).isDirectory()) continue;
 
-    const taskDescription = readFileSync(
-      join(examplePath, "TASK.txt"),
-      "utf-8",
-    );
-    const analysis = readFileSync(
-      join(examplePath, "ANALYSIS.txt"),
-      "utf-8",
-    );
+    const taskDescription = readFileSync(join(examplePath, "TASK.txt"), "utf-8");
+    const analysis = readFileSync(join(examplePath, "ANALYSIS.txt"), "utf-8");
+    const filePaths = collectExampleFiles(examplePath);
 
-    const filePaths: string[] = [];
-    walkDir(examplePath, (filePath) => {
-      if (filePath.includes("node_modules") || filePath.includes("_generated"))
-        return;
-      const name = filePath.split(/[/\\]/).pop()!;
-      if (
-        name === "package.json" ||
-        name === "tsconfig.json" ||
-        name.endsWith(".ts") ||
-        name.endsWith(".tsx")
-      ) {
-        filePaths.push(filePath);
-      }
-    });
-
-    filePaths.sort((a, b) => {
-      const depthA = a.split(/[/\\]/).length;
-      const depthB = b.split(/[/\\]/).length;
-      return depthA !== depthB ? depthA - depthB : a.localeCompare(b);
-    });
-
-    parts.push(`## Example: ${example}\n\n`);
-    parts.push("### Task\n");
-    parts.push(`\`\`\`\n${taskDescription}\n\`\`\`\n\n`);
-    parts.push("### Analysis\n");
-    parts.push(`${analysis}\n\n`);
-    parts.push("### Implementation\n\n");
+    parts.push(`## Example: ${example}\n`);
+    parts.push(`### Task\n\`\`\`\n${taskDescription}\n\`\`\`\n`);
+    parts.push(`### Analysis\n${analysis}\n`);
+    parts.push("### Implementation\n");
 
     for (const filePath of filePaths) {
       const relPath = relative(examplePath, filePath).replace(/\\/g, "/");
       const content = readFileSync(filePath, "utf-8").trim();
-      parts.push(`#### ${relPath}\n`);
-      parts.push(`\`\`\`typescript\n${content}\n\`\`\`\n\n`);
+      parts.push(`#### ${relPath}\n\`\`\`typescript\n${content}\n\`\`\`\n`);
     }
   }
 
-  return parts.join("");
+  return parts.join("\n");
+}
+
+/** Collect relevant source files from an example directory, sorted by depth then name. */
+function collectExampleFiles(examplePath: string): string[] {
+  const filePaths: string[] = [];
+  walkDir(examplePath, (filePath) => {
+    if (filePath.includes("node_modules") || filePath.includes("_generated")) {
+      return;
+    }
+    const name = filePath.split(/[/\\]/).pop()!;
+    if (
+      name === "package.json" ||
+      name === "tsconfig.json" ||
+      name.endsWith(".ts") ||
+      name.endsWith(".tsx")
+    ) {
+      filePaths.push(filePath);
+    }
+  });
+
+  return filePaths.sort((a, b) => {
+    const depthA = a.split(/[/\\]/).length;
+    const depthB = b.split(/[/\\]/).length;
+    return depthA !== depthB ? depthA - depthB : a.localeCompare(b);
+  });
 }
 
 function walkDir(dir: string, callback: (path: string) => void): void {
