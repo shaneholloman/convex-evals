@@ -1,22 +1,7 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-
-const experimentLiteral = v.union(v.literal("no_guidelines"));
-
-const runStatus = v.union(
-  v.object({ kind: v.literal("pending") }),
-  v.object({ kind: v.literal("running") }),
-  v.object({ kind: v.literal("completed"), durationMs: v.number() }),
-  v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number() }),
-);
-
-const evalStatus = v.union(
-  v.object({ kind: v.literal("pending") }),
-  v.object({ kind: v.literal("running"), outputStorageId: v.optional(v.id("_storage")) }),
-  v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
-  v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
-);
+import { experimentLiteral, runStatus, evalStatus } from "./schema.js";
 
 export const createRun = internalMutation({
   args: {

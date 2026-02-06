@@ -1,10 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-const experimentLiteral = v.union(v.literal("no_guidelines"));
+export const experimentLiteral = v.union(v.literal("no_guidelines"));
 
 // Step name as union of literals
-const stepNameLiteral = v.union(
+export const stepNameLiteral = v.union(
   v.literal("filesystem"),
   v.literal("install"),
   v.literal("deploy"),
@@ -14,21 +14,21 @@ const stepNameLiteral = v.union(
 );
 
 // Status discriminated unions
-const runStatus = v.union(
+export const runStatus = v.union(
   v.object({ kind: v.literal("pending") }),
   v.object({ kind: v.literal("running") }),
   v.object({ kind: v.literal("completed"), durationMs: v.number() }),
   v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number() }),
 );
 
-const evalStatus = v.union(
+export const evalStatus = v.union(
   v.object({ kind: v.literal("pending") }),
   v.object({ kind: v.literal("running"), outputStorageId: v.optional(v.id("_storage")) }),
   v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
   v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
 );
 
-const stepStatus = v.union(
+export const stepStatus = v.union(
   v.object({ kind: v.literal("running") }),
   v.object({ kind: v.literal("passed"), durationMs: v.number() }),
   v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number() }),

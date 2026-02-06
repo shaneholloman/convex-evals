@@ -9,30 +9,7 @@ import { mutation, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-
-// ── Shared validators ────────────────────────────────────────────────
-
-const experimentLiteral = v.union(v.literal("no_guidelines"));
-
-const stepNameLiteral = v.union(
-  v.literal("filesystem"),
-  v.literal("install"),
-  v.literal("deploy"),
-  v.literal("tsc"),
-  v.literal("eslint"),
-  v.literal("tests"),
-);
-
-const stepStatus = v.union(
-  v.object({ kind: v.literal("running") }),
-  v.object({ kind: v.literal("passed"), durationMs: v.number() }),
-  v.object({
-    kind: v.literal("failed"),
-    failureReason: v.string(),
-    durationMs: v.number(),
-  }),
-  v.object({ kind: v.literal("skipped") }),
-);
+import { experimentLiteral, stepNameLiteral, stepStatus } from "./schema.js";
 
 // ── Helper ───────────────────────────────────────────────────────────
 

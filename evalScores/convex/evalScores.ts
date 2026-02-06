@@ -1,13 +1,12 @@
 import { internalMutation, query } from "./_generated/server";
 import { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { experimentLiteral } from "./schema.js";
 
 const HISTORY_SIZE = 5;
 
 /** Suggested max age for filtering runs (90 days in milliseconds) */
 export const SUGGESTED_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
-
-const experimentLiteral = v.union(v.literal("no_guidelines"));
 
 /**
  * Records scores for a model run. Always inserts a new record (append-only).
