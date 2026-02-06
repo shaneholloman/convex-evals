@@ -33,11 +33,14 @@ export async function startConvexBackend(
   const storageDir = join(backendDir, "convex_local_storage");
   mkdirSync(storageDir, { recursive: true });
   const sqlitePath = join(backendDir, "convex_local_backend.sqlite3");
+  logInfo(`[backend] Downloading/locating binary...`);
   const binary = await downloadConvexBinary();
+  logInfo(`[backend] Binary ready: ${binary}`);
 
   const port = await getPort();
   const siteProxyPort = await getPort();
 
+  logInfo(`[backend] Starting on port ${port}...`);
   const proc = Bun.spawn(
     [
       binary,
@@ -56,6 +59,7 @@ export async function startConvexBackend(
   );
 
   await healthCheck(port);
+  logInfo(`[backend] Healthy on port ${port}`);
 
   // Make sure process is still running
   if (proc.exitCode !== null) {
