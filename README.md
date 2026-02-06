@@ -112,7 +112,6 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals bun run runner/index.ts
 | ---------------------- | ------------------------------------------------------------------- |
 | `MODELS`               | Comma-separated list of models to run                               |
 | `TEST_FILTER`          | Regex pattern to filter evals                                       |
-| `LOCAL_RESULTS`        | Path to write local results JSONL file                              |
 | `OUTPUT_TEMPDIR`       | Directory for generated output files                                |
 | `CONVEX_EVAL_URL`      | Convex deployment URL (e.g. `https://xxx.convex.cloud`)             |
 | `CONVEX_AUTH_TOKEN`    | Auth token for the Convex backend                                   |
@@ -121,7 +120,6 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals bun run runner/index.ts
 
 - Per-step progress lines with the eval id
 - Per-eval result with pass/fail status and a clickable output dir
-- `local_results.jsonl` with detailed results (used by `bun run evals status`)
 
 ## AI grading helper
 

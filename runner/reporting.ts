@@ -1,5 +1,5 @@
 /**
- * Reporting: post results to Convex via ConvexClient and write local JSONL files.
+ * Reporting: post results to Convex via ConvexClient.
  */
 import {
   existsSync,
@@ -7,7 +7,6 @@ import {
   readdirSync,
   writeFileSync,
   unlinkSync,
-  appendFileSync,
 } from "fs";
 import { join, relative } from "path";
 import { tmpdir } from "os";
@@ -20,7 +19,6 @@ import type { Id } from "../evalScores/convex/_generated/dataModel.js";
 
 // ── Config ────────────────────────────────────────────────────────────
 
-const OUTPUT_RESULTS_FILE = process.env.LOCAL_RESULTS ?? "local_results.jsonl";
 const CONVEX_EVAL_URL = process.env.CONVEX_EVAL_URL;
 const CONVEX_AUTH_TOKEN = process.env.CONVEX_AUTH_TOKEN;
 const EVALS_EXPERIMENT = process.env.EVALS_EXPERIMENT;
@@ -292,7 +290,7 @@ export async function getOrUploadEvalSource(
   return { taskContent, storageId: null };
 }
 
-// ── Local JSONL results ───────────────────────────────────────────────
+// ── Eval result types ─────────────────────────────────────────────────
 
 export interface EvalIndividualResult {
   category: string;
@@ -302,89 +300,6 @@ export interface EvalIndividualResult {
   failure_reason: string | null;
   directory_path: string | null;
   scores: Record<string, number>;
-}
-
-export function writeLocalResults(
-  _modelName: string,
-  formattedModelName: string,
-  tempdir: string | null,
-  individualResults: EvalIndividualResult[],
-): void {
-  try {
-    const categorySummaries = buildCategorySummaries(individualResults);
-    const totalTests = individualResults.length;
-    const totalPassed = individualResults.filter((r) => r.passed).length;
-    const overallScore = totalTests > 0 ? totalPassed / totalTests : 0;
-    const scoreSummary = buildScoreSummary(individualResults);
-
-    const entry = {
-      summary: {
-        project_name: "Convex Coding",
-        project_id: null,
-        experiment_id: null,
-        experiment_name: formattedModelName,
-        project_url: null,
-        experiment_url: null,
-        comparison_experiment_name: null,
-        scores: scoreSummary,
-        metrics: {},
-      },
-      tempdir,
-      model_name: formattedModelName,
-      individual_results: individualResults,
-      category_summaries: categorySummaries,
-      run_stats: {
-        total_tests: totalTests,
-        total_passed: totalPassed,
-        total_failed: totalTests - totalPassed,
-        overall_score: overallScore,
-      },
-    };
-
-    appendFileSync(
-      OUTPUT_RESULTS_FILE,
-      JSON.stringify(entry) + "\n",
-      "utf-8",
-    );
-  } catch (e) {
-    console.error(`Failed to write local results file: ${String(e)}`);
-  }
-}
-
-function buildCategorySummaries(
-  results: EvalIndividualResult[],
-): Record<string, { total: number; passed: number; failed: number }> {
-  const summaries: Record<
-    string,
-    { total: number; passed: number; failed: number }
-  > = {};
-  for (const r of results) {
-    const cat = (summaries[r.category] ??= { total: 0, passed: 0, failed: 0 });
-    cat.total++;
-    if (r.passed) cat.passed++;
-    else cat.failed++;
-  }
-  return summaries;
-}
-
-function buildScoreSummary(
-  results: EvalIndividualResult[],
-): Record<string, unknown> {
-  const scoreNames = new Set(results.flatMap((r) => Object.keys(r.scores)));
-  const summary: Record<string, unknown> = {};
-
-  for (const scoreName of scoreNames) {
-    const values = results.map((r) => r.scores[scoreName] ?? 0);
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    summary[scoreName] = {
-      name: scoreName,
-      score: avg,
-      improvements: 0,
-      regressions: 0,
-      diff: null,
-    };
-  }
-  return summary;
 }
 
 /** Print a console summary after all evals complete. */
@@ -427,7 +342,6 @@ export function printEvalSummary(
       `- ${category}: ${(rate * 100).toFixed(2)}% (${cat.passed} pass, ${cat.count - cat.passed} fail)`,
     );
   }
-  logInfo(`Results written to: ${OUTPUT_RESULTS_FILE}`);
 }
 
 // ── Upload / zip helpers ──────────────────────────────────────────────

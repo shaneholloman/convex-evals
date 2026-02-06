@@ -9,7 +9,6 @@
  *   MODELS           - comma-separated model names (default: see below)
  *   TEST_FILTER      - regex to filter evals by "category/name"
  *   OUTPUT_TEMPDIR   - output directory (default: OS temp dir)
- *   LOCAL_RESULTS    - path to JSONL results file
  *   EVALS_EXPERIMENT - experiment name (e.g. "no_guidelines")
  *   CONVEX_EVAL_URL  - Convex deployment URL (e.g. "https://xxx.convex.cloud")
  *   CONVEX_AUTH_TOKEN - auth token for the Convex backend
@@ -31,7 +30,6 @@ import {
   completeRun,
   startEval,
   getOrUploadEvalSource,
-  writeLocalResults,
   printEvalSummary,
   closeClient,
   type EvalIndividualResult,
@@ -208,8 +206,7 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
     }
   }
 
-  // Write local results and print summary
-  writeLocalResults(model.name, model.formattedName, tempdir, allResults);
+  // Print summary
   printEvalSummary(model.formattedName, allResults);
 
   // Complete run

@@ -7,7 +7,7 @@
 
 import { Command } from "commander";
 import { select, checkbox, confirm, input } from "@inquirer/prompts";
-import { readdir, readFile, stat } from "fs/promises";
+import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { spawn } from "child_process";
 import { ALL_MODELS } from "../runner/models/index.js";
@@ -15,27 +15,6 @@ import { ALL_MODELS } from "../runner/models/index.js";
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface EvalResult {
-  category: string;
-  name: string;
-  passed: boolean;
-  tests_pass_score: number;
-  failure_reason: string | null;
-  directory_path: string;
-}
-
-interface RunResult {
-  model_name: string;
-  tempdir: string;
-  individual_results: EvalResult[];
-  run_stats: {
-    total_tests: number;
-    total_passed: number;
-    total_failed: number;
-    overall_score: number;
-  };
-}
 
 interface CategoryInfo {
   name: string;
@@ -54,7 +33,6 @@ interface EvalInfo {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EVALS_DIR = "evals";
-const LOCAL_RESULTS_FILE = "local_results.jsonl";
 const DEFAULT_MODEL = "claude-sonnet-4-5";
 
 // Valid experiment values
@@ -157,41 +135,6 @@ async function discoverEvalsInCategory(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Results Parsing
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function getLastRunResults(): Promise<RunResult | null> {
-  try {
-    const content = await readFile(LOCAL_RESULTS_FILE, "utf-8");
-    const lines = content.trim().split("\n").filter(Boolean);
-    if (lines.length === 0) return null;
-
-    const lastLine = lines[lines.length - 1];
-    return JSON.parse(lastLine) as RunResult;
-  } catch {
-    return null;
-  }
-}
-
-async function getFailedEvals(): Promise<string[]> {
-  const lastRun = await getLastRunResults();
-  if (!lastRun) return [];
-
-  return lastRun.individual_results
-    .filter((r) => !r.passed)
-    .map((r) => `${r.category}/${r.name}`);
-}
-
-async function getLastRunSummary(): Promise<string | null> {
-  const lastRun = await getLastRunResults();
-  if (!lastRun) return null;
-
-  const { run_stats, model_name } = lastRun;
-  const passRate = (run_stats.overall_score * 100).toFixed(1);
-  return `${model_name}: ${run_stats.total_passed}/${run_stats.total_tests} passed (${passRate}%)`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Run Execution
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -216,8 +159,6 @@ function buildEnvVars(options: RunOptions): Record<string, string> {
   if (options.experiment) {
     env.EVALS_EXPERIMENT = options.experiment;
   }
-
-  env.LOCAL_RESULTS = LOCAL_RESULTS_FILE;
 
   if (options.outputTempdir) {
     env.OUTPUT_TEMPDIR = options.outputTempdir;
@@ -273,7 +214,6 @@ type SelectResult<T> = T | typeof BACK;
 
 async function selectFilter(
   categories: CategoryInfo[],
-  failedEvals: string[],
 ): Promise<SelectResult<string | undefined>> {
   const action = await select({
     message: "What would you like to run?",
@@ -281,14 +221,6 @@ async function selectFilter(
       { name: "Run all evals", value: "all" },
       { name: "Select categories to run", value: "categories" },
       { name: "Select specific evals", value: "evals" },
-      ...(failedEvals.length > 0
-        ? [
-            {
-              name: `Re-run last failed (${failedEvals.length} evals)`,
-              value: "failed",
-            },
-          ]
-        : []),
       { name: "Run single eval by path", value: "single" },
       { name: "← Back", value: "back" },
     ],
@@ -326,13 +258,6 @@ async function selectFilter(
 
     if (selectedEvals.length === 0) return BACK;
     return selectedEvals.join("|");
-  }
-
-  if (action === "failed") {
-    if (failedEvals.length === 0) return BACK;
-    console.log(`\nRe-running ${failedEvals.length} failed evals:`);
-    failedEvals.forEach((e) => console.log(`  - ${e}`));
-    return failedEvals.join("|");
   }
 
   if (action === "single") {
@@ -417,13 +342,7 @@ function formatRunConfigSummary(config: LastRunConfig): string {
 async function interactiveMode(): Promise<void> {
   console.log("\n Convex Evals Runner\n");
 
-  const lastRunSummary = await getLastRunSummary();
-  if (lastRunSummary) {
-    console.log(`Last run: ${lastRunSummary}\n`);
-  }
-
   const categories = await discoverCategories();
-  let failedEvals = await getFailedEvals();
   let lastRunConfig: LastRunConfig | null = null;
 
   while (true) {
@@ -432,7 +351,6 @@ async function interactiveMode(): Promise<void> {
       ...(lastRunConfig
         ? [{ name: "Run again", value: "run-again" }]
         : []),
-      { name: "View status", value: "status" },
       { name: "List available evals", value: "list" },
       { name: "Exit", value: "exit" },
     ];
@@ -445,34 +363,6 @@ async function interactiveMode(): Promise<void> {
     if (mainAction === "exit") {
       console.log("Goodbye!\n");
       return;
-    }
-
-    if (mainAction === "status") {
-      const lastRun = await getLastRunResults();
-      if (!lastRun) {
-        console.log("\nNo previous run results found.\n");
-        continue;
-      }
-
-      const { run_stats, model_name, individual_results } = lastRun;
-      console.log(`\nModel: ${model_name}`);
-      console.log(`Score: ${(run_stats.overall_score * 100).toFixed(1)}%`);
-      console.log(
-        `Passed: ${run_stats.total_passed}/${run_stats.total_tests}\n`,
-      );
-
-      for (const result of individual_results) {
-        const status = result.passed ? "PASS" : "FAIL";
-        const score = (result.tests_pass_score * 100).toFixed(0);
-        const reason = result.failure_reason
-          ? ` (${result.failure_reason})`
-          : "";
-        console.log(
-          `  [${status}] ${result.category}/${result.name} - ${score}%${reason}`,
-        );
-      }
-      console.log("");
-      continue;
     }
 
     if (mainAction === "list") {
@@ -509,7 +399,6 @@ async function interactiveMode(): Promise<void> {
             filter: lastRunConfig.filter,
             experiment: lastRunConfig.experiment,
           });
-          failedEvals = await getFailedEvals();
         } catch (error) {
           console.error("\nEval run failed:", error);
         }
@@ -517,7 +406,7 @@ async function interactiveMode(): Promise<void> {
       }
     }
 
-    const filter = await selectFilter(categories, failedEvals);
+    const filter = await selectFilter(categories);
     if (filter === BACK) continue;
 
     const models = await selectModels();
@@ -548,7 +437,6 @@ async function interactiveMode(): Promise<void> {
         filter,
         experiment: options.experiment,
       });
-      failedEvals = await getFailedEvals();
     } catch (error) {
       console.error("\nEval run failed:", error);
     }
@@ -572,7 +460,6 @@ program
   .option("-m, --model <models...>", "Model(s) to use")
   .option("-f, --filter <pattern>", "Filter evals by regex pattern")
   .option("-c, --category <categories...>", "Run specific categories")
-  .option("--failed", "Re-run only failed evals from last run")
   .option("-e, --experiment <name>", `Run an experiment (${VALID_EXPERIMENTS.join(", ")})`)
   .option("-o, --output <dir>", "Output directory for results")
   .action(async (options) => {
@@ -583,7 +470,7 @@ program
     }
 
     const hasFilterOptions =
-      options.model || options.filter || options.category || options.failed;
+      options.model || options.filter || options.category;
 
     if (!hasFilterOptions && !options.experiment) {
       await interactiveMode();
@@ -594,16 +481,6 @@ program
 
     if (options.category) {
       filter = options.category.join("|");
-    }
-
-    if (options.failed) {
-      const failedEvals = await getFailedEvals();
-      if (failedEvals.length === 0) {
-        console.log("No failed evals to re-run.");
-        return;
-      }
-      filter = failedEvals.join("|");
-      console.log(`Re-running ${failedEvals.length} failed evals`);
     }
 
     await runEvals({
@@ -637,48 +514,6 @@ program
     console.log(
       `Total: ${totalEvals} evals in ${categories.length} categories\n`,
     );
-  });
-
-program
-  .command("status")
-  .description("Show last run results")
-  .option("--failed", "Show only failed evals")
-  .action(async (options) => {
-    const lastRun = await getLastRunResults();
-
-    if (!lastRun) {
-      console.log("\nNo previous run results found.\n");
-      return;
-    }
-
-    const { run_stats, model_name, individual_results, tempdir } = lastRun;
-
-    console.log("\nLast Run Status\n");
-    console.log(`Model: ${model_name}`);
-    console.log(`Output: ${tempdir}`);
-    console.log(`Score: ${(run_stats.overall_score * 100).toFixed(1)}%`);
-    console.log(`Passed: ${run_stats.total_passed}/${run_stats.total_tests}`);
-    console.log("");
-
-    const resultsToShow = options.failed
-      ? individual_results.filter((r) => !r.passed)
-      : individual_results;
-
-    if (options.failed && resultsToShow.length === 0) {
-      console.log("All evals passed!\n");
-      return;
-    }
-
-    console.log(options.failed ? "Failed Evals:" : "Results:");
-    for (const result of resultsToShow) {
-      const status = result.passed ? "PASS" : "FAIL";
-      const score = (result.tests_pass_score * 100).toFixed(0);
-      const reason = result.failure_reason ? ` (${result.failure_reason})` : "";
-      console.log(
-        `  [${status}] ${result.category}/${result.name} - ${score}%${reason}`,
-      );
-    }
-    console.log("");
   });
 
 program
