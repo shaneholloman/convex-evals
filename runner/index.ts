@@ -154,6 +154,7 @@ async function runEvalsForModel(model: ModelTemplate): Promise<void> {
         evalInfo,
         runId,
         allResults,
+        filteredPaths.length,
       ).finally(() => inFlight.delete(promise));
       inFlight.add(promise);
     }
@@ -180,9 +181,12 @@ async function processOneEval(
   evalInfo: { category: string; name: string; evalPath: string },
   runId: string | null,
   allResults: EvalIndividualResult[],
+  totalEvals: number,
 ): Promise<void> {
   const { category, name, evalPath } = evalInfo;
   const evalPathStr = `${category}/${name}`;
+
+  logInfo(`[${evalPathStr}] Calling model ${model.formattedName}...`);
 
   // Read task description
   const taskDescription = readFileSync(
@@ -215,7 +219,6 @@ async function processOneEval(
       taskContent ?? undefined,
       storageId ?? undefined,
     );
-    if (evalId) logInfo(`Started eval ${evalId} for ${evalPathStr}`);
   }
 
   const metadata = {
@@ -229,9 +232,13 @@ async function processOneEval(
     run_id: runId,
   };
 
+  const evalStartTime = Date.now();
+
   try {
     // Call the model
     const output = await modelImpl.generate(taskDescription);
+    const generateDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
+    logInfo(`[${evalPathStr}] Model responded (${generateDuration}s), scoring...`);
 
     // Score
     const scores = await convexScorer(
@@ -285,8 +292,20 @@ async function processOneEval(
       directory_path: dirPath,
       scores: scoresMap,
     });
+
+    // Log result and running progress
+    const totalDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
+    const status = passed ? "PASS" : "FAIL";
+    const reason = passed ? "" : ` (${failureReason})`;
+    const completed = allResults.length;
+    const passedCount = allResults.filter((r) => r.passed).length;
+    const failedCount = completed - passedCount;
+    const pct = ((completed / totalEvals) * 100).toFixed(0);
+    logInfo(
+      `[${evalPathStr}] ${status}${reason} (${totalDuration}s) | Progress: ${completed}/${totalEvals} (${pct}%) - ${passedCount} passed, ${failedCount} failed`,
+    );
   } catch (e) {
-    console.error(`Error processing eval ${evalPathStr}: ${String(e)}`);
+    console.error(`[${evalPathStr}] ERROR: ${String(e)}`);
     allResults.push({
       category,
       name,
@@ -296,6 +315,15 @@ async function processOneEval(
       directory_path: null,
       scores: {},
     });
+
+    // Log error and running progress
+    const completed = allResults.length;
+    const passedCount = allResults.filter((r) => r.passed).length;
+    const failedCount = completed - passedCount;
+    const pct = ((completed / totalEvals) * 100).toFixed(0);
+    logInfo(
+      `[${evalPathStr}] FAIL (error) | Progress: ${completed}/${totalEvals} (${pct}%) - ${passedCount} passed, ${failedCount} failed`,
+    );
   }
 }
 

@@ -88,6 +88,7 @@ export async function convexScorer(
     scores.push({ name: "Valid filesystem output", score: 1 });
     passedFilesystem = true;
     appendLog(runLogPath, "[ok] write_filesystem");
+    logInfo(`[${category}/${name}] filesystem: PASS (${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
     if (evalId) {
       void recordStep(evalId, "filesystem", { kind: "passed", durationMs: Date.now() - stepStart });
       // Upload initial output so visualizer can show generated files while eval is still running
@@ -96,7 +97,7 @@ export async function convexScorer(
   } catch (e) {
     scores.push({ name: "Valid filesystem output", score: 0 });
     appendLog(runLogPath, `[error] write_filesystem: ${String(e)}`);
-    logInfo(`[eval] Result ❌ ${category}/${name} – filesystem fail – dir: ${outputProjectDir}`);
+    logInfo(`[${category}/${name}] filesystem: FAIL (${String(e)})`);
     if (evalId) {
       void recordStep(evalId, "filesystem", { kind: "failed", failureReason: String(e), durationMs: Date.now() - stepStart });
       void completeEval(evalId, { kind: "failed", failureReason: "filesystem fail", durationMs: Date.now() - evalStartTime }, outputProjectDir);
@@ -117,10 +118,11 @@ export async function convexScorer(
   ) {
     scores.push({ name: "`bun install` succeeds", score: 1 });
     passedInstall = true;
+    logInfo(`[${category}/${name}] install: PASS (${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
     if (evalId) void recordStep(evalId, "install", { kind: "passed", durationMs: Date.now() - stepStart });
   } else {
     scores.push({ name: "`bun install` succeeds", score: 0 });
-    logInfo(`Result ❌ – bun install fail – dir: ${outputProjectDir}`);
+    logInfo(`[${category}/${name}] install: FAIL`);
     if (evalId) {
       void recordStep(evalId, "install", { kind: "failed", failureReason: "bun install failed", durationMs: Date.now() - stepStart });
       void completeEval(evalId, { kind: "failed", failureReason: "install fail", durationMs: Date.now() - evalStartTime }, outputProjectDir);
@@ -154,10 +156,11 @@ export async function convexScorer(
       scores.push({ name: "`convex dev` succeeds", score: 1 });
       passedDeploy = true;
       passedCodegen = true;
+      logInfo(`[${category}/${name}] deploy: PASS (${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
       if (evalId) void recordStep(evalId, "deploy", { kind: "passed", durationMs: Date.now() - stepStart });
     } else {
       scores.push({ name: "`convex dev` succeeds", score: 0 });
-      logInfo(`Result ❌ – convex dev fail – dir: ${outputProjectDir}`);
+      logInfo(`[${category}/${name}] deploy: FAIL`);
       if (evalId) {
         void recordStep(evalId, "deploy", { kind: "failed", failureReason: "convex dev failed", durationMs: Date.now() - stepStart });
         void completeEval(evalId, { kind: "failed", failureReason: "convex dev fail", durationMs: Date.now() - evalStartTime }, outputProjectDir);
@@ -178,9 +181,11 @@ export async function convexScorer(
     ) {
       scores.push({ name: "Passes tsc", score: 1 });
       passedTsc = true;
+      logInfo(`[${category}/${name}] tsc: PASS (${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
       if (evalId) void recordStep(evalId, "tsc", { kind: "passed", durationMs: Date.now() - stepStart });
     } else {
       scores.push({ name: "Passes tsc", score: 0 });
+      logInfo(`[${category}/${name}] tsc: FAIL`);
       if (evalId) void recordStep(evalId, "tsc", { kind: "failed", failureReason: "tsc failed", durationMs: Date.now() - stepStart });
     }
 
@@ -197,9 +202,11 @@ export async function convexScorer(
     ) {
       scores.push({ name: "Passes eslint", score: 1 });
       passedEslint = true;
+      logInfo(`[${category}/${name}] eslint: PASS (${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
       if (evalId) void recordStep(evalId, "eslint", { kind: "passed", durationMs: Date.now() - stepStart });
     } else {
       scores.push({ name: "Passes eslint", score: 0 });
+      logInfo(`[${category}/${name}] eslint: FAIL`);
       if (evalId) void recordStep(evalId, "eslint", { kind: "failed", failureReason: "eslint failed", durationMs: Date.now() - stepStart });
     }
 
@@ -246,12 +253,12 @@ export async function convexScorer(
         vitestStdout = testResult.stdout;
         testCmd = testResult.cmd;
         scores.push({ name: "Tests pass", score: testsRatio });
-        if (evalId) {
-          if (testsRatio === 1) {
-            void recordStep(evalId, "tests", { kind: "passed", durationMs: Date.now() - stepStart });
-          } else {
-            void recordStep(evalId, "tests", { kind: "failed", failureReason: `tests failed (${(testsRatio * 100).toFixed(0)}%)`, durationMs: Date.now() - stepStart });
-          }
+        if (testsRatio === 1) {
+          logInfo(`[${category}/${name}] tests: PASS (${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
+          if (evalId) void recordStep(evalId, "tests", { kind: "passed", durationMs: Date.now() - stepStart });
+        } else {
+          logInfo(`[${category}/${name}] tests: FAIL (${(testsRatio * 100).toFixed(0)}% passed, ${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
+          if (evalId) void recordStep(evalId, "tests", { kind: "failed", failureReason: `tests failed (${(testsRatio * 100).toFixed(0)}%)`, durationMs: Date.now() - stepStart });
         }
       } catch (e) {
         if (e instanceof TestsFailedError) {
@@ -259,9 +266,11 @@ export async function convexScorer(
           vitestStdout = e.vitestStdout;
           testCmd = e.testCmd;
           scores.push({ name: "Tests pass", score: e.ratio });
+          logInfo(`[${category}/${name}] tests: FAIL (${(e.ratio * 100).toFixed(0)}% passed, ${((Date.now() - stepStart) / 1000).toFixed(1)}s)`);
           if (evalId) void recordStep(evalId, "tests", { kind: "failed", failureReason: `tests failed (${(e.ratio * 100).toFixed(0)}%)`, durationMs: Date.now() - stepStart });
         } else {
           scores.push({ name: "Tests pass", score: 0 });
+          logInfo(`[${category}/${name}] tests: FAIL (error: ${String(e).slice(0, 100)})`);
           if (evalId) void recordStep(evalId, "tests", { kind: "failed", failureReason: String(e), durationMs: Date.now() - stepStart });
         }
         appendLog(runLogPath, `[error] vitest: ${String(e)}`);
@@ -280,26 +289,21 @@ export async function convexScorer(
         passedDeploy &&
         testsRatio === 1;
 
-      const status = allPassed ? "✅" : "❌";
-      const failures: string[] = [];
-      if (!passedInstall) failures.push("bun install fail");
-      if (!passedCodegen) failures.push("codegen fail");
-      if (!passedTsc) failures.push("tsc fail");
-      if (!passedEslint) failures.push("eslint fail");
-      if (!passedDeploy) failures.push("convex dev fail");
-      if (testsRatio !== 1) failures.push(`tests fail (${(testsRatio * 100).toFixed(0)}%)`);
-
-      const details = failures.length === 0 ? "ok" : failures.join(", ");
-      logInfo(`Result ${status} – ${details} – dir: ${outputProjectDir}`);
-
       if (evalId) {
         const evalDuration = Date.now() - evalStartTime;
         if (allPassed) {
           void completeEval(evalId, { kind: "passed", durationMs: evalDuration }, outputProjectDir);
         } else {
+          const failureReasons: string[] = [];
+          if (!passedInstall) failureReasons.push("bun install fail");
+          if (!passedCodegen) failureReasons.push("codegen fail");
+          if (!passedTsc) failureReasons.push("tsc fail");
+          if (!passedEslint) failureReasons.push("eslint fail");
+          if (!passedDeploy) failureReasons.push("convex dev fail");
+          if (testsRatio !== 1) failureReasons.push(`tests fail (${(testsRatio * 100).toFixed(0)}%)`);
           void completeEval(
             evalId,
-            { kind: "failed", failureReason: failures[0] ?? "unknown fail", durationMs: evalDuration },
+            { kind: "failed", failureReason: failureReasons[0] ?? "unknown fail", durationMs: evalDuration },
             outputProjectDir,
           );
         }
