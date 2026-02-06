@@ -23,7 +23,6 @@ export async function runEvals(options: RunOptions): Promise<EvalRunResult> {
     CUSTOM_GUIDELINES_PATH: options.guidelinesPath,
     OUTPUT_TEMPDIR: outputDir,
     LOCAL_RESULTS: resultsPath,
-    VERBOSE_INFO_LOGS: '1',
   };
 
   // Spawn TypeScript runner with timeout

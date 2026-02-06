@@ -112,7 +112,6 @@ OUTPUT_TEMPDIR=/tmp/convex-codegen-evals bun run runner/index.ts
 | ---------------------- | ------------------------------------------------------------------- |
 | `MODELS`               | Comma-separated list of models to run                               |
 | `TEST_FILTER`          | Regex pattern to filter evals                                       |
-| `VERBOSE_INFO_LOGS`    | Set to `1` for verbose logging                                      |
 | `LOCAL_RESULTS`        | Path to write local results JSONL file                              |
 | `OUTPUT_TEMPDIR`       | Directory for generated output files                                |
 | `POST_TO_CONVEX`       | Set to `1` to post results to Convex (with CLI: `--post-to-convex`) |

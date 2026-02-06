@@ -153,37 +153,11 @@ describe("logInfo", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    delete process.env.VERBOSE_INFO_LOGS;
   });
 
-  it("does nothing when VERBOSE_INFO_LOGS is not set", () => {
-    delete process.env.VERBOSE_INFO_LOGS;
-    logInfo("test message");
-    expect(console.log).not.toHaveBeenCalled();
-  });
-
-  it("logs when VERBOSE_INFO_LOGS is '1'", () => {
-    process.env.VERBOSE_INFO_LOGS = "1";
+  it("always logs messages", () => {
     logInfo("test message");
     expect(console.log).toHaveBeenCalledWith("test message");
-  });
-
-  it("logs when VERBOSE_INFO_LOGS is 'true'", () => {
-    process.env.VERBOSE_INFO_LOGS = "true";
-    logInfo("test message");
-    expect(console.log).toHaveBeenCalledWith("test message");
-  });
-
-  it("logs when VERBOSE_INFO_LOGS is 'yes'", () => {
-    process.env.VERBOSE_INFO_LOGS = "yes";
-    logInfo("test message");
-    expect(console.log).toHaveBeenCalledWith("test message");
-  });
-
-  it("does not log when VERBOSE_INFO_LOGS is '0'", () => {
-    process.env.VERBOSE_INFO_LOGS = "0";
-    logInfo("test message");
-    expect(console.log).not.toHaveBeenCalled();
   });
 });
 

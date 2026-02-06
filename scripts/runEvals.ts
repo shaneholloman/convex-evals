@@ -198,7 +198,6 @@ async function getLastRunSummary(): Promise<string | null> {
 interface RunOptions {
   models: string[];
   filter?: string;
-  verbose: boolean;
   outputTempdir?: string;
   postToConvex: boolean;
   experiment?: Experiment;
@@ -217,10 +216,6 @@ function buildEnvVars(options: RunOptions): Record<string, string> {
 
   if (options.filter) {
     env.TEST_FILTER = options.filter;
-  }
-
-  if (options.verbose) {
-    env.VERBOSE_INFO_LOGS = "1";
   }
 
   if (options.postToConvex) {
@@ -260,7 +255,6 @@ async function runEvals(options: RunOptions): Promise<void> {
   console.log(
     `  Post to Convex: ${options.postToConvex ? "yes" : "no"}${options.postToConvex && !isConvexPostingConfigured() ? " (warning: CONVEX_EVAL_URL or CONVEX_AUTH_TOKEN not set)" : ""}`,
   );
-  console.log(`  Verbose: ${options.verbose ? "yes" : "no"}`);
   console.log("");
 
   const child = spawn("bun", ["run", "runner/index.ts"], {
@@ -411,7 +405,7 @@ async function selectExperiment(): Promise<SelectResult<Experiment | undefined>>
 }
 
 async function selectOptions(): Promise<
-  SelectResult<{ verbose: boolean; postToConvex: boolean; experiment?: Experiment }>
+  SelectResult<{ postToConvex: boolean; experiment?: Experiment }>
 > {
   const experiment = await selectExperiment();
   if (experiment === BACK) return BACK;
@@ -425,18 +419,12 @@ async function selectOptions(): Promise<
     });
   }
 
-  const verbose = await confirm({
-    message: "Enable verbose logging?",
-    default: true,
-  });
-
-  return { verbose, postToConvex, experiment };
+  return { postToConvex, experiment };
 }
 
 interface LastRunConfig {
   models: string[];
   filter: string | undefined;
-  verbose: boolean;
   postToConvex: boolean;
   experiment?: Experiment;
 }
@@ -541,7 +529,6 @@ async function interactiveMode(): Promise<void> {
           await runEvals({
             models: lastRunConfig.models,
             filter: lastRunConfig.filter,
-            verbose: lastRunConfig.verbose,
             postToConvex: lastRunConfig.postToConvex,
             experiment: lastRunConfig.experiment,
           });
@@ -575,7 +562,6 @@ async function interactiveMode(): Promise<void> {
     lastRunConfig = {
       models,
       filter,
-      verbose: options.verbose,
       postToConvex: options.postToConvex,
       experiment: options.experiment,
     };
@@ -584,7 +570,6 @@ async function interactiveMode(): Promise<void> {
       await runEvals({
         models,
         filter,
-        verbose: options.verbose,
         postToConvex: options.postToConvex,
         experiment: options.experiment,
       });
@@ -615,8 +600,6 @@ program
   .option("--failed", "Re-run only failed evals from last run")
   .option("-e, --experiment <name>", `Run an experiment (${VALID_EXPERIMENTS.join(", ")})`)
   .option("--post-to-convex", "Post results to Convex database")
-  .option("-v, --verbose", "Enable verbose logging", true)
-  .option("--no-verbose", "Disable verbose logging")
   .option("-o, --output <dir>", "Output directory for results")
   .action(async (options) => {
     if (options.experiment && !VALID_EXPERIMENTS.includes(options.experiment)) {
@@ -652,7 +635,6 @@ program
     await runEvals({
       models: options.model || [],
       filter,
-      verbose: options.verbose,
       outputTempdir: options.output,
       postToConvex: options.postToConvex || false,
       experiment: options.experiment,

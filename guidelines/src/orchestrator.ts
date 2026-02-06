@@ -395,7 +395,7 @@ You are in the **Construction Phase**. Follow this algorithm:
 Use Bash to run the eval runner. IMPORTANT: The Bash tool runs in Git Bash on Windows, so use Unix-style paths.
 
 \`\`\`bash
-cd ${bashWorkspaceRoot} && MODELS=${options.model} TEST_FILTER=${options.filter || ''} CUSTOM_GUIDELINES_PATH=${bashWorkingGuidelinesPath} OUTPUT_TEMPDIR=${bashOutputDir} LOCAL_RESULTS=${bashResultsPath} VERBOSE_INFO_LOGS=1 bun run runner/index.ts
+cd ${bashWorkspaceRoot} && MODELS=${options.model} TEST_FILTER=${options.filter || ''} CUSTOM_GUIDELINES_PATH=${bashWorkingGuidelinesPath} OUTPUT_TEMPDIR=${bashOutputDir} LOCAL_RESULTS=${bashResultsPath} bun run runner/index.ts
 \`\`\`
 
 This command will take 20-60 minutes to complete. Just wait for it - do NOT use Task/TaskOutput for this.

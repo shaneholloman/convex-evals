@@ -10,7 +10,6 @@
  *   MODELS           - comma-separated model names (default: see below)
  *   TEST_FILTER      - regex to filter evals by "category/name"
  *   OUTPUT_TEMPDIR   - output directory (default: OS temp dir)
- *   VERBOSE_INFO_LOGS - set to "1" for verbose logging
  *   LOCAL_RESULTS    - path to JSONL results file
  *   POST_TO_CONVEX   - set to "1" to post scores to Convex
  *   EVALS_EXPERIMENT - experiment name (e.g. "no_guidelines")

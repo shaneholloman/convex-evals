@@ -47,12 +47,8 @@ export function logCmdResults(
   }
 }
 
-/** Print an info message (only when VERBOSE_INFO_LOGS is set). */
+/** Print an info message. */
 export function logInfo(message: string): void {
-  const verbose = ["1", "true", "yes"].includes(
-    (process.env.VERBOSE_INFO_LOGS ?? "").toLowerCase(),
-  );
-  if (!verbose) return;
   try {
     console.log(message);
   } catch {
