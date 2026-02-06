@@ -589,13 +589,13 @@ export const leaderboardModelHistory = query({
 export const listModels = query({
   args: {},
   handler: async (ctx) => {
-    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     
-    // Get all runs from the last 90 days
+    // Get runs from the last 30 days (reduced from 90 to stay within read limits)
     const runs = await ctx.db
       .query("runs")
       .order("desc")
-      .filter((q) => q.gte(q.field("_creationTime"), ninetyDaysAgo))
+      .filter((q) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
       .collect();
     
     // Aggregate stats by model
@@ -628,13 +628,13 @@ export const listModels = query({
     }
     
     // Fetch eval counts for pass rate calculation
+    // Only check the most recent 3 runs per model to stay within Convex read limits
     const result = await Promise.all(
       Array.from(modelStats.entries()).map(async ([model, stats]) => {
         let totalEvals = 0;
         let passedEvals = 0;
         
-        // Only check evals for the most recent 10 runs per model to avoid excessive queries
-        const recentRunIds = stats.runIds.slice(0, 10);
+        const recentRunIds = stats.runIds.slice(0, 3);
         for (const runId of recentRunIds) {
           const evals = await ctx.db
             .query("evals")
