@@ -60,3 +60,9 @@ jobs:
           OUTPUT_TEMPDIR: /tmp/convex-evals-web-search
           EVALS_EXPERIMENT: web_search
         run: bun run runner/index.ts
+
+      - name: Run evaluations (web_search_no_guidelines experiment)
+        env:
+          OUTPUT_TEMPDIR: /tmp/convex-evals-web-search
+          EVALS_EXPERIMENT: web_search_no_guidelines
+        run: bun run runner/index.ts
