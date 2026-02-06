@@ -107,6 +107,42 @@ export const backfillRunFields = migrations.define({
   },
 });
 
+/**
+ * Fix runs marked as "completed" where not all planned evals actually finished.
+ * These are runs that errored out early but were incorrectly marked as completed.
+ * After this migration, such runs will be marked as "failed".
+ */
+export const fixIncompleteCompletedRuns = migrations.define({
+  table: "runs",
+  migrateOne: async (ctx, doc) => {
+    // Only look at runs marked as "completed"
+    if (doc.status.kind !== "completed") return;
+
+    const planned = doc.plannedEvals.length;
+    if (planned === 0) return;
+
+    // Count evals that have a terminal status (passed or failed)
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("by_runId", (q) => q.eq("runId", doc._id))
+      .collect();
+    const finished = evals.filter(
+      (e) => e.status.kind === "passed" || e.status.kind === "failed",
+    ).length;
+
+    // If not all planned evals finished, mark as failed
+    if (finished < planned) {
+      return {
+        status: {
+          kind: "failed" as const,
+          failureReason: `Only ${finished}/${planned} evals completed (detected by fixIncompleteCompletedRuns migration)`,
+          durationMs: doc.status.durationMs,
+        },
+      };
+    }
+  },
+});
+
 // ── Runner functions ─────────────────────────────────────────────────
 
 /** Run a single named migration via CLI: npx convex run migrations:run '{fn: "migrations:backfillRunFields"}' */
@@ -115,4 +151,5 @@ export const run = migrations.runner();
 /** Run all migrations in order: npx convex run migrations:runAll --prod */
 export const runAll = migrations.runner([
   internal.migrations.backfillRunFields,
+  internal.migrations.fixIncompleteCompletedRuns,
 ]);

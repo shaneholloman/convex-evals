@@ -274,6 +274,39 @@ describe("leaderboardScores", () => {
     expect(expResults[0].totalScore).toBe(0.0);
   });
 
+  it("excludes completed runs with incomplete evals", async () => {
+    const t = convexTest(schema, modules);
+
+    // Create a fully-completed run with a good score
+    await createCompletedRunWithEvals(t, {
+      model: "test-model",
+      formattedName: "Test Model",
+      evals: [
+        { category: "cat1", name: "eval1", passed: true },
+        { category: "cat1", name: "eval2", passed: true },
+      ],
+    });
+
+    // Create a "completed" run where no evals finished (ghost run)
+    const ghostRunId = await t.mutation(internal.runs.createRun, {
+      model: "test-model",
+      formattedName: "Test Model",
+      provider: "test",
+      plannedEvals: ["cat1/eval1", "cat1/eval2"],
+    });
+    await t.mutation(internal.runs.completeRun, {
+      runId: ghostRunId,
+      status: { kind: "completed", durationMs: 500 },
+    });
+
+    const results = await t.query(api.runs.leaderboardScores, {});
+
+    // Ghost run should be excluded — only the real run counts
+    expect(results).toHaveLength(1);
+    expect(results[0].totalScore).toBe(1.0);
+    expect(results[0].runCount).toBe(1);
+  });
+
   it("returns formattedName alongside model name", async () => {
     const t = convexTest(schema, modules);
 
@@ -534,6 +567,37 @@ describe("leaderboardModelHistory", () => {
     });
 
     // Should only include the completed run
+    expect(result).toHaveLength(1);
+    expect(result[0].totalScore).toBe(1.0);
+  });
+
+  it("excludes completed runs with incomplete evals", async () => {
+    const t = convexTest(schema, modules);
+
+    // Create a fully-completed run
+    await createCompletedRunWithEvals(t, {
+      model: "test-model",
+      evals: [{ category: "cat1", name: "eval1", passed: true }],
+    });
+
+    // Create a run marked as "completed" but with no evals actually finished
+    // (simulates a run that errored out early)
+    const incompleteRunId = await t.mutation(internal.runs.createRun, {
+      model: "test-model",
+      formattedName: "test-model",
+      provider: "test",
+      plannedEvals: ["cat1/eval1", "cat1/eval2"],
+    });
+    await t.mutation(internal.runs.completeRun, {
+      runId: incompleteRunId,
+      status: { kind: "completed", durationMs: 1000 },
+    });
+
+    const result = await t.query(api.runs.leaderboardModelHistory, {
+      model: "test-model",
+    });
+
+    // Should only include the fully-completed run, not the incomplete one
     expect(result).toHaveLength(1);
     expect(result[0].totalScore).toBe(1.0);
   });

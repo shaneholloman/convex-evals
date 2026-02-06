@@ -309,6 +309,26 @@ export const listExperiments = query({
 
 // ── Leaderboard queries (computed from runs + evals) ─────────────────
 
+/**
+ * Check whether a run is "fully completed": all planned evals have a
+ * terminal status (passed or failed). Runs where some evals are still
+ * pending/running are considered incomplete and should be excluded from
+ * leaderboard computations.
+ */
+function isFullyCompletedRun(
+  run: Doc<"runs">,
+  evals: Doc<"evals">[],
+): boolean {
+  const planned = run.plannedEvals.length;
+  if (planned === 0) return false; // degenerate case
+
+  const finished = evals.filter(
+    (e) => e.status.kind === "passed" || e.status.kind === "failed",
+  ).length;
+
+  return finished >= planned;
+}
+
 function computeMeanAndStdDev(values: number[]): { mean: number; stdDev: number } {
   if (values.length === 0) return { mean: 0, stdDev: 0 };
   if (values.length === 1) return { mean: values[0], stdDev: 0 };
@@ -395,15 +415,33 @@ export const leaderboardScores = query({
       .order("desc")
       .collect();
 
-    // Only include completed runs
+    // Only include runs marked as completed
     const completedRuns = allRuns.filter((r) => r.status.kind === "completed");
 
+    // Fetch evals for each completed run and filter to only fully-completed runs
+    // (all planned evals have a terminal status). Also pre-compute scores.
+    type ScoredRun = {
+      run: Doc<"runs">;
+      scores: ReturnType<typeof computeRunScoresFromEvals>;
+    };
+    const scoredRuns: ScoredRun[] = [];
+    await Promise.all(
+      completedRuns.map(async (run) => {
+        const evals = await ctx.db
+          .query("evals")
+          .withIndex("by_runId", (q) => q.eq("runId", run._id))
+          .collect();
+        if (!isFullyCompletedRun(run, evals)) return;
+        scoredRuns.push({ run, scores: computeRunScoresFromEvals(evals) });
+      }),
+    );
+
     // Group by model
-    const byModel = new Map<string, typeof completedRuns>();
-    for (const run of completedRuns) {
-      const existing = byModel.get(run.model) ?? [];
-      existing.push(run);
-      byModel.set(run.model, existing);
+    const byModel = new Map<string, ScoredRun[]>();
+    for (const sr of scoredRuns) {
+      const existing = byModel.get(sr.run.model) ?? [];
+      existing.push(sr);
+      byModel.set(sr.run.model, existing);
     }
 
     const results: Array<{
@@ -419,30 +457,20 @@ export const leaderboardScores = query({
     }> = [];
 
     for (const [model, runs] of byModel) {
-      // Already sorted desc by _creationTime, take last N
+      // Sort desc by creation time (may be out of order due to async)
+      runs.sort((a, b) => b.run._creationTime - a.run._creationTime);
       const recentRuns = runs.slice(0, LEADERBOARD_HISTORY_SIZE);
       const latest = recentRuns[0];
 
-      // Compute scores for each recent run
-      const runScores = await Promise.all(
-        recentRuns.map(async (run) => {
-          const evals = await ctx.db
-            .query("evals")
-            .withIndex("by_runId", (q) => q.eq("runId", run._id))
-            .collect();
-          return computeRunScoresFromEvals(evals);
-        }),
-      );
-
       // Compute mean and standard deviation for totalScore
-      const totalScores = runScores.map((rs) => rs.totalScore);
+      const totalScores = recentRuns.map((sr) => sr.scores.totalScore);
       const { mean: totalScore, stdDev: totalScoreErrorBar } =
         computeMeanAndStdDev(totalScores);
 
       // Compute mean and error bars for each category
       const allCategories = new Set<string>();
-      for (const rs of runScores) {
-        for (const cat of Object.keys(rs.scores)) {
+      for (const sr of recentRuns) {
+        for (const cat of Object.keys(sr.scores.scores)) {
           allCategories.add(cat);
         }
       }
@@ -450,8 +478,8 @@ export const leaderboardScores = query({
       const scores: Record<string, number> = {};
       const scoreErrorBars: Record<string, number> = {};
       for (const cat of allCategories) {
-        const catScores = runScores
-          .map((rs) => rs.scores[cat])
+        const catScores = recentRuns
+          .map((sr) => sr.scores.scores[cat])
           .filter((s): s is number => s !== undefined);
         const { mean, stdDev } = computeMeanAndStdDev(catScores);
         scores[cat] = mean;
@@ -460,14 +488,14 @@ export const leaderboardScores = query({
 
       results.push({
         model,
-        formattedName: latest.formattedName,
+        formattedName: latest.run.formattedName,
         totalScore,
         totalScoreErrorBar,
         scores,
         scoreErrorBars,
         runCount: runs.length,
-        latestRunId: latest._id,
-        latestRunTime: latest._creationTime,
+        latestRunId: latest.run._id,
+        latestRunTime: latest.run._creationTime,
       });
     }
 
@@ -518,27 +546,38 @@ export const leaderboardModelHistory = query({
     // Only include completed runs
     runs = runs.filter((r) => r.status.kind === "completed");
 
-    // Apply limit if provided (take from the end since we want recent data)
-    if (args.limit !== undefined && args.limit > 0) {
-      runs = runs.slice(-args.limit);
-    }
-
-    // Compute scores for each run
-    const results = await Promise.all(
+    // Fetch evals and filter to only fully-completed runs, computing scores
+    type HistoryResult = {
+      _creationTime: number;
+      runId: Id<"runs">;
+      totalScore: number;
+      scores: Record<string, number>;
+    };
+    const results: HistoryResult[] = [];
+    await Promise.all(
       runs.map(async (run) => {
         const evals = await ctx.db
           .query("evals")
           .withIndex("by_runId", (q) => q.eq("runId", run._id))
           .collect();
+        if (!isFullyCompletedRun(run, evals)) return;
         const { totalScore, scores } = computeRunScoresFromEvals(evals);
-        return {
+        results.push({
           _creationTime: run._creationTime,
           runId: run._id,
           totalScore,
           scores,
-        };
+        });
       }),
     );
+
+    // Re-sort chronologically since async may shuffle order
+    results.sort((a, b) => a._creationTime - b._creationTime);
+
+    // Apply limit if provided (take from the end since we want recent data)
+    if (args.limit !== undefined && args.limit > 0) {
+      return results.slice(-args.limit);
+    }
 
     return results;
   },

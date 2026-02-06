@@ -10,12 +10,14 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as debug from "../debug.js";
 import type * as debugQueries from "../debugQueries.js";
 import type * as evalAssets from "../evalAssets.js";
 import type * as evals from "../evals.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
+import type * as runMaintenance from "../runMaintenance.js";
 import type * as runs from "../runs.js";
 import type * as steps from "../steps.js";
 
@@ -28,12 +30,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  crons: typeof crons;
   debug: typeof debug;
   debugQueries: typeof debugQueries;
   evalAssets: typeof evalAssets;
   evals: typeof evals;
   http: typeof http;
   migrations: typeof migrations;
+  runMaintenance: typeof runMaintenance;
   runs: typeof runs;
   steps: typeof steps;
 }>;
