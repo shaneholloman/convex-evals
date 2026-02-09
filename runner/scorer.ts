@@ -127,9 +127,9 @@ class ScoringContext {
   }
 
   /** Mark this eval as early-exited due to a blocking step failure. */
-  reportEarlyExit(failureReason: string): void {
+  async reportEarlyExit(failureReason: string): Promise<void> {
     if (this.evalId) {
-      void completeEval(
+      await completeEval(
         this.evalId,
         {
           kind: "failed",
@@ -142,7 +142,7 @@ class ScoringContext {
   }
 
   /** Report final eval completion (called after all steps). */
-  reportCompletion(testsRatio: number): void {
+  async reportCompletion(testsRatio: number): Promise<void> {
     if (!this.evalId) return;
 
     const allPassed =
@@ -150,7 +150,7 @@ class ScoringContext {
 
     const evalDuration = Date.now() - this.evalStartTime;
     if (allPassed) {
-      void completeEval(
+      await completeEval(
         this.evalId,
         { kind: "passed", durationMs: evalDuration },
         this.outputProjectDir,
@@ -165,7 +165,7 @@ class ScoringContext {
           `tests fail (${(testsRatio * 100).toFixed(0)}%)`,
         );
       }
-      void completeEval(
+      await completeEval(
         this.evalId,
         {
           kind: "failed",
@@ -242,7 +242,7 @@ export async function convexScorer(
       fsStart,
       String(e),
     );
-    ctx.reportEarlyExit("filesystem fail");
+    await ctx.reportEarlyExit("filesystem fail");
     return ctx.scores;
   }
 
@@ -254,7 +254,7 @@ export async function convexScorer(
     "Installing dependencies (bun install)",
   );
   if (!installPassed) {
-    ctx.reportEarlyExit("install fail");
+    await ctx.reportEarlyExit("install fail");
     return ctx.scores;
   }
 
@@ -278,7 +278,7 @@ export async function convexScorer(
       `Deploying generated backend on port ${outputBackend.port}`,
     );
     if (!deployPassed) {
-      ctx.reportEarlyExit("convex dev fail");
+      await ctx.reportEarlyExit("convex dev fail");
       return;
     }
 
@@ -423,7 +423,7 @@ async function runTestsStep(
       logVitestResults(ctx.runLogPath, testCmd, vitestStdout);
     }
 
-    ctx.reportCompletion(testsRatio);
+    await ctx.reportCompletion(testsRatio);
   });
 }
 
