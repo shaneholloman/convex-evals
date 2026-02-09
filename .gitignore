@@ -189,6 +189,9 @@ convex-local-backend
 
 dist/
 
+# Ablation experiment (generated markdown files; results are committed)
+ablation/*.md
+
 CLAUDE.md
 
 # Visualizer (TanStack Start / Nitro)

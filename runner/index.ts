@@ -12,6 +12,7 @@
  *   EVALS_EXPERIMENT - experiment name (e.g. "no_guidelines")
  *   CONVEX_EVAL_URL  - Convex deployment URL (e.g. "https://xxx.convex.cloud")
  *   CONVEX_AUTH_TOKEN - auth token for the Convex backend
+ *   CUSTOM_GUIDELINES_PATH - path to custom guidelines markdown file
  */
 import { readdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
@@ -39,18 +40,22 @@ import { logInfo } from "./logging.js";
 
 config(); // Load .env
 
-// ── Configuration ─────────────────────────────────────────────────────
+// ── Run configuration ─────────────────────────────────────────────────
 
-const tempdir =
-  process.env.OUTPUT_TEMPDIR ?? join(tmpdir(), `convex-evals-${Date.now()}`);
-logInfo(`Using tempdir: ${tempdir}`);
-
-const testFilter = process.env.TEST_FILTER
-  ? new RegExp(process.env.TEST_FILTER)
-  : null;
-
-const CONVEX_EVAL_URL = process.env.CONVEX_EVAL_URL;
-const CONVEX_AUTH_TOKEN = process.env.CONVEX_AUTH_TOKEN;
+/**
+ * Configuration for a single eval run. Can be constructed from env vars
+ * (via `configFromEnv()`) or programmatically for use by scripts like
+ * the ablation runner.
+ */
+export interface RunConfig {
+  model: ModelTemplate;
+  tempdir: string;
+  testFilter?: RegExp;
+  customGuidelinesPath?: string;
+  convexEvalUrl?: string;
+  convexAuthToken?: string;
+  experiment?: string;
+}
 
 // ── Default models ────────────────────────────────────────────────────
 
@@ -117,7 +122,7 @@ const SCORE_FAILURE_REASONS: Record<string, string> = {
   "Tests pass": "tests fail",
 };
 
-// ── Main ──────────────────────────────────────────────────────────────
+// ── Main (CLI entrypoint) ─────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const modelNames = process.env.MODELS
@@ -131,92 +136,156 @@ async function main(): Promise<void> {
     }
   }
 
+  const td =
+    process.env.OUTPUT_TEMPDIR ?? join(tmpdir(), `convex-evals-${Date.now()}`);
+  logInfo(`Using tempdir: ${td}`);
+
+  const tf = process.env.TEST_FILTER
+    ? new RegExp(process.env.TEST_FILTER)
+    : undefined;
+
   for (const modelName of modelNames) {
-    await runEvalsForModel(MODELS_BY_NAME[modelName]);
+    const cfg: RunConfig = {
+      model: MODELS_BY_NAME[modelName],
+      tempdir: td,
+      testFilter: tf,
+      customGuidelinesPath: process.env.CUSTOM_GUIDELINES_PATH,
+      convexEvalUrl: process.env.CONVEX_EVAL_URL,
+      convexAuthToken: process.env.CONVEX_AUTH_TOKEN,
+      experiment: process.env.EVALS_EXPERIMENT,
+    };
+    await runEvalsForModel(cfg);
   }
 
   await closeClient();
 }
 
-async function runEvalsForModel(model: ModelTemplate): Promise<void> {
-  const evalPaths = discoverEvals();
-  const filteredPaths = testFilter
-    ? evalPaths.filter(({ category, name }) =>
-        testFilter.test(`${category}/${name}`),
-      )
-    : evalPaths;
+/**
+ * Run all evals for a single model and return per-eval results.
+ *
+ * Can be called programmatically (e.g. from the ablation runner) or
+ * via the CLI entrypoint above.
+ */
+export async function runEvalsForModel(
+  config: RunConfig,
+): Promise<EvalIndividualResult[]> {
+  const { model, tempdir, testFilter, convexEvalUrl, convexAuthToken } =
+    config;
 
-  logInfo(
-    `Running ${filteredPaths.length} evals for model ${model.formattedName}`,
-  );
+  // Set CUSTOM_GUIDELINES_PATH so getGuidelinesContent() in modelCodegen
+  // picks it up. We restore it afterwards to avoid cross-run leakage.
+  const prevGuidelinesPath = process.env.CUSTOM_GUIDELINES_PATH;
+  if (config.customGuidelinesPath) {
+    process.env.CUSTOM_GUIDELINES_PATH = config.customGuidelinesPath;
+  } else {
+    delete process.env.CUSTOM_GUIDELINES_PATH;
+  }
 
-  // Start run if Convex is configured
-  let runId: string | null = null;
-  const runStartTime = Date.now();
+  // Similarly for EVALS_EXPERIMENT
+  const prevExperiment = process.env.EVALS_EXPERIMENT;
+  if (config.experiment) {
+    process.env.EVALS_EXPERIMENT = config.experiment;
+  } else {
+    delete process.env.EVALS_EXPERIMENT;
+  }
 
-  if (CONVEX_EVAL_URL && CONVEX_AUTH_TOKEN) {
-    const plannedEvals = filteredPaths.map((e) => `${e.category}/${e.name}`);
-    runId = await startRun(
-      model.name,
-      model.formattedName,
-      plannedEvals,
-      model.provider,
-      process.env.EVALS_EXPERIMENT,
+  try {
+    const evalPaths = discoverEvals();
+    const filteredPaths = testFilter
+      ? evalPaths.filter(({ category, name }) =>
+          testFilter.test(`${category}/${name}`),
+        )
+      : evalPaths;
+
+    logInfo(
+      `Running ${filteredPaths.length} evals for model ${model.formattedName}`,
     );
+
+    // Start run if Convex is configured
+    let runId: string | null = null;
+    const runStartTime = Date.now();
+
+    if (convexEvalUrl && convexAuthToken) {
+      const plannedEvals = filteredPaths.map(
+        (e) => `${e.category}/${e.name}`,
+      );
+      runId = await startRun(
+        model.name,
+        model.formattedName,
+        plannedEvals,
+        model.provider,
+        config.experiment,
+      );
+      if (runId) {
+        logInfo(
+          `Started run ${runId} for model ${model.name} with ${plannedEvals.length} evals`,
+        );
+      } else {
+        logInfo(
+          "Failed to start run in Convex (endpoint may not be configured)",
+        );
+      }
+    }
+
+    // Get API key
+    const apiKeyVar = getApiKeyEnvVar(model.provider);
+    const apiKey = process.env[apiKeyVar];
+    if (!apiKey) {
+      console.error(`${apiKeyVar} is not set`);
+      process.exit(1);
+    }
+
+    const modelImpl = new Model(apiKey, model);
+    const allResults: EvalIndividualResult[] = [];
+
+    // Process evals with concurrency control
+    const queue = [...filteredPaths];
+    const inFlight = new Set<Promise<void>>();
+
+    while (queue.length > 0 || inFlight.size > 0) {
+      while (queue.length > 0 && inFlight.size < model.maxConcurrency) {
+        const evalInfo = queue.shift()!;
+        const promise = processOneEval(
+          model,
+          modelImpl,
+          evalInfo,
+          runId,
+          allResults,
+          filteredPaths.length,
+          tempdir,
+        ).finally(() => inFlight.delete(promise));
+        inFlight.add(promise);
+      }
+      if (inFlight.size > 0) {
+        await Promise.race(inFlight);
+      }
+    }
+
+    // Print summary
+    printEvalSummary(model.formattedName, allResults);
+
+    // Complete run
     if (runId) {
-      logInfo(
-        `Started run ${runId} for model ${model.name} with ${plannedEvals.length} evals`,
-      );
+      await completeRun(runId, {
+        kind: "completed",
+        durationMs: Date.now() - runStartTime,
+      });
+      logInfo(`Completed run ${runId}`);
+    }
+
+    return allResults;
+  } finally {
+    // Restore env vars
+    if (prevGuidelinesPath !== undefined) {
+      process.env.CUSTOM_GUIDELINES_PATH = prevGuidelinesPath;
     } else {
-      logInfo(
-        "Failed to start run in Convex (endpoint may not be configured)",
-      );
+      delete process.env.CUSTOM_GUIDELINES_PATH;
     }
-  }
-
-  // Get API key
-  const apiKeyVar = getApiKeyEnvVar(model.provider);
-  const apiKey = process.env[apiKeyVar];
-  if (!apiKey) {
-    console.error(`${apiKeyVar} is not set`);
-    process.exit(1);
-  }
-
-  const modelImpl = new Model(apiKey, model);
-  const allResults: EvalIndividualResult[] = [];
-
-  // Process evals with concurrency control
-  const queue = [...filteredPaths];
-  const inFlight = new Set<Promise<void>>();
-
-  while (queue.length > 0 || inFlight.size > 0) {
-    while (queue.length > 0 && inFlight.size < model.maxConcurrency) {
-      const evalInfo = queue.shift()!;
-      const promise = processOneEval(
-        model,
-        modelImpl,
-        evalInfo,
-        runId,
-        allResults,
-        filteredPaths.length,
-      ).finally(() => inFlight.delete(promise));
-      inFlight.add(promise);
+    if (prevExperiment !== undefined) {
+      process.env.EVALS_EXPERIMENT = prevExperiment;
+    } else {
+      delete process.env.EVALS_EXPERIMENT;
     }
-    if (inFlight.size > 0) {
-      await Promise.race(inFlight);
-    }
-  }
-
-  // Print summary
-  printEvalSummary(model.formattedName, allResults);
-
-  // Complete run
-  if (runId) {
-    await completeRun(runId, {
-      kind: "completed",
-      durationMs: Date.now() - runStartTime,
-    });
-    logInfo(`Completed run ${runId}`);
   }
 }
 
@@ -227,6 +296,7 @@ async function processOneEval(
   runId: string | null,
   allResults: EvalIndividualResult[],
   totalEvals: number,
+  tempdir: string,
 ): Promise<void> {
   const { category, name, evalPath } = evalInfo;
   const evalPathStr = `${category}/${name}`;
@@ -279,7 +349,7 @@ async function processOneEval(
       output,
     );
 
-    const result = buildEvalResult(category, name, model.name, scores);
+    const result = buildEvalResult(category, name, model.name, scores, tempdir);
     allResults.push(result);
     logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
   } catch (e) {
@@ -337,6 +407,7 @@ function buildEvalResult(
   name: string,
   modelName: string,
   scores: Array<{ name: string; score: number }>,
+  tempdir: string,
 ): EvalIndividualResult {
   const scoresMap: Record<string, number> = {};
   for (const s of scores) {
