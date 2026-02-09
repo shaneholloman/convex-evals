@@ -191,6 +191,7 @@ dist/
 
 # Ablation experiment (generated markdown files; results are committed)
 ablation/*.md
+ablation/without_*/
 
 CLAUDE.md
 

@@ -8,6 +8,11 @@ on:
         required: true
         default: "gemini-2.5-flash"
         type: string
+      section:
+        description: "Optional: drill into subsections of a specific section (e.g. function_guidelines)"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   ablation:
@@ -42,12 +47,17 @@ jobs:
       - name: Run ablation experiment
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals-ablation
-        run: bun run scripts/runAblation.ts --model ${{ inputs.model }}
+        run: |
+          ARGS="--model ${{ inputs.model }}"
+          if [ -n "${{ inputs.section }}" ]; then
+            ARGS="$ARGS --section ${{ inputs.section }}"
+          fi
+          bun run scripts/runAblation.ts $ARGS
 
       - name: Upload ablation results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ablation-${{ inputs.model }}-${{ github.run_id }}
+          name: ablation-${{ inputs.model }}${{ inputs.section && format('-{0}', inputs.section) || '' }}-${{ github.run_id }}
           path: ablation/results/
           retention-days: 30

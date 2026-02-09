@@ -2,11 +2,14 @@
 /**
  * Guideline ablation experiment runner.
  *
- * Runs a full set of evals (baseline + one ablation per top-level guideline
- * section) for a single model, then writes a combined summary JSON.
+ * Runs a full set of evals (baseline + one ablation variant) for a single
+ * model, then writes a combined summary JSON.
  *
- * Usage:
+ * Top-level ablation (default):
  *   bun run scripts/runAblation.ts --model gemini-2.5-flash
+ *
+ * Subsection ablation (drill into a specific section):
+ *   bun run scripts/runAblation.ts --model gemini-2.5-flash --section function_guidelines
  *
  * Results are written to:
  *   ablation/results/<model>/<timestamp>.json
@@ -31,19 +34,25 @@ config(); // Load .env
 
 // ── Argument parsing ──────────────────────────────────────────────────
 
-function parseArgs(): { model: string } {
+function parseArgs(): { model: string; section: string | null } {
   const args = process.argv.slice(2);
   let model = "";
+  let section: string | null = null;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--model" && args[i + 1]) {
       model = args[i + 1];
       i++;
+    } else if (args[i] === "--section" && args[i + 1]) {
+      section = args[i + 1];
+      i++;
     }
   }
 
   if (!model) {
-    console.error("Usage: bun run scripts/runAblation.ts --model <model-name>");
+    console.error(
+      "Usage: bun run scripts/runAblation.ts --model <model-name> [--section <section-name>]",
+    );
     process.exit(1);
   }
 
@@ -53,7 +62,7 @@ function parseArgs(): { model: string } {
     process.exit(1);
   }
 
-  return { model };
+  return { model, section };
 }
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -70,6 +79,8 @@ interface AblationSectionResult {
 interface AblationSummary {
   model: string;
   timestamp: string;
+  ablationType: "top-level" | "subsection";
+  targetSection?: string;
   baseline: {
     passed: number;
     failed: number;
@@ -122,35 +133,54 @@ function countTokens(text: string): number {
 // ── Main ──────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { model: modelName } = parseArgs();
+  const { model: modelName, section: targetSection } = parseArgs();
 
   // Step 1: Ensure ablation files exist
   console.log("Step 1: Generating ablation files...\n");
   const { execSync } = await import("child_process");
-  execSync("bun run scripts/ablateGuidelines.ts", { stdio: "inherit" });
+  const generateCmd = targetSection
+    ? `bun run scripts/ablateGuidelines.ts --section ${targetSection}`
+    : "bun run scripts/ablateGuidelines.ts";
+  execSync(generateCmd, { stdio: "inherit" });
 
   // Step 2: Discover ablation variants
   const ablationDir = "ablation";
-  const files = readdirSync(ablationDir)
-    .filter((f) => f.endsWith(".md"))
-    .sort();
+  const baselineFile = "full.md";
 
-  const baselineFile = files.find((f) => f === "full.md");
-  const ablationFiles = files.filter(
-    (f) => f.startsWith("without_") && f.endsWith(".md"),
-  );
-
-  if (!baselineFile) {
+  if (!existsSync(join(ablationDir, baselineFile))) {
     console.error("No ablation/full.md found. Run ablateGuidelines.ts first.");
     process.exit(1);
   }
 
+  // For subsection mode, variants are in ablation/without_<section>/*.md
+  // For top-level mode, variants are ablation/without_*.md
+  let ablationFiles: string[];
+  if (targetSection) {
+    const subDir = join(ablationDir, `without_${targetSection}`);
+    if (!existsSync(subDir)) {
+      console.error(`No subsection ablation directory found at ${subDir}`);
+      process.exit(1);
+    }
+    ablationFiles = readdirSync(subDir)
+      .filter((f) => f.endsWith(".md"))
+      .sort()
+      .map((f) => `without_${targetSection}/${f}`);
+  } else {
+    ablationFiles = readdirSync(ablationDir)
+      .filter((f) => f.startsWith("without_") && f.endsWith(".md"))
+      .sort();
+  }
+
+  const modeLabel = targetSection
+    ? `subsection ablation of ${targetSection}`
+    : "top-level ablation";
   console.log(
-    `\nStep 2: Found ${ablationFiles.length} ablation variants + baseline\n`,
+    `\nStep 2: Found ${ablationFiles.length} ablation variants + baseline (${modeLabel})\n`,
   );
 
   const modelTemplate = MODELS_BY_NAME[modelName];
-  const tempBase = process.env.OUTPUT_TEMPDIR ??
+  const tempBase =
+    process.env.OUTPUT_TEMPDIR ??
     join(tmpdir(), `convex-ablation-${Date.now()}`);
 
   // Step 3: Run baseline
@@ -171,7 +201,15 @@ async function main(): Promise<void> {
 
   for (let i = 0; i < ablationFiles.length; i++) {
     const file = ablationFiles[i];
-    const sectionName = file.replace("without_", "").replace(".md", "");
+    // Extract a human-readable section name
+    // Top-level: "without_foo.md" → "foo"
+    // Subsection: "without_parent/child.md" → "parent/child"
+    let sectionName: string;
+    if (targetSection) {
+      sectionName = `${targetSection}/${file.replace(`without_${targetSection}/`, "").replace(".md", "")}`;
+    } else {
+      sectionName = file.replace("without_", "").replace(".md", "");
+    }
 
     console.log("\n" + "━".repeat(60));
     console.log(
@@ -179,9 +217,10 @@ async function main(): Promise<void> {
     );
     console.log("━".repeat(60));
 
+    const safeDirName = sectionName.replace(/\//g, "_");
     const variantConfig: RunConfig = {
       model: modelTemplate,
-      tempdir: join(tempBase, `without_${sectionName}`),
+      tempdir: join(tempBase, `without_${safeDirName}`),
       customGuidelinesPath: join(ablationDir, file),
     };
 
@@ -241,6 +280,8 @@ async function main(): Promise<void> {
   const summary: AblationSummary = {
     model: modelName,
     timestamp: new Date().toISOString(),
+    ablationType: targetSection ? "subsection" : "top-level",
+    targetSection: targetSection ?? undefined,
     baseline: {
       passed: baselinePassed,
       failed: baselineFailed,
@@ -256,26 +297,34 @@ async function main(): Promise<void> {
   const resultsDir = join(ablationDir, "results", modelName);
   mkdirSync(resultsDir, { recursive: true });
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const outputPath = join(resultsDir, `${timestamp}.json`);
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .slice(0, 19);
+  const suffix = targetSection ? `_subsection_${targetSection}` : "";
+  const outputPath = join(resultsDir, `${timestamp}${suffix}.json`);
   writeFileSync(outputPath, JSON.stringify(summary, null, 2));
 
   // Step 6: Print final summary
   console.log("\n\n" + "═".repeat(60));
-  console.log("ABLATION EXPERIMENT COMPLETE");
+  console.log(
+    targetSection
+      ? `SUBSECTION ABLATION COMPLETE (${targetSection})`
+      : "ABLATION EXPERIMENT COMPLETE",
+  );
   console.log("═".repeat(60));
   console.log(`Model: ${modelName}`);
   console.log(`Baseline: ${baselinePassed}/${baselineResults.length} passed`);
   console.log(`Results written to: ${outputPath}\n`);
 
   console.log(
-    `${"Section".padEnd(35)} | ${"Verdict".padEnd(12)} | ${"Regr".padStart(4)} | ${"Impr".padStart(4)} | ${"Tokens".padStart(6)} | Score`,
+    `${"Section".padEnd(40)} | ${"Verdict".padEnd(12)} | ${"Regr".padStart(4)} | ${"Impr".padStart(4)} | ${"Tokens".padStart(6)} | Score`,
   );
-  console.log("-".repeat(90));
+  console.log("-".repeat(95));
 
   for (const s of sectionResults) {
     console.log(
-      `${s.name.padEnd(35)} | ${s.verdict.padEnd(12)} | ${String(s.regressions.length).padStart(4)} | ${String(s.improvements.length).padStart(4)} | ${String(s.tokensInSection).padStart(6)} | ${s.score.passed}/${s.score.passed + s.score.failed}`,
+      `${s.name.padEnd(40)} | ${s.verdict.padEnd(12)} | ${String(s.regressions.length).padStart(4)} | ${String(s.improvements.length).padStart(4)} | ${String(s.tokensInSection).padStart(6)} | ${s.score.passed}/${s.score.passed + s.score.failed}`,
     );
   }
 
@@ -287,8 +336,12 @@ async function main(): Promise<void> {
     .reduce((sum, s) => sum + s.tokensInSection, 0);
 
   console.log(`\nToken budget summary:`);
-  console.log(`  Essential/Marginal sections: ~${essentialTokens} tokens`);
-  console.log(`  Dispensable sections:        ~${dispensableTokens} tokens (can be removed)`);
+  console.log(
+    `  Essential/Marginal sections: ~${essentialTokens} tokens`,
+  );
+  console.log(
+    `  Dispensable sections:        ~${dispensableTokens} tokens (can be removed)`,
+  );
 
   await closeClient();
 }
