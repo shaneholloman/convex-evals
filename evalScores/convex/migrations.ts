@@ -143,6 +143,79 @@ export const fixIncompleteCompletedRuns = migrations.define({
   },
 });
 
+/**
+ * Fix runs with evals stuck in "pending" because the runner's error handler
+ * did not call completeEval. This migration handles two cases:
+ *
+ * 1. Runs marked "failed" by fixIncompleteCompletedRuns — marks pending evals
+ *    as failed and restores the run to "completed".
+ * 2. Runs still marked "completed" but with pending evals — marks the pending
+ *    evals as failed so isFullyCompletedRun returns true.
+ */
+export const fixPendingEvalsAndRestoreRuns = migrations.define({
+  table: "runs",
+  migrateOne: async (ctx, doc) => {
+    const isMarkedFailedByMigration =
+      doc.status.kind === "failed" &&
+      doc.status.failureReason?.includes(
+        "detected by fixIncompleteCompletedRuns migration",
+      );
+    const isCompletedWithPossiblePending = doc.status.kind === "completed";
+
+    if (!isMarkedFailedByMigration && !isCompletedWithPossiblePending) return;
+
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("by_runId", (q) => q.eq("runId", doc._id))
+      .collect();
+
+    // Mark any non-terminal evals as failed
+    let fixedCount = 0;
+    for (const evalDoc of evals) {
+      if (
+        evalDoc.status.kind !== "passed" &&
+        evalDoc.status.kind !== "failed"
+      ) {
+        await ctx.db.patch(evalDoc._id, {
+          status: {
+            kind: "failed" as const,
+            failureReason:
+              "Eval stuck in pending — runner error handler did not call completeEval",
+            durationMs: 0,
+          },
+        });
+        fixedCount++;
+      }
+    }
+
+    if (fixedCount === 0) return; // nothing to fix
+
+    // For runs marked failed by the earlier migration, restore to "completed"
+    // now that all evals are terminal.
+    if (
+      doc.status.kind === "failed" &&
+      doc.status.failureReason?.includes(
+        "detected by fixIncompleteCompletedRuns migration",
+      )
+    ) {
+      const planned = doc.plannedEvals.length;
+      const finished =
+        evals.filter(
+          (e) => e.status.kind === "passed" || e.status.kind === "failed",
+        ).length + fixedCount;
+
+      if (finished >= planned) {
+        return {
+          status: {
+            kind: "completed" as const,
+            durationMs: doc.status.durationMs,
+          },
+        };
+      }
+    }
+  },
+});
+
 // ── Runner functions ─────────────────────────────────────────────────
 
 /** Run a single named migration via CLI: npx convex run migrations:run '{fn: "migrations:backfillRunFields"}' */
@@ -152,4 +225,5 @@ export const run = migrations.runner();
 export const runAll = migrations.runner([
   internal.migrations.backfillRunFields,
   internal.migrations.fixIncompleteCompletedRuns,
+  internal.migrations.fixPendingEvalsAndRestoreRuns,
 ]);

@@ -29,6 +29,7 @@ import {
   startRun,
   completeRun,
   startEval,
+  completeEval,
   getOrUploadEvalSource,
   printEvalSummary,
   closeClient,
@@ -292,6 +293,18 @@ async function processOneEval(
       directory_path: null,
       scores: {},
     });
+
+    // Mark the eval as failed in Convex so the run can be fully completed.
+    // Without this, the eval stays "pending" and isFullyCompletedRun returns
+    // false, preventing the run from appearing on the leaderboard.
+    if (evalId) {
+      await completeEval(evalId, {
+        kind: "failed",
+        failureReason: `error: ${String(e)}`,
+        durationMs: Date.now() - evalStartTime,
+      });
+    }
+
     logProgress(
       evalPathStr,
       allResults[allResults.length - 1],

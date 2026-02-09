@@ -8,11 +8,13 @@
 + Run `bun run test` to run all test suites (runner unit tests + evalScores backend tests). Do this after making changes to the runner or evalScores backend.
 
 ## Convex Deployments
-
+[text](https://www.convex.dev/llm-leaderboard/with-guidelines)
 The evalScores backend has two Convex deployments:
 
 + **Production**: `https://fabulous-panther-525.convex.cloud` — used by CI/GitHub Actions. The GitHub secret `CONVEX_EVAL_URL` must point to this URL.
 + **Development**: `https://brazen-pelican-414.convex.cloud` — used for local development (`bun run dev` in evalScores/).
+
+The Convex LLM leaderboard (https://www.convex.dev/llm-leaderboard/) uses the dat from the production version of this convex deployment.
 
 The runner communicates with the Convex backend via `ConvexClient` using the public mutations/queries in `evalScores/convex/admin.ts`. Authentication is done via a bearer token passed as an argument to each function (validated against the `authTokens` table). The GitHub secret `CONVEX_AUTH_TOKEN` holds this token for CI.
 
