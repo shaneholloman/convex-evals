@@ -459,9 +459,18 @@ function logProgress(
   );
 }
 
-// ── Run ───────────────────────────────────────────────────────────────
+// ── Run (only when executed directly, not when imported) ──────────────
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// Bun sets import.meta.main to true when the file is the entrypoint.
+// We also check process.argv as a fallback for other runtimes.
+const isMain =
+  (import.meta as { main?: boolean }).main === true ||
+  process.argv[1]?.replace(/\\/g, "/").endsWith("runner/index.ts") ||
+  process.argv[1]?.replace(/\\/g, "/").endsWith("runner/index.js");
+
+if (isMain) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
