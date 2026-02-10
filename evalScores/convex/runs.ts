@@ -406,43 +406,27 @@ export const leaderboardScores = query({
     }),
   ),
   handler: async (ctx, args) => {
-    // Fetch completed runs, filtered by experiment and limited to last 60 days
     const sixtyDaysAgo = Date.now() - LEADERBOARD_MAX_AGE_MS;
-    const allRuns = await ctx.db
-      .query("runs")
-      .withIndex("by_experiment", (q) =>
-        q.eq("experiment", args.experiment).gte("_creationTime", sixtyDaysAgo))
-      .order("desc")
-      .collect();
 
-    // Only include runs marked as completed
-    const completedRuns = allRuns.filter((r) => r.status.kind === "completed");
+    // Collect distinct model names from the experiments table to avoid
+    // scanning every run.  The "default" experiment (experiment === undefined)
+    // uses experiment name "default" in the experiments table.
+    const experiments = await ctx.db.query("experiments").collect();
+    const allModels = new Set<string>();
+    for (const exp of experiments) {
+      for (const m of exp.models) allModels.add(m);
+    }
 
-    // Fetch evals for each completed run and filter to only fully-completed runs
-    // (all planned evals have a terminal status). Also pre-compute scores.
     type ScoredRun = {
       run: Doc<"runs">;
       scores: ReturnType<typeof computeRunScoresFromEvals>;
     };
-    const scoredRuns: ScoredRun[] = [];
-    await Promise.all(
-      completedRuns.map(async (run) => {
-        const evals = await ctx.db
-          .query("evals")
-          .withIndex("by_runId", (q) => q.eq("runId", run._id))
-          .collect();
-        if (!isFullyCompletedRun(run, evals)) return;
-        scoredRuns.push({ run, scores: computeRunScoresFromEvals(evals) });
-      }),
-    );
 
-    // Group by model
-    const byModel = new Map<string, ScoredRun[]>();
-    for (const sr of scoredRuns) {
-      const existing = byModel.get(sr.run.model) ?? [];
-      existing.push(sr);
-      byModel.set(sr.run.model, existing);
-    }
+    // For each model, fetch only enough recent runs to fill LEADERBOARD_HISTORY_SIZE
+    // scored entries. We over-fetch slightly (3×) to account for incomplete /
+    // wrong-experiment runs that will be filtered out.
+    const FETCH_MULTIPLIER = 3;
+    const perModelLimit = LEADERBOARD_HISTORY_SIZE * FETCH_MULTIPLIER;
 
     const results: Array<{
       model: string;
@@ -456,48 +440,90 @@ export const leaderboardScores = query({
       latestRunTime: number;
     }> = [];
 
-    for (const [model, runs] of byModel) {
-      // Sort desc by creation time (may be out of order due to async)
-      runs.sort((a, b) => b.run._creationTime - a.run._creationTime);
-      const recentRuns = runs.slice(0, LEADERBOARD_HISTORY_SIZE);
-      const latest = recentRuns[0];
+    await Promise.all(
+      Array.from(allModels).map(async (model) => {
+        // Use the by_model index — it stores [model, _creationTime] so we get
+        // recent runs first with .order("desc") and can apply a tight .take().
+        const candidateRuns = await ctx.db
+          .query("runs")
+          .withIndex("by_model", (q) =>
+            q.eq("model", model).gte("_creationTime", sixtyDaysAgo))
+          .order("desc")
+          .take(perModelLimit);
 
-      // Compute mean and standard deviation for totalScore
-      const totalScores = recentRuns.map((sr) => sr.scores.totalScore);
-      const { mean: totalScore, stdDev: totalScoreErrorBar } =
-        computeMeanAndStdDev(totalScores);
+        // Filter to completed runs matching the requested experiment
+        const completedRuns = candidateRuns.filter(
+          (r) =>
+            r.status.kind === "completed" &&
+            r.experiment === args.experiment,
+        );
 
-      // Compute mean and error bars for each category
-      const allCategories = new Set<string>();
-      for (const sr of recentRuns) {
-        for (const cat of Object.keys(sr.scores.scores)) {
-          allCategories.add(cat);
+        // Score each run (fetch its evals), stopping once we have enough
+        const scoredRuns: ScoredRun[] = [];
+        // Process sequentially so we can short-circuit, but parallelise the
+        // eval fetches in small batches for throughput.
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < completedRuns.length && scoredRuns.length < LEADERBOARD_HISTORY_SIZE; i += BATCH_SIZE) {
+          const batch = completedRuns.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.all(
+            batch.map(async (run): Promise<ScoredRun | null> => {
+              const evals = await ctx.db
+                .query("evals")
+                .withIndex("by_runId", (q) => q.eq("runId", run._id))
+                .collect();
+              if (!isFullyCompletedRun(run, evals)) return null;
+              return { run, scores: computeRunScoresFromEvals(evals) };
+            }),
+          );
+          for (const sr of batchResults) {
+            if (sr && scoredRuns.length < LEADERBOARD_HISTORY_SIZE) {
+              scoredRuns.push(sr);
+            }
+          }
         }
-      }
 
-      const scores: Record<string, number> = {};
-      const scoreErrorBars: Record<string, number> = {};
-      for (const cat of allCategories) {
-        const catScores = recentRuns
-          .map((sr) => sr.scores.scores[cat])
-          .filter((s): s is number => s !== undefined);
-        const { mean, stdDev } = computeMeanAndStdDev(catScores);
-        scores[cat] = mean;
-        scoreErrorBars[cat] = stdDev;
-      }
+        if (scoredRuns.length === 0) return;
 
-      results.push({
-        model,
-        formattedName: latest.run.formattedName,
-        totalScore,
-        totalScoreErrorBar,
-        scores,
-        scoreErrorBars,
-        runCount: runs.length,
-        latestRunId: latest.run._id,
-        latestRunTime: latest.run._creationTime,
-      });
-    }
+        // Runs are already sorted desc by _creationTime from the index query
+        const latest = scoredRuns[0];
+
+        // Compute mean and standard deviation for totalScore
+        const totalScores = scoredRuns.map((sr) => sr.scores.totalScore);
+        const { mean: totalScore, stdDev: totalScoreErrorBar } =
+          computeMeanAndStdDev(totalScores);
+
+        // Compute mean and error bars for each category
+        const allCategories = new Set<string>();
+        for (const sr of scoredRuns) {
+          for (const cat of Object.keys(sr.scores.scores)) {
+            allCategories.add(cat);
+          }
+        }
+
+        const scores: Record<string, number> = {};
+        const scoreErrorBars: Record<string, number> = {};
+        for (const cat of allCategories) {
+          const catScores = scoredRuns
+            .map((sr) => sr.scores.scores[cat])
+            .filter((s): s is number => s !== undefined);
+          const { mean, stdDev } = computeMeanAndStdDev(catScores);
+          scores[cat] = mean;
+          scoreErrorBars[cat] = stdDev;
+        }
+
+        results.push({
+          model,
+          formattedName: latest.run.formattedName,
+          totalScore,
+          totalScoreErrorBar,
+          scores,
+          scoreErrorBars,
+          runCount: scoredRuns.length,
+          latestRunId: latest.run._id,
+          latestRunTime: latest.run._creationTime,
+        });
+      }),
+    );
 
     // Sort by model name for consistent ordering
     results.sort((a, b) => a.model.localeCompare(b.model));

@@ -39,8 +39,19 @@ async function main(): Promise<void> {
 
   const client = new ConvexHttpClient(url);
 
-  const [defaultScores, noGuidelinesScores, agentsMdScores] = await Promise.all([
-    client.query(api.runs.leaderboardScores, {}),
+  // Fetch each experiment independently — the default (full guidelines) query
+  // can fail when production has too many runs (Convex resource limits).
+  let defaultScores: LeaderboardRow[] = [];
+  let defaultFailed = false;
+  try {
+    defaultScores = (await client.query(api.runs.leaderboardScores, {})) as LeaderboardRow[];
+  } catch {
+    defaultFailed = true;
+    console.warn("⚠ Default (full guidelines) query failed — likely too many runs in production.");
+    console.warn("  Full-guidelines column will show '—'. Check the leaderboard website for those scores.\n");
+  }
+
+  const [noGuidelinesScores, agentsMdScores] = await Promise.all([
     client.query(api.runs.leaderboardScores, { experiment: "no_guidelines" }),
     client.query(api.runs.leaderboardScores, { experiment: "agents_md" }),
   ]);
@@ -90,6 +101,37 @@ async function main(): Promise<void> {
     const name = (full ?? noGl ?? agents)?.formattedName ?? model;
     console.log(
       `${name.padEnd(23)} | ${fullStr.padEnd(15)} | ${noGlStr.padEnd(13)} | ${agentsStr.padEnd(20)} | ${agentsVsFull.padEnd(13)} | ${agentsVsNoGl}`,
+    );
+  }
+
+  // Summary statistics: mean delta across all models for agents_md vs no_guidelines
+  const agentsVsNoGlDeltas: number[] = [];
+  const agentsVsFullDeltas: number[] = [];
+  for (const model of MODELS_OF_INTEREST) {
+    const full = defaultMap.get(model);
+    const noGl = noGlMap.get(model);
+    const agents = agentsMap.get(model);
+    if (agents && noGl) agentsVsNoGlDeltas.push(agents.totalScore - noGl.totalScore);
+    if (agents && full) agentsVsFullDeltas.push(agents.totalScore - full.totalScore);
+  }
+  const mean = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+  console.log("\n--- Summary ---");
+  if (agentsVsNoGlDeltas.length > 0) {
+    const m = mean(agentsVsNoGlDeltas);
+    console.log(
+      `AGENTS.md vs No Guidelines (mean across ${agentsVsNoGlDeltas.length} models): ${m >= 0 ? "+" : ""}${(m * 100).toFixed(1)}%`,
+    );
+  }
+  if (agentsVsFullDeltas.length > 0) {
+    const m = mean(agentsVsFullDeltas);
+    console.log(
+      `AGENTS.md vs Full Guidelines (mean across ${agentsVsFullDeltas.length} models): ${m >= 0 ? "+" : ""}${(m * 100).toFixed(1)}%`,
+    );
+  }
+  if (defaultFailed) {
+    console.log(
+      "\n⚠ Full guidelines data unavailable. Check https://www.convex.dev/llm-leaderboard/with-guidelines",
     );
   }
 

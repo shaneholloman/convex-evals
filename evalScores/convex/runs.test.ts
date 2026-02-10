@@ -233,8 +233,8 @@ describe("leaderboardScores", () => {
     // Mean = (0.5 + 0.5 + 1.0 + 1.0 + 1.0) / 5 = 4.0 / 5 = 0.8
     expect(entry.totalScore).toBeCloseTo(0.8);
 
-    // Total runs count = 7
-    expect(entry.runCount).toBe(7);
+    // runCount reflects the number of runs used in the statistics (capped at LEADERBOARD_HISTORY_SIZE)
+    expect(entry.runCount).toBe(5);
   });
 
   it("filters by experiment correctly", async () => {
