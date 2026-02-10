@@ -424,6 +424,271 @@ export const exampleQuery = query({
   ]),
 ]);
 
+// ── Compact guidelines (ablation-validated for AGENTS.md) ───────────────────
+// Excludes: validator_guidelines, full_text_search_guidelines;
+// function_guidelines excludes new_function_syntax, function_references;
+// validators, function_registration, function_calling, pagination are compacted.
+
+export const COMPACT_CONVEX_GUIDELINES: GuidelineSection = section(
+  "convex_guidelines",
+  [
+    section("function_guidelines", [
+      section("http_endpoint_syntax", [
+        guideline(`HTTP endpoints are defined in \`convex/http.ts\` and require an \`httpAction\` decorator. For example:
+\`\`\`typescript
+import { httpRouter } from "convex/server";
+import { httpAction } from "./_generated/server";
+const http = httpRouter();
+http.route({
+    path: "/echo",
+    method: "POST",
+    handler: httpAction(async (ctx, req) => {
+    const body = await req.bytes();
+    return new Response(body, { status: 200 });
+    }),
+});
+\`\`\``),
+        guideline(
+          'HTTP endpoints are always registered at the exact path you specify in the `path` field. For example, if you specify `/api/someRoute`, the endpoint will be registered at `/api/someRoute`.',
+        ),
+      ]),
+      section("validators", [
+        guideline(
+          "Use `v.null()` when a function returns null. JavaScript `undefined` is not valid; use `null` instead.",
+        ),
+        guideline(
+          "Use `v.array(validator)` for arrays, `v.union(...)` for unions, and `v.object({ ... })` for objects. Discriminated unions: use `v.literal(\"kind\")` with `v.object({ kind: v.literal(\"a\"), ... })`.",
+        ),
+        guideline(
+          "Common validators: `v.id(tableName)`, `v.string()`, `v.number()`, `v.boolean()`, `v.int64()` (not v.bigint()), `v.record(keys, values)` (not v.map/v.set).",
+        ),
+      ]),
+      section("function_registration", [
+        guideline(
+          "Use `internalQuery`, `internalMutation`, `internalAction` for private functions (from `./_generated/server`). Use `query`, `mutation`, `action` for public API. Do not register via `api` or `internal` objects.",
+        ),
+        guideline(
+          "ALWAYS include `args` and `returns` validators for every function. Use `returns: v.null()` when a function returns nothing.",
+        ),
+      ]),
+      section("function_calling", [
+        guideline("Use `ctx.runQuery` to call a query from a query, mutation, or action."),
+        guideline("Use `ctx.runMutation` to call a mutation from a mutation or action."),
+        guideline("Use `ctx.runAction` to call an action from an action."),
+        guideline(
+          "Only call an action from another action when crossing runtimes (e.g. V8 to Node). Otherwise use a shared helper async function.",
+        ),
+        guideline(
+          "Minimize action→query/mutation calls; each call is a separate transaction and can introduce race conditions.",
+        ),
+        guideline(
+          "All calls take a FunctionReference (e.g. `api.module.f`). Do not pass the function directly. For same-file calls, add a type annotation on the return value to avoid TypeScript circularity.",
+        ),
+      ]),
+      section("api_design", [
+        guideline(
+          "Convex uses file-based routing, so thoughtfully organize files with public query, mutation, or action functions within the `convex/` directory.",
+        ),
+        guideline("Use `query`, `mutation`, and `action` to define public functions."),
+        guideline(
+          "Use `internalQuery`, `internalMutation`, and `internalAction` to define private, internal functions.",
+        ),
+      ]),
+      section("pagination", [
+        guideline("Paginated queries return results in incremental pages via `.paginate(paginationOpts)`."),
+        guideline(
+          "Use `paginationOptsValidator` in args; pass `{ numItems, cursor }` where cursor is `v.union(v.string(), v.null())`. Return value has `page`, `isDone`, and `continueCursor`.",
+        ),
+        guideline(`Example: \`args: { paginationOpts: paginationOptsValidator, ... }\`, then \`ctx.db.query(\"table\").withIndex(\"by_x\", q => q.eq(\"x\", args.x)).order(\"desc\").paginate(args.paginationOpts)\`.`),
+      ]),
+    ]),
+    section("schema_guidelines", [
+      guideline("Always define your schema in `convex/schema.ts`."),
+      guideline("Always import the schema definition functions from `convex/server`."),
+      guideline(
+        'System fields are automatically added to all documents and are prefixed with an underscore. The two system fields that are automatically added to all documents are `_creationTime` which has the validator `v.number()` and `_id` which has the validator `v.id(tableName)`.',
+      ),
+      guideline(
+        'Always include all index fields in the index name. For example, if an index is defined as `["field1", "field2"]`, the index name should be "by_field1_and_field2".',
+      ),
+      guideline(
+        'Index fields must be queried in the same order they are defined. If you want to be able to query by "field1" then "field2" and by "field2" then "field1", you must create separate indexes.',
+      ),
+    ]),
+    section("typescript_guidelines", [
+      guideline(
+        "You can use the helper typescript type `Id` imported from './_generated/dataModel' to get the type of the id for a given table. For example if there is a table called 'users' you can use `Id<'users'>` to get the type of the id for that table.",
+      ),
+      guideline(`If you need to define a \`Record\` make sure that you correctly provide the type of the key and value in the type. For example a validator \`v.record(v.id('users'), v.string())\` would have the type \`Record<Id<'users'>, string>\`. Below is an example of using \`Record\` with an \`Id\` type in a query:
+\`\`\`ts
+import { query } from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
+
+export const exampleQuery = query({
+    args: { userIds: v.array(v.id("users")) },
+    returns: v.record(v.id("users"), v.string()),
+    handler: async (ctx, args) => {
+        const idToUsername: Record<Id<"users">, string> = {};
+        for (const userId of args.userIds) {
+            const user = await ctx.db.get("users", userId);
+            if (user) {
+                idToUsername[user._id] = user.username;
+            }
+        }
+
+        return idToUsername;
+    },
+});
+\`\`\``),
+      guideline(
+        "Be strict with types, particularly around id's of documents. For example, if a function takes in an id for a document in the 'users' table, take in `Id<'users'>` rather than `string`.",
+      ),
+      guideline("Always use `as const` for string literals in discriminated union types."),
+      guideline(
+        "When using the `Array` type, make sure to always define your arrays as `const array: Array<T> = [...];`",
+      ),
+      guideline(
+        "When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`",
+      ),
+      guideline(
+        "Always add `@types/node` to your `package.json` when using any Node.js built-in modules.",
+      ),
+    ]),
+    section("query_guidelines", [
+      guideline(
+        "Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.",
+      ),
+      guideline(
+        "Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(row._id)` on each result.",
+      ),
+      guideline(
+        "Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.",
+      ),
+      guideline(
+        "When using async iteration, don't use `.collect()` or `.take(n)` on the result of a query. Instead, use the `for await (const row of query)` syntax.",
+      ),
+      section("ordering", [
+        guideline(
+          "By default Convex always returns documents in ascending `_creationTime` order.",
+        ),
+        guideline(
+          "You can use `.order('asc')` or `.order('desc')` to pick whether a query is in ascending or descending order. If the order isn't specified, it defaults to ascending.",
+        ),
+        guideline(
+          "Document queries that use indexes will be ordered based on the columns in the index and can avoid slow table scans.",
+        ),
+      ]),
+    ]),
+    section("mutation_guidelines", [
+      guideline(
+        'Use `ctx.db.replace` to fully replace an existing document. This method will throw an error if the document does not exist. Syntax: `await ctx.db.replace(\'tasks\', taskId, { name: \'Buy milk\', completed: false })`',
+      ),
+      guideline(
+        "Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist. Syntax: `await ctx.db.patch('tasks', taskId, { completed: true })`",
+      ),
+    ]),
+    section("action_guidelines", [
+      guideline(
+        'Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.',
+      ),
+      guideline(
+        "Never use `ctx.db` inside of an action. Actions don't have access to the database.",
+      ),
+      guideline(`Below is an example of the syntax for an action:
+\`\`\`ts
+import { action } from "./_generated/server";
+
+export const exampleAction = action({
+    args: {},
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        console.log("This action does not return anything");
+        return null;
+    },
+});
+\`\`\``),
+    ]),
+    section("scheduling_guidelines", [
+      section("cron_guidelines", [
+        guideline(
+          "Only use the `crons.interval` or `crons.cron` methods to schedule cron jobs. Do NOT use the `crons.hourly`, `crons.daily`, or `crons.weekly` helpers.",
+        ),
+        guideline(
+          "Both cron methods take in a FunctionReference. Do NOT try to pass the function directly into one of these methods.",
+        ),
+        guideline(`Define crons by declaring the top-level \`crons\` object, calling some methods on it, and then exporting it as default. For example,
+\`\`\`ts
+import { cronJobs } from "convex/server";
+import { internal } from "./_generated/api";
+import { internalAction } from "./_generated/server";
+
+const empty = internalAction({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    console.log("empty");
+  },
+});
+
+const crons = cronJobs();
+
+// Run \`internal.crons.empty\` every two hours.
+crons.interval("delete inactive users", { hours: 2 }, internal.crons.empty, {});
+
+export default crons;
+\`\`\``),
+        guideline(
+          "You can register Convex functions within `crons.ts` just like any other file.",
+        ),
+        guideline(
+          "If a cron calls an internal function, always import the `internal` object from '_generated/api', even if the internal function is registered in the same file.",
+        ),
+      ]),
+    ]),
+    section("file_storage_guidelines", [
+      guideline(
+        "Convex includes file storage for large files like images, videos, and PDFs.",
+      ),
+      guideline(
+        "The `ctx.storage.getUrl()` method returns a signed URL for a given file. It returns `null` if the file doesn't exist.",
+      ),
+      guideline(`Do NOT use the deprecated \`ctx.storage.getMetadata\` call for loading a file's metadata.
+
+Instead, query the \`_storage\` system table. For example, you can use \`ctx.db.system.get\` to get an \`Id<"_storage">\`.
+\`\`\`
+import { query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+type FileMetadata = {
+    _id: Id<"_storage">;
+    _creationTime: number;
+    contentType?: string;
+    sha256: string;
+    size: number;
+}
+
+export const exampleQuery = query({
+    args: { fileId: v.id("_storage") },
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        const metadata: FileMetadata | null = await ctx.db.system.get("_storage", args.fileId);
+        console.log(metadata);
+        return null;
+    },
+});
+\`\`\``),
+      guideline(
+        "Convex storage stores items as `Blob` objects. You must convert all items to/from a `Blob` when using Convex storage.",
+      ),
+    ]),
+  ],
+);
+
+/** Render the compact (AGENTS.md) guidelines tree as markdown. */
+export function renderCompactGuidelines(): string {
+  return renderGuidelines(COMPACT_CONVEX_GUIDELINES);
+}
+
 /** Render guidelines tree as markdown. */
 export function renderGuidelines(
   node: Guideline | GuidelineSection,

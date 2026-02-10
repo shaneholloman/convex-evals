@@ -20,7 +20,11 @@ import {
   ModelProvider,
   SYSTEM_PROMPT,
 } from "./index.js";
-import { CONVEX_GUIDELINES, renderGuidelines } from "./guidelines.js";
+import {
+  CONVEX_GUIDELINES,
+  renderCompactGuidelines,
+  renderGuidelines,
+} from "./guidelines.js";
 import {
   webSearchTool,
   WEB_SEARCH_SYSTEM_SUPPLEMENT,
@@ -45,6 +49,7 @@ function getGuidelinesContent(): string {
   }
   const exp = process.env.EVALS_EXPERIMENT;
   if (exp === "no_guidelines" || exp === "web_search_no_guidelines") return "";
+  if (exp === "agents_md") return renderCompactGuidelines();
   return renderGuidelines(CONVEX_GUIDELINES);
 }
 

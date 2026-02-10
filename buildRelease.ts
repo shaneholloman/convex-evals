@@ -4,6 +4,8 @@
  * in multiple formats for different AI coding assistants.
  */
 import { mkdirSync, writeFileSync } from "fs";
+import { encode } from "gpt-tokenizer/encoding/cl100k_base";
+import { renderCompactGuidelines } from "./runner/models/guidelines.js";
 import { buildReleaseRules } from "./runner/models/modelCodegen.js";
 
 const MDC_FRONTMATTER = `---
@@ -33,6 +35,11 @@ function main(): void {
     "dist/convex.instructions.md",
     GITHUB_COPILOT_FRONTMATTER + rules,
   );
+
+  const compactGuidelines = renderCompactGuidelines();
+  writeFileSync("dist/AGENTS.md", compactGuidelines);
+  const compactTokens = encode(compactGuidelines).length;
+  console.log(`dist/AGENTS.md: ${compactTokens} tokens`);
 }
 
 main();
