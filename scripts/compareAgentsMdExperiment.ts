@@ -28,8 +28,10 @@ type LeaderboardRow = {
   latestRunTime: number;
 };
 
+const PRODUCTION_URL = "https://fabulous-panther-525.convex.cloud";
+
 async function main(): Promise<void> {
-  const url = process.env.CONVEX_EVAL_URL;
+  const url = process.env.CONVEX_EVAL_URL ?? PRODUCTION_URL;
   if (!url) {
     console.error("Set CONVEX_EVAL_URL to the Convex deployment URL (e.g. production).");
     process.exit(1);
