@@ -5,6 +5,7 @@ export const experimentLiteral = v.union(
   v.literal("no_guidelines"),
   v.literal("web_search"),
   v.literal("web_search_no_guidelines"),
+  v.literal("agents_md"),
 );
 
 // Step name as union of literals
