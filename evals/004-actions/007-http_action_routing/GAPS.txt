@@ -1,3 +1,4 @@
 actions, http_action_routing:
 
 - It doesn't do prefix path matching correctly. It wants `path: "/api/*"` instead of `prefixPath: "/api/"`
+- covered by guideline: use `pathPrefix: "/api/"` for prefix matching; do not use glob patterns like `path: "/api/*"`.

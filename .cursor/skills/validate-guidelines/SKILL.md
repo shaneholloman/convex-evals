@@ -54,7 +54,7 @@ Default set (preferred for validation): `claude-sonnet-4-5`, `claude-opus-4-6`, 
 
 Check which API keys are set in `.env` (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`). The script skips models whose provider key is missing and prints a warning. Use a subset if some keys are unavailable; at least two models are recommended.
 
-## Step 5: Run the validation script
+## Step 5: Run the validation script and monitor to completion
 
 Do **not** set `CONVEX_EVAL_URL` or `CONVEX_AUTH_TOKEN` so results stay local.
 
@@ -72,6 +72,8 @@ Optional: `--output <path>` to write the JSON summary to a specific file. By def
 
 The script runs each model sequentially: first all evals with "before" guidelines, then all evals with "after" guidelines. Pass/fail is collected and deltas are computed.
 
+**IMPORTANT: You must orchestrate the entire run end-to-end.** Start the command in the background (`block_until_ms: 0`), then poll the terminal output file periodically until the run finishes (look for the `exit_code` footer or the `GUIDELINE VALIDATION SUMMARY` banner). Use exponential backoff for polling (e.g. 30s, 60s, 120s). Do NOT return to the user until the run is fully complete and you have read and analyzed the results. The user expects a complete report, not a "check back later" handoff.
+
 ## Step 6: Parse and report results
 
 The script prints:
@@ -81,9 +83,8 @@ The script prints:
 3. **Improvements**: evals that failed before and passed after (by model).
 4. A **verdict** line: either "REGRESSIONS DETECTED" or "Safe to commit."
 
-Read the script output and present to the user:
+Read the script output and present the full summary table and verdict to the user.
 
-- The summary table and verdict.
 - If there are regressions: list them and recommend reverting or narrowing the guideline change; optionally run analyze-eval on a regression to see why it failed.
 - If there are no regressions: recommend committing the guideline change; mention any improvements.
 
