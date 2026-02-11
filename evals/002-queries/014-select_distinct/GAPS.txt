@@ -1,3 +1,1 @@
 queries, select_distinct:
-
-- It's using a filter for .gt instead of the second parameter to withIndex.

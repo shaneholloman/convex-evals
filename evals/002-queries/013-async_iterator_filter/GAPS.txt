@@ -1,3 +1,1 @@
 queries, async_iterator_filter:
-
-- covered by guideline: iterate queries with `for await (const row of query)` directly; do not use `.iter()`.

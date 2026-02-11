@@ -1,5 +1,1 @@
 actions, run_mutation:
-
-- It's struggling to type the return value of `saveFetchResult` and `fetchAndSave`, necessary to break the type cycle.
-  - It's typing it as `Promise>` for some reason.
-- (resolved) The `any` eslint directives requirement was removed -- no-unsafe-assignment and no-unsafe-return are now disabled since they test eslint fluency, not Convex knowledge.
