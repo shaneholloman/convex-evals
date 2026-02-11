@@ -61,6 +61,7 @@
     "ablation:generate": "bun run scripts/ablateGuidelines.ts",
     "ablation:run": "bun run scripts/runAblation.ts",
     "compare:agents-md": "bun run scripts/compareAgentsMdExperiment.ts",
+    "validate:guidelines": "bun run scripts/validateGuidelines.ts",
     "generate:answer-types": "bun run scripts/generateAnswerTypes.ts",
     "generate:evalscores-types": "cd evalScores && bun run codegen",
     "visualizer": "cd visualizer && bun run dev",
