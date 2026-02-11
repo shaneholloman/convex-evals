@@ -1,4 +1,3 @@
 queries, pagination_index:
 
-- It's defining the paginationOpts validator with a custom object type.
 - It is doing better at pagination, I think calling them the "regular pagination options" hinted at it.

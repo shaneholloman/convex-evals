@@ -1,3 +1,1 @@
 mutations, cascade_delete:
-
-- (resolved) The promise-function-async lint rule was removed since .map((doc) => ctx.db.delete(doc._id)) is functionally correct and idiomatic.

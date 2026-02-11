@@ -451,6 +451,9 @@ http.route({
         guideline(
           'HTTP endpoints are always registered at the exact path you specify in the `path` field. For example, if you specify `/api/someRoute`, the endpoint will be registered at `/api/someRoute`.',
         ),
+        guideline(
+          'For prefix matching use `pathPrefix` instead of `path`: `http.route({ pathPrefix: "/api/", method: "GET", handler: ... })`. Do NOT use glob patterns like `/api/*`.',
+        ),
       ]),
       section("validators", [
         guideline(
@@ -461,6 +464,9 @@ http.route({
         ),
         guideline(
           "Common validators: `v.id(tableName)`, `v.string()`, `v.number()`, `v.boolean()`, `v.int64()` (not v.bigint()), `v.record(keys, values)` (not v.map/v.set).",
+        ),
+        guideline(
+          "There is NO `v.tuple()` validator. Use `v.array(v.union(...))` for mixed-type arrays.",
         ),
       ]),
       section("function_registration", [
@@ -497,7 +503,10 @@ http.route({
       section("pagination", [
         guideline("Paginated queries return results in incremental pages via `.paginate(paginationOpts)`."),
         guideline(
-          "Use `paginationOptsValidator` in args; pass `{ numItems, cursor }` where cursor is `v.union(v.string(), v.null())`. Return value has `page`, `isDone`, and `continueCursor`.",
+          "Import `paginationOptsValidator` from `convex/server` and use `args: { paginationOpts: paginationOptsValidator, ... }`.",
+        ),
+        guideline(
+          "Paginated return object has `page`, `isDone`, and `continueCursor` (NOT `results`). If you add a returns validator for paginated results, use `paginationResultValidator(itemValidator)` from `convex/server`.",
         ),
         guideline(`Example: \`args: { paginationOpts: paginationOptsValidator, ... }\`, then \`ctx.db.query(\"table\").withIndex(\"by_x\", q => q.eq(\"x\", args.x)).order(\"desc\").paginate(args.paginationOpts)\`.`),
       ]),
@@ -565,7 +574,7 @@ export const exampleQuery = query({
         "Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.",
       ),
       guideline(
-        "When using async iteration, don't use `.collect()` or `.take(n)` on the result of a query. Instead, use the `for await (const row of query)` syntax.",
+        "When using async iteration, don't use `.collect()`, `.take(n)`, or `.iter()` on the result of a query. Use `for await (const row of query)` directly.",
       ),
       section("ordering", [
         guideline(
@@ -679,6 +688,9 @@ export const exampleQuery = query({
 \`\`\``),
       guideline(
         "Convex storage stores items as `Blob` objects. You must convert all items to/from a `Blob` when using Convex storage.",
+      ),
+      guideline(
+        "Always use `new Blob([data])` to store and `await blob.text()` to read. Do NOT use `TextEncoder` or `TextDecoder` with Convex storage blobs.",
       ),
     ]),
   ],

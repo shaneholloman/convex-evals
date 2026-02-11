@@ -1,4 +1,1 @@
 queries, pagination_join:
-
-- PaginationOpts are still a custom object, and have cursor as optional vs. nullable
-- Returning custom object, w/o pageStatus, splitCursor
