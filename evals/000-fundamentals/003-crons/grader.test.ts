@@ -21,11 +21,34 @@ test("defines four cron schedules with expected labels and timing", async () => 
     query: (name: string, args: Record<string, unknown>) => Promise<unknown>;
   };
   const adminClient = responseAdminClient as unknown as AdminQuery;
-  const spec: unknown = await adminClient.query(
-    "_system/cli/modules:apiSpec",
-    {},
-  );
-  const specText = JSON.stringify(spec);
+
+  // Try multiple Convex system endpoints that may contain cron metadata.
+  // apiSpec doesn't always surface cron labels, so also check cron_jobs.
+  let specText = "";
+
+  // Primary: check the scheduled-jobs system table via list endpoint
+  try {
+    const cronJobs: unknown = await adminClient.query(
+      "_system/cli/queryTable",
+      { tableName: "_cron_jobs", componentPath: "" },
+    );
+    specText += JSON.stringify(cronJobs);
+  } catch {
+    // Endpoint may not exist in all Convex versions
+  }
+
+  // Fallback: also include apiSpec output
+  try {
+    const spec: unknown = await adminClient.query(
+      "_system/cli/modules:apiSpec",
+      {},
+    );
+    specText += JSON.stringify(spec);
+  } catch {
+    // Endpoint may not exist in all Convex versions
+  }
+
+  expect(specText.length).toBeGreaterThan(0);
   expect(specText).toContain("run every second");
   expect(specText).toContain("run every minute");
   expect(specText).toContain("run every hour");

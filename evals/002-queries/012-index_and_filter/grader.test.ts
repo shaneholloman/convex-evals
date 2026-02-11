@@ -107,15 +107,29 @@ test("getActiveAdults returns results in consistent order", async () => {
 });
 
 test("getActiveAdults handles negative ages", async () => {
+  // The task says "include clear error handling if needed", so models may
+  // reasonably reject negative ages.  Accept either:
+  //   (a) returning matching users (treating negatives as valid), or
+  //   (b) throwing an error (treating negatives as invalid input).
   await addDocuments(responseAdminClient, "users", [
     { name: "Invalid", age: -5, isDeleted: false },
     { name: "Valid", age: 20, isDeleted: false },
   ]);
 
-  const results = await responseClient.query(api.index.getActiveAdults, {
-    minAge: -10,
-  });
+  let threw = false;
+  let results: string[] = [];
+  try {
+    results = await responseClient.query(api.index.getActiveAdults, {
+      minAge: -10,
+    });
+  } catch {
+    // Throwing on negative minAge is also acceptable
+    threw = true;
+  }
 
-  expect(results).toContain("Invalid");
-  expect(results).toContain("Valid");
+  if (!threw) {
+    // If it doesn't throw, it should return both users
+    expect(results).toContain("Invalid");
+    expect(results).toContain("Valid");
+  }
 });

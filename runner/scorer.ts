@@ -459,6 +459,13 @@ function writeFilesystem(
   }
 }
 
+/** Combine stdout and stderr from a shell result into a single string. */
+function combinedOutput(result: { stdout: Buffer; stderr: Buffer }): string {
+  const stdout = result.stdout.toString();
+  const stderr = result.stderr.toString();
+  return [stdout, stderr].filter(Boolean).join("\n");
+}
+
 async function installDependencies(
   projectDir: string,
 ): Promise<Array<{ cmd: string; stdout: string }>> {
@@ -468,9 +475,9 @@ async function installDependencies(
     "bun install",
   );
   if (result.exitCode !== 0) {
-    throw new Error(`Failed to install dependencies:\n${result.text()}`);
+    throw new Error(`Failed to install dependencies:\n${combinedOutput(result)}`);
   }
-  return [{ cmd: "bun install", stdout: result.text() }];
+  return [{ cmd: "bun install", stdout: combinedOutput(result) }];
 }
 
 async function deploy(
@@ -499,17 +506,18 @@ async function deploy(
     "convex dev",
   );
 
-  const stdout = deployResult.text();
+  const stdout = deployResult.stdout.toString();
+  const deployOutput = combinedOutput(deployResult);
   if (deployResult.exitCode !== 0 && !stdout.includes("Convex functions ready!")) {
-    throw new Error(`Failed to deploy:\n${stdout}`);
+    throw new Error(`Failed to deploy:\n${deployOutput}`);
   }
 
   return [
     {
       cmd: "bunx convex codegen --typecheck disable --init",
-      stdout: initResult.text(),
+      stdout: combinedOutput(initResult),
     },
-    { cmd: `bunx convex dev --once --url ${convexUrl}`, stdout },
+    { cmd: `bunx convex dev --once --url ${convexUrl}`, stdout: deployOutput },
   ];
 }
 
@@ -525,11 +533,11 @@ async function typecheckCode(
     "tsc (convex)",
   );
   if (tscConvex.exitCode !== 0) {
-    throw new Error(`Failed to typecheck code:\n${tscConvex.text()}`);
+    throw new Error(`Failed to typecheck code:\n${combinedOutput(tscConvex)}`);
   }
   results.push({
     cmd: `bunx tsc -noEmit -p ${convexDir}`,
-    stdout: tscConvex.text(),
+    stdout: combinedOutput(tscConvex),
   });
 
   const srcDir = resolve(join(projectDir, "src"));
@@ -540,9 +548,9 @@ async function typecheckCode(
       "tsc (src)",
     );
     if (tscSrc.exitCode !== 0) {
-      throw new Error(`Failed to typecheck code:\n${tscSrc.text()}`);
+      throw new Error(`Failed to typecheck code:\n${combinedOutput(tscSrc)}`);
     }
-    results.push({ cmd: "bunx tsc -noEmit -p .", stdout: tscSrc.text() });
+    results.push({ cmd: "bunx tsc -noEmit -p .", stdout: combinedOutput(tscSrc) });
   }
   return results;
 }
@@ -562,11 +570,11 @@ async function lintCode(
     "eslint (convex)",
   );
   if (eslintConvex.exitCode !== 0) {
-    throw new Error(`Failed to lint code:\n${eslintConvex.text()}`);
+    throw new Error(`Failed to lint code:\n${combinedOutput(eslintConvex)}`);
   }
   results.push({
     cmd: `bunx eslint -c ${eslintConfig} convex`,
-    stdout: eslintConvex.text(),
+    stdout: combinedOutput(eslintConvex),
   });
 
   const srcDir = join(projectDir, "src");
@@ -581,11 +589,11 @@ async function lintCode(
       "eslint (src)",
     );
     if (eslintSrc.exitCode !== 0) {
-      throw new Error(`Failed to lint code:\n${eslintSrc.text()}`);
+      throw new Error(`Failed to lint code:\n${combinedOutput(eslintSrc)}`);
     }
     results.push({
       cmd: `bunx eslint -c ${srcEslintConfig} src`,
-      stdout: eslintSrc.text(),
+      stdout: combinedOutput(eslintSrc),
     });
   }
   return results;
