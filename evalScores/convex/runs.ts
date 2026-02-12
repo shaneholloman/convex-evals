@@ -113,6 +113,89 @@ export const completeRun = internalMutation({
   },
 });
 
+export const deleteRun = internalMutation({
+  args: {
+    runId: v.id("runs"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run) return null;
+
+    // Collect all evals for this run
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("by_runId", (q) => q.eq("runId", args.runId))
+      .collect();
+
+    // Track stats for experiment counter adjustment
+    let totalEvalsCount = evals.length;
+    let passedEvalsCount = 0;
+    const storageIdsToDelete = new Set<string>();
+
+    for (const evalDoc of evals) {
+      if (evalDoc.status.kind === "passed") passedEvalsCount++;
+
+      // Collect storage IDs from evals
+      if (evalDoc.status.kind === "passed" || evalDoc.status.kind === "failed") {
+        const status = evalDoc.status;
+        if ("outputStorageId" in status && status.outputStorageId) {
+          storageIdsToDelete.add(status.outputStorageId);
+        }
+      }
+      if (evalDoc.status.kind === "running" && evalDoc.status.outputStorageId) {
+        storageIdsToDelete.add(evalDoc.status.outputStorageId);
+      }
+      if (evalDoc.evalSourceStorageId) {
+        // Don't delete eval source — it's shared/deduped across runs
+      }
+
+      // Delete all steps for this eval
+      const steps = await ctx.db
+        .query("steps")
+        .withIndex("by_evalId", (q) => q.eq("evalId", evalDoc._id))
+        .collect();
+      for (const step of steps) {
+        await ctx.db.delete(step._id);
+      }
+
+      // Delete the eval
+      await ctx.db.delete(evalDoc._id);
+    }
+
+    // Delete associated storage files (output zips)
+    for (const storageId of storageIdsToDelete) {
+      await ctx.storage.delete(storageId as Id<"_storage">);
+    }
+
+    // Update experiment stats
+    const expName = run.experiment ?? "default";
+    const experiment = await ctx.db
+      .query("experiments")
+      .withIndex("by_name", (q) => q.eq("name", expName))
+      .unique();
+
+    if (experiment) {
+      const wasCompleted =
+        run.status.kind === "completed" || run.status.kind === "failed";
+      await ctx.db.patch(experiment._id, {
+        runCount: Math.max(0, experiment.runCount - 1),
+        completedRuns: Math.max(
+          0,
+          experiment.completedRuns - (wasCompleted ? 1 : 0),
+        ),
+        totalEvals: Math.max(0, experiment.totalEvals - totalEvalsCount),
+        passedEvals: Math.max(0, experiment.passedEvals - passedEvalsCount),
+      });
+    }
+
+    // Delete the run itself
+    await ctx.db.delete(args.runId);
+
+    return null;
+  },
+});
+
 export const getRunDetails = query({
   args: {
     runId: v.id("runs"),

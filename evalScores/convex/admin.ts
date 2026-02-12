@@ -69,6 +69,21 @@ export const completeRun = mutation({
   },
 });
 
+export const deleteRun = mutation({
+  args: {
+    token: v.string(),
+    runId: v.id("runs"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    await assertValidToken(ctx, args.token);
+    await ctx.runMutation(internal.runs.deleteRun, {
+      runId: args.runId,
+    });
+    return null;
+  },
+});
+
 // ── Eval lifecycle ───────────────────────────────────────────────────
 
 export const startEval = mutation({
