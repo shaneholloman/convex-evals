@@ -10,6 +10,7 @@ export enum ModelProvider {
   GOOGLE = "google",
   XAI = "xai",
   MOONSHOT = "moonshot",
+  ZAI = "zai",
 }
 
 export type CIRunFrequency = "daily" | "weekly" | "monthly" | "never";
@@ -255,16 +256,29 @@ export const ALL_MODELS: ModelTemplate[] = [
     ciRunFrequency: "daily",
     usesResponsesApi: false,
   },
+  // Z.AI (GLM) models – direct API
   {
-    name: "zai-org/GLM-4.7",
-    formattedName: "GLM 4.7",
-    maxConcurrency: envInt("TOGETHER_CONCURRENCY", 4),
+    name: "glm-5",
+    formattedName: "GLM 5",
+    maxConcurrency: envInt("ZAI_CONCURRENCY", 4),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
-    provider: ModelProvider.TOGETHER,
-    overrideProxy: "https://api.together.xyz/v1",
+    provider: ModelProvider.ZAI,
+    overrideProxy: "https://api.z.ai/api/paas/v4/",
     supportsTemperature: true,
     ciRunFrequency: "daily",
+    usesResponsesApi: false,
+  },
+  {
+    name: "glm-4.7",
+    formattedName: "GLM 4.7",
+    maxConcurrency: envInt("ZAI_CONCURRENCY", 4),
+    requiresChainOfThought: false,
+    usesSystemPrompt: true,
+    provider: ModelProvider.ZAI,
+    overrideProxy: "https://api.z.ai/api/paas/v4/",
+    supportsTemperature: true,
+    ciRunFrequency: "weekly",
     usesResponsesApi: false,
   },
   // Moonshot AI (Kimi) models
@@ -383,6 +397,7 @@ export function getApiKeyEnvVar(provider: ModelProvider): string {
     [ModelProvider.GOOGLE]: "GOOGLE_API_KEY",
     [ModelProvider.XAI]: "XAI_API_KEY",
     [ModelProvider.MOONSHOT]: "MOONSHOT_API_KEY",
+    [ModelProvider.ZAI]: "ZAI_API_KEY",
   };
   return map[provider];
 }
@@ -396,6 +411,7 @@ export function getProviderBaseUrl(provider: ModelProvider): string {
     [ModelProvider.GOOGLE]: "https://generativelanguage.googleapis.com/v1beta",
     [ModelProvider.XAI]: "https://api.x.ai/v1",
     [ModelProvider.MOONSHOT]: "https://api.moonshot.ai/v1",
+    [ModelProvider.ZAI]: "https://api.z.ai/api/paas/v4/",
   };
   return map[provider];
 }

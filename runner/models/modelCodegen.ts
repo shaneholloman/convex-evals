@@ -107,6 +107,15 @@ function createLanguageModel(
       return moonshot.chatModel(template.name);
     }
 
+    case ModelProvider.ZAI: {
+      const zai = createOpenAICompatible({
+        name: "zai",
+        baseURL: template.overrideProxy ?? "https://api.z.ai/api/paas/v4/",
+        apiKey,
+      });
+      return zai.chatModel(template.name);
+    }
+
     default: {
       const _exhaustive: never = template.provider;
       throw new Error(`Unsupported provider: ${_exhaustive}`);
