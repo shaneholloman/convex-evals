@@ -237,12 +237,31 @@ export async function runEvalsForModel(
 
     const modelImpl = new Model(apiKey, model);
     const allResults: EvalIndividualResult[] = [];
+    let rateLimitCount = 0;
+    const RATE_LIMIT_ABORT_THRESHOLD = 3;
 
     // Process evals with concurrency control
     const queue = [...filteredPaths];
     const inFlight = new Set<Promise<void>>();
 
     while (queue.length > 0 || inFlight.size > 0) {
+      // Abort early if we've hit too many rate-limit errors
+      if (rateLimitCount >= RATE_LIMIT_ABORT_THRESHOLD) {
+        // Drain remaining queue — don't start new evals
+        if (queue.length > 0) {
+          logInfo(
+            `Aborting run: ${rateLimitCount} rate-limit errors exceeded threshold (${RATE_LIMIT_ABORT_THRESHOLD}). Skipping ${queue.length} remaining eval(s).`,
+          );
+          queue.length = 0;
+        }
+        // Wait for in-flight evals to finish, but don't start new ones
+        if (inFlight.size > 0) {
+          await Promise.race(inFlight);
+          continue;
+        }
+        break;
+      }
+
       while (queue.length > 0 && inFlight.size < model.maxConcurrency) {
         const evalInfo = queue.shift()!;
         const promise = processOneEval(
@@ -253,7 +272,9 @@ export async function runEvalsForModel(
           allResults,
           filteredPaths.length,
           tempdir,
-        ).finally(() => inFlight.delete(promise));
+        ).then((wasRateLimited) => {
+          if (wasRateLimited) rateLimitCount++;
+        }).finally(() => inFlight.delete(promise));
         inFlight.add(promise);
       }
       if (inFlight.size > 0) {
@@ -263,6 +284,22 @@ export async function runEvalsForModel(
 
     // Print summary
     printEvalSummary(model.formattedName, allResults);
+
+    // If we aborted due to rate limits, fail the run so it doesn't
+    // appear on the leaderboard with partial (misleading) results.
+    if (rateLimitCount >= RATE_LIMIT_ABORT_THRESHOLD) {
+      if (runId) {
+        await completeRun(runId, {
+          kind: "failed",
+          failureReason: `[rate_limit] Aborted after ${rateLimitCount} rate-limit errors`,
+          durationMs: Date.now() - runStartTime,
+        });
+        logInfo(
+          `Run failed: aborted after ${rateLimitCount} rate-limit errors`,
+        );
+      }
+      return allResults;
+    }
 
     // Complete run
     if (runId) {
@@ -289,6 +326,7 @@ export async function runEvalsForModel(
   }
 }
 
+/** Process a single eval. Returns `true` if the failure was a rate-limit error. */
 async function processOneEval(
   model: ModelTemplate,
   modelImpl: Model,
@@ -297,7 +335,7 @@ async function processOneEval(
   allResults: EvalIndividualResult[],
   totalEvals: number,
   tempdir: string,
-): Promise<void> {
+): Promise<boolean> {
   const { category, name, evalPath } = evalInfo;
   const evalPathStr = `${category}/${name}`;
 
@@ -352,10 +390,11 @@ async function processOneEval(
     const result = buildEvalResult(category, name, model.name, scores, tempdir);
     allResults.push(result);
     logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
+    return false;
   } catch (e) {
     const errorStr = String(e);
-    const isRateLimit = isRateLimitError(errorStr);
-    const prefix = isRateLimit ? "[rate_limit] " : "";
+    const rateLimited = isRateLimitError(errorStr);
+    const prefix = rateLimited ? "[rate_limit] " : "";
     console.error(`[${evalPathStr}] ERROR: ${errorStr}`);
     allResults.push({
       category,
@@ -388,6 +427,8 @@ async function processOneEval(
       totalEvals,
       evalStartTime,
     );
+
+    return rateLimited;
   }
 }
 
