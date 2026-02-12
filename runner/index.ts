@@ -353,13 +353,16 @@ async function processOneEval(
     allResults.push(result);
     logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
   } catch (e) {
-    console.error(`[${evalPathStr}] ERROR: ${String(e)}`);
+    const errorStr = String(e);
+    const isRateLimit = isRateLimitError(errorStr);
+    const prefix = isRateLimit ? "[rate_limit] " : "";
+    console.error(`[${evalPathStr}] ERROR: ${errorStr}`);
     allResults.push({
       category,
       name,
       passed: false,
       tests_pass_score: 0,
-      failure_reason: `error: ${String(e)}`,
+      failure_reason: `${prefix}error: ${errorStr}`,
       directory_path: null,
       scores: {},
     });
@@ -367,10 +370,13 @@ async function processOneEval(
     // Mark the eval as failed in Convex so the run can be fully completed.
     // Without this, the eval stays "pending" and isFullyCompletedRun returns
     // false, preventing the run from appearing on the leaderboard.
+    // Rate-limit failures are tagged with [rate_limit] so the leaderboard
+    // can exclude them from scoring (they reflect infrastructure limits,
+    // not model quality).
     if (evalId) {
       await completeEval(evalId, {
         kind: "failed",
-        failureReason: `error: ${String(e)}`,
+        failureReason: `${prefix}error: ${errorStr}`,
         durationMs: Date.now() - evalStartTime,
       });
     }
@@ -386,6 +392,19 @@ async function processOneEval(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
+
+/** Detect whether an error is a rate-limit / quota error from the provider. */
+function isRateLimitError(errorStr: string): boolean {
+  const lower = errorStr.toLowerCase();
+  return (
+    lower.includes("rate limit") ||
+    lower.includes("rate_limit") ||
+    lower.includes("too many requests") ||
+    lower.includes("quota") ||
+    lower.includes("429") ||
+    lower.includes("throttl")
+  );
+}
 
 function readExpectedFiles(evalPath: string): Record<string, string> {
   const answerPaths = [...walkAnswer(join(evalPath, "answer"))].sort(

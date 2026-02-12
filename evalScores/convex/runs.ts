@@ -322,6 +322,8 @@ function isFullyCompletedRun(
   const planned = run.plannedEvals.length;
   if (planned === 0) return false; // degenerate case
 
+  // An eval is "finished" if it has a terminal status (passed or failed).
+  // Rate-limit failures still count as finished so the run can complete.
   const finished = evals.filter(
     (e) => e.status.kind === "passed" || e.status.kind === "failed",
   ).length;
@@ -341,16 +343,26 @@ function computeMeanAndStdDev(values: number[]): { mean: number; stdDev: number 
   return { mean, stdDev };
 }
 
+/** Check if a failed eval was caused by a rate-limit / infrastructure error. */
+function isRateLimitFailure(evalDoc: Doc<"evals">): boolean {
+  if (evalDoc.status.kind !== "failed") return false;
+  return evalDoc.status.failureReason.startsWith("[rate_limit]");
+}
+
 /**
  * Compute scores for a single run from its evals.
  * Returns category pass rates and overall pass rate.
+ * Evals that failed due to rate limits are excluded from scoring
+ * since they reflect provider infrastructure limits, not model quality.
  */
 function computeRunScoresFromEvals(
   evals: Doc<"evals">[],
 ): { totalScore: number; scores: Record<string, number> } {
-  // Only count completed evals (passed or failed)
+  // Only count completed evals (passed or failed), excluding rate-limit failures
   const completedEvals = evals.filter(
-    (e) => e.status.kind === "passed" || e.status.kind === "failed",
+    (e) =>
+      (e.status.kind === "passed" || e.status.kind === "failed") &&
+      !isRateLimitFailure(e),
   );
 
   if (completedEvals.length === 0) {
@@ -667,8 +679,10 @@ export const listModels = query({
             .withIndex("by_runId", (q) => q.eq("runId", runId))
             .collect();
           
-          totalEvals += evals.length;
-          passedEvals += evals.filter((e) => e.status.kind === "passed").length;
+          // Exclude rate-limit failures from both total and pass counts
+          const scorable = evals.filter((e) => !isRateLimitFailure(e));
+          totalEvals += scorable.length;
+          passedEvals += scorable.filter((e) => e.status.kind === "passed").length;
         }
         
         return {
