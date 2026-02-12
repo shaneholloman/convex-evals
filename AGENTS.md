@@ -65,6 +65,18 @@ When making schema or data changes to the Convex backend that require migrations
 
 The general pattern is: deploy code first (with loose/compatible schema), run data migrations, then deploy tightened schema.
 
+## Deleting a Run
+
+To delete a run from the production Convex deployment (e.g. if it was corrupted by rate-limit errors), use the `deleteRun` internal mutation. This cascade-deletes all evals, steps, and output storage files associated with the run, and decrements the experiment stats.
+
+```bash
+cd evalScores && npx convex run runs:deleteRun --prod '{"runId": "<convex_document_id>"}'
+```
+
+The `runId` is the Convex document `_id` for the run, which appears in the runner output as `Completed run <id>`. You can also find run IDs via the Convex dashboard or the visualiser.
+
+**Note:** Eval source files are intentionally preserved since they are deduped/shared across runs.
+
 ## Run Analysis Reports
 
 The `reports/` directory contains post-run analysis reports organised by provider and model:
