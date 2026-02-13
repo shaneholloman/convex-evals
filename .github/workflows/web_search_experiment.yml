@@ -12,21 +12,15 @@ jobs:
       max-parallel: 2
       matrix:
         model:
-          - "gpt-5"
-          - "claude-sonnet-4-5"
-          - "gemini-2.5-flash"
-          - "grok-4"
-          - "deepseek-ai/DeepSeek-V3"
+          - "openai/gpt-5"
+          - "anthropic/claude-sonnet-4.5"
+          - "google/gemini-2.5-flash"
+          - "x-ai/grok-4"
+          - "deepseek/deepseek-chat-v3"
 
     env:
       ENVIRONMENT: ci
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-      ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
 

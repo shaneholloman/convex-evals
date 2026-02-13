@@ -12,12 +12,8 @@ import {
 
 describe("ModelProvider enum", () => {
   it("has all expected providers", () => {
-    expect(ModelProvider.ANTHROPIC).toBe("anthropic" as ModelProvider);
     expect(ModelProvider.OPENAI).toBe("openai" as ModelProvider);
-    expect(ModelProvider.TOGETHER).toBe("together" as ModelProvider);
-    expect(ModelProvider.GOOGLE).toBe("google" as ModelProvider);
-    expect(ModelProvider.XAI).toBe("xai" as ModelProvider);
-    expect(ModelProvider.MOONSHOT).toBe("moonshot" as ModelProvider);
+    expect(ModelProvider.OPENROUTER).toBe("openrouter" as ModelProvider);
   });
 });
 
@@ -58,9 +54,10 @@ describe("ALL_MODELS", () => {
 
   it("contains known models", () => {
     const names = ALL_MODELS.map((m) => m.name);
-    expect(names).toContain("gpt-5");
-    expect(names).toContain("claude-opus-4-6");
-    expect(names).toContain("gemini-2.5-flash");
+    expect(names).toContain("gpt-5.2-codex");
+    expect(names).toContain("openai/gpt-5");
+    expect(names).toContain("anthropic/claude-opus-4.6");
+    expect(names).toContain("google/gemini-2.5-flash");
   });
 
   it("has at least one model per provider", () => {
@@ -77,10 +74,10 @@ describe("MODELS_BY_NAME", () => {
   });
 
   it("looks up a model by name", () => {
-    const model = MODELS_BY_NAME["gpt-5"];
+    const model = MODELS_BY_NAME["openai/gpt-5"];
     expect(model).toBeDefined();
     expect(model.formattedName).toBe("GPT-5");
-    expect(model.provider).toBe(ModelProvider.OPENAI);
+    expect(model.provider).toBe(ModelProvider.OPENROUTER);
   });
 
   it("returns undefined for non-existent model", () => {
@@ -101,34 +98,20 @@ describe("SYSTEM_PROMPT", () => {
 
 describe("getApiKeyEnvVar", () => {
   it("returns correct env var for each provider", () => {
-    expect(getApiKeyEnvVar(ModelProvider.ANTHROPIC)).toBe("ANTHROPIC_API_KEY");
     expect(getApiKeyEnvVar(ModelProvider.OPENAI)).toBe("OPENAI_API_KEY");
-    expect(getApiKeyEnvVar(ModelProvider.TOGETHER)).toBe("TOGETHER_API_KEY");
-    expect(getApiKeyEnvVar(ModelProvider.GOOGLE)).toBe("GOOGLE_API_KEY");
-    expect(getApiKeyEnvVar(ModelProvider.XAI)).toBe("XAI_API_KEY");
-    expect(getApiKeyEnvVar(ModelProvider.MOONSHOT)).toBe("MOONSHOT_API_KEY");
+    expect(getApiKeyEnvVar(ModelProvider.OPENROUTER)).toBe(
+      "OPENROUTER_API_KEY",
+    );
   });
 });
 
 describe("getProviderBaseUrl", () => {
   it("returns correct URLs", () => {
-    expect(getProviderBaseUrl(ModelProvider.ANTHROPIC)).toBe(
-      "https://api.anthropic.com/v1",
-    );
     expect(getProviderBaseUrl(ModelProvider.OPENAI)).toBe(
       "https://api.openai.com/v1",
     );
-    expect(getProviderBaseUrl(ModelProvider.TOGETHER)).toBe(
-      "https://api.together.xyz/v1",
-    );
-    expect(getProviderBaseUrl(ModelProvider.GOOGLE)).toBe(
-      "https://generativelanguage.googleapis.com/v1beta",
-    );
-    expect(getProviderBaseUrl(ModelProvider.XAI)).toBe(
-      "https://api.x.ai/v1",
-    );
-    expect(getProviderBaseUrl(ModelProvider.MOONSHOT)).toBe(
-      "https://api.moonshot.ai/v1",
+    expect(getProviderBaseUrl(ModelProvider.OPENROUTER)).toBe(
+      "https://openrouter.ai/api/v1",
     );
   });
 

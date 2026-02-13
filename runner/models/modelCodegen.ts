@@ -7,10 +7,6 @@
  */
 import { generateText, type LanguageModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createXai } from "@ai-sdk/xai";
-import { createTogetherAI } from "@ai-sdk/togetherai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
 import { readFileSync, readdirSync, statSync, existsSync } from "fs";
@@ -73,40 +69,6 @@ function createLanguageModel(
       return openai(template.name);
     }
 
-    case ModelProvider.ANTHROPIC: {
-      const anthropic = createAnthropic({ apiKey });
-      return anthropic(template.name);
-    }
-
-    case ModelProvider.GOOGLE: {
-      const google = createGoogleGenerativeAI({
-        apiKey,
-        ...(template.overrideProxy
-          ? { baseURL: template.overrideProxy }
-          : {}),
-      });
-      return google(template.name);
-    }
-
-    case ModelProvider.XAI: {
-      const xai = createXai({ apiKey });
-      return xai(template.name);
-    }
-
-    case ModelProvider.TOGETHER: {
-      const together = createTogetherAI({ apiKey });
-      return together(template.name);
-    }
-
-    case ModelProvider.MOONSHOT: {
-      const moonshot = createOpenAICompatible({
-        name: "moonshot",
-        baseURL: template.overrideProxy ?? "https://api.moonshot.ai/v1",
-        apiKey,
-      });
-      return moonshot.chatModel(template.name);
-    }
-
     case ModelProvider.OPENROUTER: {
       const openrouter = createOpenAICompatible({
         name: "openrouter",
@@ -127,8 +89,9 @@ function createLanguageModel(
 // ── Token limit helpers ──────────────────────────────────────────────
 
 function getMaxOutputTokens(template: ModelTemplate): number {
-  if (template.provider === ModelProvider.TOGETHER) return 4096;
-  if (template.name === "claude-3-5-sonnet-latest") return 8192;
+  // Former Together models (DeepSeek) had 4096 limit
+  if (template.name.startsWith("deepseek/")) return 4096;
+  if (template.name === "anthropic/claude-3.5-sonnet") return 8192;
   return 16384;
 }
 

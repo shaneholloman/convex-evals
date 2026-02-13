@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: "Model to run ablation against (e.g. gemini-2.5-flash)"
+        description: "Model to run ablation against (e.g. google/gemini-2.5-flash)"
         required: true
-        default: "gemini-2.5-flash"
+        default: "google/gemini-2.5-flash"
         type: string
       section:
         description: "Optional: drill into subsections of a specific section (e.g. function_guidelines)"
@@ -20,13 +20,7 @@ jobs:
     timeout-minutes: 180
     env:
       ENVIRONMENT: ci
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-      ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
     steps:

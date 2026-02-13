@@ -14,21 +14,15 @@ jobs:
       matrix:
         model:
           - "gpt-5.2-codex"
-          - "claude-opus-4-6"
-          - "claude-sonnet-4-5"
-          - "gemini-3-pro-preview"
-          - "kimi-k2.5"
+          - "anthropic/claude-opus-4.6"
+          - "anthropic/claude-sonnet-4.5"
+          - "google/gemini-3-pro-preview"
+          - "moonshotai/kimi-k2.5"
         replicate: [1, 2, 3]
 
     env:
       ENVIRONMENT: ci
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }}
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
-      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-      ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
     steps:
