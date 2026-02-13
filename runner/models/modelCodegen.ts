@@ -107,13 +107,14 @@ function createLanguageModel(
       return moonshot.chatModel(template.name);
     }
 
-    case ModelProvider.ZAI: {
-      const zai = createOpenAICompatible({
-        name: "zai",
-        baseURL: template.overrideProxy ?? "https://api.z.ai/api/paas/v4/",
+    case ModelProvider.OPENROUTER: {
+      const openrouter = createOpenAICompatible({
+        name: "openrouter",
+        baseURL:
+          template.overrideProxy ?? "https://openrouter.ai/api/v1",
         apiKey,
       });
-      return zai.chatModel(template.name);
+      return openrouter.chatModel(template.name);
     }
 
     default: {

@@ -12,7 +12,7 @@ jobs:
       max-parallel: 2
       matrix:
         model:
-          - "glm-5"
+          - "z-ai/glm-5"
 
     env:
       ENVIRONMENT: ci
@@ -23,6 +23,7 @@ jobs:
       XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
       MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
       ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
