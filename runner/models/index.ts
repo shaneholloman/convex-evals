@@ -33,7 +33,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-3.5-sonnet",
     formattedName: "Claude 3.5 Sonnet",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -44,7 +44,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-3.7-sonnet",
     formattedName: "Claude 3.7 Sonnet",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -55,7 +55,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-sonnet-4",
     formattedName: "Claude 4 Sonnet",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -66,7 +66,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-sonnet-4.5",
     formattedName: "Claude 4.5 Sonnet",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -77,7 +77,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-haiku-4.5",
     formattedName: "Claude 4.5 Haiku",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -88,7 +88,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-opus-4.5",
     formattedName: "Claude 4.5 Opus",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -99,7 +99,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "anthropic/claude-opus-4.6",
     formattedName: "Claude 4.6 Opus",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -111,7 +111,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/o4-mini",
     formattedName: "o4-mini",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -122,7 +122,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-4.1",
     formattedName: "GPT-4.1",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -133,7 +133,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-5.1",
     formattedName: "GPT-5.1",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -144,7 +144,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-5.2",
     formattedName: "GPT-5.2",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -179,7 +179,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-5",
     formattedName: "GPT-5",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -190,7 +190,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-5-mini",
     formattedName: "GPT-5 mini",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -201,7 +201,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-5-nano",
     formattedName: "GPT-5 nano",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -213,7 +213,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "deepseek/deepseek-chat-v3",
     formattedName: "DeepSeek V3",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: true,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -224,7 +224,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "deepseek/deepseek-r1",
     formattedName: "DeepSeek R1",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -235,7 +235,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "meta-llama/llama-4-maverick",
     formattedName: "Llama 4 Maverick",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -246,7 +246,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "qwen/qwen3-235b-a22b",
     formattedName: "Qwen3 235B",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -258,7 +258,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "z-ai/glm-5",
     formattedName: "GLM 5",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -269,7 +269,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "z-ai/glm-4.7",
     formattedName: "GLM 4.7",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -281,7 +281,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "moonshotai/kimi-k2-0905",
     formattedName: "Kimi K2",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -292,7 +292,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "moonshotai/kimi-k2.5",
     formattedName: "Kimi K2.5",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
@@ -315,7 +315,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "google/gemini-2.5-pro",
     formattedName: "Gemini 2.5 Pro",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -326,7 +326,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "google/gemini-3-pro-preview",
     formattedName: "Gemini 3 Pro",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -338,7 +338,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "x-ai/grok-4",
     formattedName: "Grok 4",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
@@ -349,7 +349,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "x-ai/grok-3-mini-beta",
     formattedName: "Grok 3 Mini (Beta)",
-    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
