@@ -12,7 +12,6 @@ import {
 
 describe("ModelProvider enum", () => {
   it("has all expected providers", () => {
-    expect(ModelProvider.OPENAI).toBe("openai" as ModelProvider);
     expect(ModelProvider.OPENROUTER).toBe("openrouter" as ModelProvider);
   });
 });
@@ -54,7 +53,7 @@ describe("ALL_MODELS", () => {
 
   it("contains known models", () => {
     const names = ALL_MODELS.map((m) => m.name);
-    expect(names).toContain("gpt-5.2-codex");
+    expect(names).toContain("openai/gpt-5.2-codex");
     expect(names).toContain("openai/gpt-5");
     expect(names).toContain("anthropic/claude-opus-4.6");
     expect(names).toContain("google/gemini-2.5-flash");
@@ -98,7 +97,6 @@ describe("SYSTEM_PROMPT", () => {
 
 describe("getApiKeyEnvVar", () => {
   it("returns correct env var for each provider", () => {
-    expect(getApiKeyEnvVar(ModelProvider.OPENAI)).toBe("OPENAI_API_KEY");
     expect(getApiKeyEnvVar(ModelProvider.OPENROUTER)).toBe(
       "OPENROUTER_API_KEY",
     );
@@ -107,9 +105,6 @@ describe("getApiKeyEnvVar", () => {
 
 describe("getProviderBaseUrl", () => {
   it("returns correct URLs", () => {
-    expect(getProviderBaseUrl(ModelProvider.OPENAI)).toBe(
-      "https://api.openai.com/v1",
-    );
     expect(getProviderBaseUrl(ModelProvider.OPENROUTER)).toBe(
       "https://openrouter.ai/api/v1",
     );

@@ -63,6 +63,7 @@ const MODEL_FORMATTED_NAMES: Record<string, string> = {
   "openai/gpt-5.1": "GPT-5.1",
   "openai/gpt-5.2": "GPT-5.2",
   "openai/gpt-5": "GPT-5",
+  "openai/gpt-5.2-codex": "GPT-5.2 Codex",
   "openai/gpt-5-mini": "GPT-5 mini",
   "openai/gpt-5-nano": "GPT-5 nano",
   "deepseek/deepseek-chat-v3": "DeepSeek V3",
@@ -126,6 +127,7 @@ const MODEL_PROVIDERS: Record<string, string> = {
   "openai/gpt-5.1": "openrouter",
   "openai/gpt-5.2": "openrouter",
   "openai/gpt-5": "openrouter",
+  "openai/gpt-5.2-codex": "openrouter",
   "openai/gpt-5-mini": "openrouter",
   "openai/gpt-5-nano": "openrouter",
   "deepseek/deepseek-chat-v3": "openrouter",
@@ -171,6 +173,7 @@ const OLD_TO_NEW_MODEL_NAMES: Record<string, string> = {
   "gemini-3-pro-preview": "google/gemini-3-pro-preview",
   "grok-4": "x-ai/grok-4",
   "grok-3-mini-beta": "x-ai/grok-3-mini-beta",
+  "gpt-5.2-codex": "openai/gpt-5.2-codex",
   // z-ai/glm-5 and z-ai/glm-4.7 already use OpenRouter names
 };
 

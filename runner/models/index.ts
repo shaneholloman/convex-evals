@@ -4,7 +4,6 @@
  */
 
 export enum ModelProvider {
-  OPENAI = "openai",
   OPENROUTER = "openrouter",
 }
 
@@ -153,12 +152,12 @@ export const ALL_MODELS: ModelTemplate[] = [
     usesResponsesApi: false,
   },
   {
-    name: "gpt-5.2-codex",
+    name: "openai/gpt-5.2-codex",
     formattedName: "GPT-5.2 Codex",
-    maxConcurrency: envInt("OPENAI_CONCURRENCY", 4),
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
     requiresChainOfThought: false,
     usesSystemPrompt: false,
-    provider: ModelProvider.OPENAI,
+    provider: ModelProvider.OPENROUTER,
     supportsTemperature: false,
     ciRunFrequency: "daily",
     usesResponsesApi: true,
@@ -166,12 +165,12 @@ export const ALL_MODELS: ModelTemplate[] = [
   // NOTE: gpt-5.3-codex was announced Feb 5, 2026 but API access is not yet available
   // Uncomment when API access is enabled:
   // {
-  //   name: "gpt-5.3-codex",
+  //   name: "openai/gpt-5.3-codex",
   //   formattedName: "GPT-5.3 Codex",
-  //   maxConcurrency: envInt("OPENAI_CONCURRENCY", 4),
+  //   maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
   //   requiresChainOfThought: false,
   //   usesSystemPrompt: false,
-  //   provider: ModelProvider.OPENAI,
+  //   provider: ModelProvider.OPENROUTER,
   //   supportsTemperature: false,
   //   ciRunFrequency: "daily",
   //   usesResponsesApi: true,
@@ -369,7 +368,6 @@ export const SYSTEM_PROMPT =
 /** Map provider enum to the environment variable key for its API key. */
 export function getApiKeyEnvVar(provider: ModelProvider): string {
   const map: Record<ModelProvider, string> = {
-    [ModelProvider.OPENAI]: "OPENAI_API_KEY",
     [ModelProvider.OPENROUTER]: "OPENROUTER_API_KEY",
   };
   return map[provider];
@@ -378,7 +376,6 @@ export function getApiKeyEnvVar(provider: ModelProvider): string {
 /** Get the direct API base URL for a provider (no proxy). */
 export function getProviderBaseUrl(provider: ModelProvider): string {
   const map: Record<ModelProvider, string> = {
-    [ModelProvider.OPENAI]: "https://api.openai.com/v1",
     [ModelProvider.OPENROUTER]: "https://openrouter.ai/api/v1",
   };
   return map[provider];

@@ -61,19 +61,20 @@ function createLanguageModel(
   apiKey: string,
 ): LanguageModel {
   switch (template.provider) {
-    case ModelProvider.OPENAI: {
-      const openai = createOpenAI({ apiKey });
+    case ModelProvider.OPENROUTER: {
+      const baseURL =
+        template.overrideProxy ?? "https://openrouter.ai/api/v1";
+
+      // Models using the Responses API need the OpenAI SDK pointed at
+      // OpenRouter's /responses endpoint.
       if (template.usesResponsesApi) {
+        const openai = createOpenAI({ apiKey, baseURL });
         return openai.responses(template.name);
       }
-      return openai(template.name);
-    }
 
-    case ModelProvider.OPENROUTER: {
       const openrouter = createOpenAICompatible({
         name: "openrouter",
-        baseURL:
-          template.overrideProxy ?? "https://openrouter.ai/api/v1",
+        baseURL,
         apiKey,
       });
       return openrouter.chatModel(template.name);
