@@ -260,7 +260,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "glm-5",
     formattedName: "GLM 5",
-    maxConcurrency: envInt("ZAI_CONCURRENCY", 1),
+    maxConcurrency: envInt("ZAI_CONCURRENCY", 2),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.ZAI,
@@ -272,7 +272,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "glm-4.7",
     formattedName: "GLM 4.7",
-    maxConcurrency: envInt("ZAI_CONCURRENCY", 1),
+    maxConcurrency: envInt("ZAI_CONCURRENCY", 2),
     requiresChainOfThought: false,
     usesSystemPrompt: true,
     provider: ModelProvider.ZAI,
