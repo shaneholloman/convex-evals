@@ -137,7 +137,7 @@ export const ALL_MODELS: ModelTemplate[] = [
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
     supportsTemperature: false,
-    ciRunFrequency: "weekly",
+    ciRunFrequency: "monthly",
     usesResponsesApi: false,
   },
   {
@@ -148,7 +148,7 @@ export const ALL_MODELS: ModelTemplate[] = [
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
     supportsTemperature: false,
-    ciRunFrequency: "daily",
+    ciRunFrequency: "weekly",
     usesResponsesApi: false,
   },
   {
@@ -183,7 +183,7 @@ export const ALL_MODELS: ModelTemplate[] = [
     usesSystemPrompt: false,
     provider: ModelProvider.OPENROUTER,
     supportsTemperature: false,
-    ciRunFrequency: "daily",
+    ciRunFrequency: "weekly",
     usesResponsesApi: false,
   },
   {
@@ -239,7 +239,7 @@ export const ALL_MODELS: ModelTemplate[] = [
     usesSystemPrompt: true,
     provider: ModelProvider.OPENROUTER,
     supportsTemperature: true,
-    ciRunFrequency: "daily",
+    ciRunFrequency: "weekly",
     usesResponsesApi: false,
   },
   {
