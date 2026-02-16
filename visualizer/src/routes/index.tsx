@@ -36,12 +36,12 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const [activeTab, setActiveTab] = useState<Tab>("experiments");
+  const [activeTab, setActiveTab] = useState<Tab>("runs");
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
+    { id: "runs", label: "Recent Runs", icon: "🏃" },
     { id: "experiments", label: "Experiments", icon: "🧪" },
     { id: "models", label: "Models", icon: "🤖" },
-    { id: "runs", label: "Recent Runs", icon: "🏃" },
   ];
 
   return (
@@ -158,10 +158,17 @@ function ExperimentRow({
 /* ---------- Models Tab ---------- */
 
 function ModelsTab() {
-  const models = useQuery(api.runs.listModels, {});
+  const experiments = useQuery(api.runs.listExperiments, {});
+  const modelNames = experiments
+    ? [...new Set(experiments.flatMap((e) => e.models))]
+    : [];
+  const models = useQuery(
+    api.runs.listModels,
+    experiments ? { models: modelNames } : "skip"
+  );
   const navigate = useNavigate();
 
-  if (models === undefined) {
+  if (experiments === undefined || models === undefined) {
     return <div className="text-slate-400 py-4">Loading models...</div>;
   }
 

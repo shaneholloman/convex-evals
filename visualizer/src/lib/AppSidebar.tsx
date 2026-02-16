@@ -247,7 +247,13 @@ export function AppSidebar() {
 
 function SidebarHome() {
   const experiments = useQuery(api.runs.listExperiments, {});
-  const models = useQuery(api.runs.listModels, {});
+  const modelNames = experiments
+    ? [...new Set(experiments.flatMap((e) => e.models))]
+    : [];
+  const models = useQuery(
+    api.runs.listModels,
+    experiments ? { models: modelNames } : "skip"
+  );
 
   if (experiments === undefined || models === undefined) {
     return (
@@ -286,7 +292,7 @@ function SidebarHome() {
         </nav>
       </div>
       <div className="sidebar-list-section">
-        <p className="sidebar-list-label">By Model <span className="text-slate-600 font-normal">(last 90 days)</span></p>
+        <p className="sidebar-list-label">By Model <span className="text-slate-600 font-normal">(recent runs)</span></p>
         <nav className="p-2 flex-1 overflow-auto">
           {models.map((model) => {
             const percentage = (model.passRate * 100).toFixed(1);

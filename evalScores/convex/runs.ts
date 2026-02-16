@@ -608,7 +608,7 @@ export const leaderboardScores = query({
 
         results.push({
           model,
-          formattedName: latest.run.formattedName,
+          formattedName: latest.run.formattedName ?? latest.run.model,
           totalScore,
           totalScoreErrorBar,
           scores,
@@ -706,68 +706,73 @@ export const leaderboardModelHistory = query({
 
 // ── Visualiser queries ───────────────────────────────────────────────
 
-// List all models with aggregated stats (limited to last 90 days)
+/** Max runs to fetch per model (index-backed, bounded) */
+const LIST_MODELS_RUNS_PER_MODEL = 20;
+
+/** Max recent runs to use for pass rate calculation per model */
+const LIST_MODELS_EVALS_RUNS = 3;
+
+// List models with aggregated stats. Uses by_model index for bounded queries.
+// Caller must pass model names (e.g. derived from experiments.models).
 export const listModels = query({
-  args: {},
-  handler: async (ctx) => {
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    
-    // Get runs from the last 30 days (reduced from 90 to stay within read limits)
-    const runs = await ctx.db
-      .query("runs")
-      .order("desc")
-      .filter((q) => q.gte(q.field("_creationTime"), thirtyDaysAgo))
-      .collect();
-    
-    // Aggregate stats by model
+  args: { models: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.models.length === 0) return [];
+
     const modelStats = new Map<string, {
       runCount: number;
       experiments: Set<string>;
       latestRunTime: number;
       runIds: Id<"runs">[];
     }>();
-    
-    for (const run of runs) {
-      const existing = modelStats.get(run.model);
-      const expName = run.experiment ?? "default";
-      
-      if (existing) {
-        existing.runCount += 1;
-        existing.experiments.add(expName);
-        if (run._creationTime > existing.latestRunTime) {
-          existing.latestRunTime = run._creationTime;
+
+    for (const modelName of args.models) {
+      const runs = await ctx.db
+        .query("runs")
+        .withIndex("by_model", (q) => q.eq("model", modelName))
+        .order("desc")
+        .take(LIST_MODELS_RUNS_PER_MODEL);
+
+      if (runs.length === 0) continue;
+
+      const experiments = new Set<string>();
+      const runIds: Id<"runs">[] = [];
+      let latestRunTime = 0;
+
+      for (const run of runs) {
+        experiments.add(run.experiment ?? "default");
+        runIds.push(run._id);
+        if (run._creationTime > latestRunTime) {
+          latestRunTime = run._creationTime;
         }
-        existing.runIds.push(run._id);
-      } else {
-        modelStats.set(run.model, {
-          runCount: 1,
-          experiments: new Set([expName]),
-          latestRunTime: run._creationTime,
-          runIds: [run._id],
-        });
       }
+
+      modelStats.set(modelName, {
+        runCount: runs.length,
+        experiments,
+        latestRunTime,
+        runIds,
+      });
     }
-    
-    // Fetch eval counts for pass rate calculation
-    // Only check the most recent 3 runs per model to stay within Convex read limits
+
+    // Fetch eval counts for pass rate calculation (most recent 3 runs per model)
     const result = await Promise.all(
       Array.from(modelStats.entries()).map(async ([model, stats]) => {
         let totalEvals = 0;
         let passedEvals = 0;
-        
-        const recentRunIds = stats.runIds.slice(0, 3);
+
+        const recentRunIds = stats.runIds.slice(0, LIST_MODELS_EVALS_RUNS);
         for (const runId of recentRunIds) {
           const evals = await ctx.db
             .query("evals")
             .withIndex("by_runId", (q) => q.eq("runId", runId))
             .collect();
-          
-          // Exclude rate-limit failures from both total and pass counts
+
           const scorable = evals.filter((e) => !isRateLimitFailure(e));
           totalEvals += scorable.length;
           passedEvals += scorable.filter((e) => e.status.kind === "passed").length;
         }
-        
+
         return {
           name: model,
           runCount: stats.runCount,
@@ -780,10 +785,8 @@ export const listModels = query({
         };
       })
     );
-    
-    // Sort by latest run (most recent first)
+
     result.sort((a, b) => b.latestRun - a.latestRun);
-    
     return result;
   },
 });
