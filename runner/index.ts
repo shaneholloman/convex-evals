@@ -158,6 +158,11 @@ async function main(): Promise<void> {
   }
 
   await closeClient();
+
+  // Force-exit: the ConvexClient WebSocket and fire-and-forget recordStep
+  // promises can keep the event loop alive after all work is done, causing
+  // CI jobs to hang until they hit the GitHub Actions timeout.
+  process.exit(0);
 }
 
 /**
