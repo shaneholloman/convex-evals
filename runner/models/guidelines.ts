@@ -286,9 +286,6 @@ export const exampleQuery = query({
     guideline(
       "When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`",
     ),
-    guideline(
-      "Always add `@types/node` to your `package.json` when using any Node.js built-in modules.",
-    ),
   ]),
   section("full_text_search_guidelines", [
     guideline(
@@ -558,9 +555,6 @@ export const exampleQuery = query({
       ),
       guideline(
         "When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`",
-      ),
-      guideline(
-        "Always add `@types/node` to your `package.json` when using any Node.js built-in modules.",
       ),
     ]),
     section("query_guidelines", [
