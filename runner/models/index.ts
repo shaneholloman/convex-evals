@@ -264,6 +264,17 @@ export const ALL_MODELS: ModelTemplate[] = [
     ciRunFrequency: "daily",
     usesResponsesApi: false,
   },
+  {
+    name: "qwen/qwen3.5-plus-02-15",
+    formattedName: "Qwen3.5 Plus",
+    maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
+    requiresChainOfThought: false,
+    usesSystemPrompt: true,
+    provider: ModelProvider.OPENROUTER,
+    supportsTemperature: true,
+    ciRunFrequency: "daily",
+    usesResponsesApi: false,
+  },
   // Z.AI (GLM) models – via OpenRouter
   {
     name: "z-ai/glm-5",
