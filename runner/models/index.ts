@@ -181,6 +181,12 @@ export const ALL_MODELS: ModelTemplate[] = [
     formattedName: "Gemini 3 Pro",
     ciRunFrequency: "daily",
   },
+  // MiniMax models – via OpenRouter
+  {
+    name: "minimax/minimax-m2.5",
+    formattedName: "MiniMax M2.5",
+    ciRunFrequency: "daily",
+  },
   // xAI models – via OpenRouter
   {
     name: "x-ai/grok-4",
