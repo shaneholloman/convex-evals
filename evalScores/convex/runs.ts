@@ -790,3 +790,102 @@ export const listModels = query({
     return result;
   },
 });
+
+// ── Scheduling stats ─────────────────────────────────────────────────
+
+/**
+ * Returns per-model scheduling data used to compute dynamic CI run intervals.
+ *
+ * - completedRunCount: all-time count of completed default-experiment runs
+ * - scoreStdDev: population stdDev of total scores from the last LEADERBOARD_HISTORY_SIZE runs
+ * - lastRunTime: _creationTime of the most recent completed run (null if none)
+ * - firstRunTime: _creationTime of the oldest run ever recorded (null if none)
+ */
+export const getSchedulingStats = query({
+  args: { models: v.array(v.string()) },
+  returns: v.array(
+    v.object({
+      model: v.string(),
+      completedRunCount: v.number(),
+      scoreStdDev: v.number(),
+      lastRunTime: v.union(v.number(), v.null()),
+      firstRunTime: v.union(v.number(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const results: Array<{
+      model: string;
+      completedRunCount: number;
+      scoreStdDev: number;
+      lastRunTime: number | null;
+      firstRunTime: number | null;
+    }> = [];
+
+    for (const modelName of args.models) {
+      // Fetch all runs for this model (no time cap) ordered newest first
+      const allRuns = await ctx.db
+        .query("runs")
+        .withIndex("by_model", (q) => q.eq("model", modelName))
+        .order("desc")
+        .collect();
+
+      if (allRuns.length === 0) {
+        results.push({
+          model: modelName,
+          completedRunCount: 0,
+          scoreStdDev: 0,
+          lastRunTime: null,
+          firstRunTime: null,
+        });
+        continue;
+      }
+
+      // Only default-experiment completed runs count toward scheduling
+      const completedDefaultRuns = allRuns.filter(
+        (r) => r.status.kind === "completed" && r.experiment === undefined,
+      );
+
+      const completedRunCount = completedDefaultRuns.length;
+      const lastRunTime =
+        completedDefaultRuns.length > 0
+          ? completedDefaultRuns[0]._creationTime
+          : null;
+
+      // firstRunTime from ALL runs (oldest ever, regardless of experiment)
+      const firstRunTime = allRuns[allRuns.length - 1]._creationTime;
+
+      // Compute stdDev from the most recent LEADERBOARD_HISTORY_SIZE completed default runs
+      let scoreStdDev = 0;
+      if (completedDefaultRuns.length >= 2) {
+        const recentRuns = completedDefaultRuns.slice(
+          0,
+          LEADERBOARD_HISTORY_SIZE,
+        );
+        const scores: number[] = [];
+        for (const run of recentRuns) {
+          const evals = await ctx.db
+            .query("evals")
+            .withIndex("by_runId", (q) => q.eq("runId", run._id))
+            .collect();
+          if (!isFullyCompletedRun(run, evals)) continue;
+          const { totalScore } = computeRunScoresFromEvals(evals);
+          scores.push(totalScore);
+        }
+        if (scores.length >= 2) {
+          const { stdDev } = computeMeanAndStdDev(scores);
+          scoreStdDev = stdDev;
+        }
+      }
+
+      results.push({
+        model: modelName,
+        completedRunCount,
+        scoreStdDev,
+        lastRunTime,
+        firstRunTime,
+      });
+    }
+
+    return results;
+  },
+});
