@@ -42,7 +42,6 @@ type Experiment = (typeof VALID_EXPERIMENTS)[number];
 interface ModelChoice {
   name: string;
   value: string;
-  provider: string;
 }
 
 /**
@@ -52,7 +51,6 @@ function discoverModels(): ModelChoice[] {
   return ALL_MODELS.map((m) => ({
     name: m.formattedName,
     value: m.name,
-    provider: m.provider,
   }));
 }
 
@@ -66,18 +64,6 @@ function formatDisplayName(dirName: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
-}
-
-function formatProviderName(provider: string): string {
-  const providerNames: Record<string, string> = {
-    anthropic: "Anthropic",
-    openai: "OpenAI",
-    together: "Together",
-    google: "Google",
-    xai: "xAI",
-    moonshot: "Moonshot",
-  };
-  return providerNames[provider] ?? provider;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -526,20 +512,10 @@ program
 
     console.log("\nAvailable Models\n");
 
-    const byProvider: Record<string, ModelChoice[]> = {};
     for (const model of availableModels) {
-      const providerName = formatProviderName(model.provider);
-      byProvider[providerName] = byProvider[providerName] || [];
-      byProvider[providerName].push(model);
+      console.log(`  - ${model.name} (${model.value})`);
     }
-
-    for (const [provider, models] of Object.entries(byProvider)) {
-      console.log(`${provider}:`);
-      for (const model of models) {
-        console.log(`  - ${model.name} (${model.value})`);
-      }
-      console.log("");
-    }
+    console.log("");
   });
 
 program.parse();

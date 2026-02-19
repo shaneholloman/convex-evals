@@ -14,7 +14,7 @@ import { tmpdir } from "os";
 import { Command } from "commander";
 import { config } from "dotenv";
 
-import { MODELS_BY_NAME, getApiKeyEnvVar } from "../runner/models/index.js";
+import { MODELS_BY_NAME, OPENROUTER_API_KEY_VAR } from "../runner/models/index.js";
 import {
   runEvalsForModel,
   type RunConfig,
@@ -176,7 +176,7 @@ async function main(): Promise<void> {
   const comparisons: ModelComparison[] = [];
 
   for (const modelName of models) {
-    const apiKeyVar = getApiKeyEnvVar(MODELS_BY_NAME[modelName].provider);
+    const apiKeyVar = OPENROUTER_API_KEY_VAR;
     if (!process.env[apiKeyVar]) {
       console.warn(`Skipping ${modelName}: ${apiKeyVar} not set`);
       continue;

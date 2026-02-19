@@ -177,40 +177,32 @@ const v2 = "second";
 
 describe("renderPrompt", () => {
   it("includes task description in backtick block", () => {
-    const prompt = renderPrompt(false, "Build a todo app");
+    const prompt = renderPrompt("Build a todo app");
     expect(prompt).toContain("Build a todo app");
     expect(prompt).toContain("```");
   });
 
   it("includes the Files section format guide", () => {
-    const prompt = renderPrompt(false, "test");
+    const prompt = renderPrompt("test");
     expect(prompt).toContain("# Files");
     expect(prompt).toContain("## package.json");
   });
 
-  it("includes chain of thought instructions when enabled", () => {
-    const prompt = renderPrompt(true, "test");
-    expect(prompt).toContain("Analysis");
-    expect(prompt).toContain("thought process");
-    expect(prompt).toContain("Summarize the task requirements");
-  });
-
-  it("does not include analysis instructions when chain of thought is disabled", () => {
-    const prompt = renderPrompt(false, "test");
-    // The prompt should not contain the chain-of-thought instructions
-    // (Note: "# Analysis" may appear in example text, so check for the instruction text instead)
+  it("does not include analysis instructions", () => {
+    const prompt = renderPrompt("test");
     expect(prompt).not.toContain("Before writing any code, analyze the task");
     expect(prompt).not.toContain("Begin your response with your thought process");
+    expect(prompt).not.toContain("Summarize the task requirements");
   });
 
   it("includes general coding standards", () => {
-    const prompt = renderPrompt(false, "test");
+    const prompt = renderPrompt("test");
     expect(prompt).toContain("General Coding Standards");
     expect(prompt).toContain("2 spaces");
   });
 
   it("includes file structure guidance", () => {
-    const prompt = renderPrompt(false, "test");
+    const prompt = renderPrompt("test");
     expect(prompt).toContain("File Structure");
     expect(prompt).toContain("package.json");
     expect(prompt).toContain("tsconfig.json");
@@ -218,12 +210,12 @@ describe("renderPrompt", () => {
   });
 
   it("includes Convex version requirement", () => {
-    const prompt = renderPrompt(false, "test");
+    const prompt = renderPrompt("test");
     expect(prompt).toContain("1.31.2");
   });
 
   it("always generates non-empty output", () => {
-    const prompt = renderPrompt(false, "");
+    const prompt = renderPrompt("");
     expect(prompt.length).toBeGreaterThan(100);
   });
 });

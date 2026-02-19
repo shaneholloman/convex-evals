@@ -22,7 +22,8 @@ import { config } from "dotenv";
 import {
   MODELS_BY_NAME,
   type ModelTemplate,
-  getApiKeyEnvVar,
+  OPENROUTER_API_KEY_VAR,
+  DEFAULT_MAX_CONCURRENCY,
 } from "./models/index.js";
 import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
@@ -218,7 +219,7 @@ export async function runEvalsForModel(
         model.name,
         model.formattedName,
         plannedEvals,
-        model.provider,
+        "openrouter",
         config.experiment,
       );
       if (runId) {
@@ -233,7 +234,7 @@ export async function runEvalsForModel(
     }
 
     // Get API key
-    const apiKeyVar = getApiKeyEnvVar(model.provider);
+    const apiKeyVar = OPENROUTER_API_KEY_VAR;
     const apiKey = process.env[apiKeyVar];
     if (!apiKey) {
       console.error(`${apiKeyVar} is not set`);
@@ -267,7 +268,7 @@ export async function runEvalsForModel(
         break;
       }
 
-      while (queue.length > 0 && inFlight.size < model.maxConcurrency) {
+      while (queue.length > 0 && inFlight.size < DEFAULT_MAX_CONCURRENCY) {
         const evalInfo = queue.shift()!;
         const promise = processOneEval(
           model,

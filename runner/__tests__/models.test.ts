@@ -1,20 +1,14 @@
 import { describe, it, expect } from "bun:test";
 import {
-  ModelProvider,
   ALL_MODELS,
   MODELS_BY_NAME,
   SYSTEM_PROMPT,
-  getApiKeyEnvVar,
-  getProviderBaseUrl,
+  OPENROUTER_API_KEY_VAR,
+  OPENROUTER_BASE_URL,
+  DEFAULT_MAX_CONCURRENCY,
   type ModelTemplate,
   type CIRunFrequency,
 } from "../models/index.js";
-
-describe("ModelProvider enum", () => {
-  it("has all expected providers", () => {
-    expect(ModelProvider.OPENROUTER).toBe("openrouter" as ModelProvider);
-  });
-});
 
 describe("ALL_MODELS", () => {
   it("contains at least one model", () => {
@@ -25,12 +19,7 @@ describe("ALL_MODELS", () => {
     for (const model of ALL_MODELS) {
       expect(model.name).toBeTruthy();
       expect(model.formattedName).toBeTruthy();
-      expect(model.maxConcurrency).toBeGreaterThan(0);
-      expect(typeof model.requiresChainOfThought).toBe("boolean");
-      expect(typeof model.usesSystemPrompt).toBe("boolean");
-      expect(typeof model.supportsTemperature).toBe("boolean");
-      expect(typeof model.usesResponsesApi).toBe("boolean");
-      expect(Object.values(ModelProvider)).toContain(model.provider);
+      expect(model.apiKind === undefined || model.apiKind === "chat" || model.apiKind === "responses").toBe(true);
     }
   });
 
@@ -58,13 +47,6 @@ describe("ALL_MODELS", () => {
     expect(names).toContain("anthropic/claude-opus-4.6");
     expect(names).toContain("google/gemini-2.5-flash");
   });
-
-  it("has at least one model per provider", () => {
-    const providers = new Set(ALL_MODELS.map((m) => m.provider));
-    for (const p of Object.values(ModelProvider)) {
-      expect(providers.has(p)).toBe(true);
-    }
-  });
 });
 
 describe("MODELS_BY_NAME", () => {
@@ -76,7 +58,6 @@ describe("MODELS_BY_NAME", () => {
     const model = MODELS_BY_NAME["openai/gpt-5"];
     expect(model).toBeDefined();
     expect(model.formattedName).toBe("GPT-5");
-    expect(model.provider).toBe(ModelProvider.OPENROUTER);
   });
 
   it("returns undefined for non-existent model", () => {
@@ -95,27 +76,18 @@ describe("SYSTEM_PROMPT", () => {
   });
 });
 
-describe("getApiKeyEnvVar", () => {
-  it("returns correct env var for each provider", () => {
-    expect(getApiKeyEnvVar(ModelProvider.OPENROUTER)).toBe(
-      "OPENROUTER_API_KEY",
-    );
-  });
-});
-
-describe("getProviderBaseUrl", () => {
-  it("returns correct URLs", () => {
-    expect(getProviderBaseUrl(ModelProvider.OPENROUTER)).toBe(
-      "https://openrouter.ai/api/v1",
-    );
+describe("OpenRouter constants", () => {
+  it("API key var is correct", () => {
+    expect(OPENROUTER_API_KEY_VAR).toBe("OPENROUTER_API_KEY");
   });
 
-  it("returns URLs that start with https://", () => {
-    for (const provider of Object.values(ModelProvider)) {
-      expect(getProviderBaseUrl(provider as ModelProvider)).toMatch(
-        /^https:\/\//,
-      );
-    }
+  it("base URL starts with https://", () => {
+    expect(OPENROUTER_BASE_URL).toMatch(/^https:\/\//);
+  });
+
+  it("default max concurrency is a positive integer", () => {
+    expect(DEFAULT_MAX_CONCURRENCY).toBeGreaterThan(0);
+    expect(Number.isInteger(DEFAULT_MAX_CONCURRENCY)).toBe(true);
   });
 });
 

@@ -13,7 +13,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from "fs";
 import { join, relative } from "path";
 import {
   type ModelTemplate,
-  ModelProvider,
+  OPENROUTER_BASE_URL,
   SYSTEM_PROMPT,
 } from "./index.js";
 import {
@@ -53,38 +53,27 @@ function getGuidelinesContent(): string {
 
 /**
  * Create an AI SDK LanguageModel from our ModelTemplate + API key.
- * Each provider gets its own SDK constructor; Moonshot uses the
- * OpenAI-compatible adapter.
+ * All models are accessed via OpenRouter.
  */
 function createLanguageModel(
   template: ModelTemplate,
   apiKey: string,
 ): LanguageModel {
-  switch (template.provider) {
-    case ModelProvider.OPENROUTER: {
-      const baseURL =
-        template.overrideProxy ?? "https://openrouter.ai/api/v1";
+  const baseURL = template.overrideProxy ?? OPENROUTER_BASE_URL;
 
-      // Models using the Responses API need the OpenAI SDK pointed at
-      // OpenRouter's /responses endpoint.
-      if (template.usesResponsesApi) {
-        const openai = createOpenAI({ apiKey, baseURL });
-        return openai.responses(template.name);
-      }
-
-      const openrouter = createOpenAICompatible({
-        name: "openrouter",
-        baseURL,
-        apiKey,
-      });
-      return openrouter.chatModel(template.name);
-    }
-
-    default: {
-      const _exhaustive: never = template.provider;
-      throw new Error(`Unsupported provider: ${_exhaustive}`);
-    }
+  // Models using the Responses API need the OpenAI SDK pointed at
+  // OpenRouter's /responses endpoint.
+  if (template.apiKind === "responses") {
+    const openai = createOpenAI({ apiKey, baseURL });
+    return openai.responses(template.name);
   }
+
+  const openrouter = createOpenAICompatible({
+    name: "openrouter",
+    baseURL,
+    apiKey,
+  });
+  return openrouter.chatModel(template.name);
 }
 
 // ── Token limit helpers ──────────────────────────────────────────────
@@ -108,7 +97,7 @@ export class Model {
   }
 
   async generate(prompt: string): Promise<Record<string, string>> {
-    const userPrompt = renderPrompt(this.template.requiresChainOfThought, prompt);
+    const userPrompt = renderPrompt(prompt);
     const useWebSearch = isWebSearchEnabled();
 
     const systemContent = useWebSearch
@@ -122,29 +111,12 @@ export class Model {
       model: this.languageModel,
       maxOutputTokens: maxTokens,
       maxRetries: 5,
-      ...(this.template.supportsTemperature
-        ? {
-            temperature: parseFloat(
-              process.env.EVAL_TEMPERATURE ?? "0.7",
-            ),
-          }
-        : {}),
     };
 
-    // For models that support a system prompt, use `system` + `prompt`.
-    // For models that don't, prepend system content as the first user
-    // message via the `messages` API instead.
-    const promptOptions = this.template.usesSystemPrompt
-      ? {
-          system: systemContent,
-          prompt: userPrompt,
-        }
-      : {
-          messages: [
-            { role: "user" as const, content: systemContent },
-            { role: "user" as const, content: userPrompt },
-          ],
-        };
+    const promptOptions = {
+      system: systemContent,
+      prompt: userPrompt,
+    };
 
     const options: Parameters<typeof generateText>[0] = {
       ...baseOptions,
@@ -219,38 +191,16 @@ const FILE_FORMAT_EXAMPLE = [
   "```\n...\n```",
 ].join("\n");
 
-export function renderPrompt(
-  chainOfThought: boolean,
-  taskDescription: string,
-): string {
+export function renderPrompt(taskDescription: string): string {
   const sections: string[] = [
     "Your task is to generate a Convex backend from a task description.",
   ];
 
-  if (chainOfThought) {
-    sections.push(
-      `Before writing any code, analyze the task and think through your approach. Use the Analysis section to show your thought process, covering the following areas:
-
-1. Summarize the task requirements
-2. List out the main components needed for the backend
-3. Design the public API and internal functions:
-   - List each function with its file path, argument validators, and return validator, and purpose.
-4. Plan the schema design (if needed):
-   - List each table with its validator (excluding the included _id and _creationTime fields) and its indexes
-5. Outline background processing requirements (if any):
-After your analysis, output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.
-For example, correct output looks like
-# Analysis
-...
-${FILE_FORMAT_EXAMPLE}`,
-    );
-  } else {
-    sections.push(
-      `Output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.
+  sections.push(
+    `Output all files within an h1 Files section that has an h2 section for each necessary file for a Convex backend that implements the requested functionality.
 For example, correct output looks like
 ${FILE_FORMAT_EXAMPLE}`,
-    );
-  }
+  );
 
   sections.push(renderExamples());
 
@@ -271,12 +221,6 @@ ${FILE_FORMAT_EXAMPLE}`,
 - Always start with \`package.json\` and \`tsconfig.json\` files.
 - Use Convex version "^1.31.2".
 - Use Typescript version "^5.7.3".`);
-
-  if (chainOfThought) {
-    sections.push(
-      "Begin your response with your thought process, then proceed to generate the necessary files for the Convex backend.",
-    );
-  }
 
   sections.push(
     `Now, implement a Convex backend that satisfies the following task description:\n\`\`\`\n${taskDescription}\n\`\`\``,
