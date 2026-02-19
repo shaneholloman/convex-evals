@@ -84,7 +84,7 @@ export async function startConvexBackend(
   logInfo(`[backend] Healthy on port ${port}`);
 
   if (proc.exitCode !== null) {
-    throw new Error("Convex backend process failed to start");
+    throw new InfrastructureError("Convex backend process failed to start");
   }
 
   return { port, siteProxyPort, process: proc };
@@ -128,7 +128,9 @@ async function healthCheck(port: number): Promise<void> {
     }
     const remaining = deadline - Date.now();
     if (remaining < 0) {
-      throw new Error(`Convex backend health check timed out on port ${port}`);
+      throw new InfrastructureError(
+        `Convex backend health check timed out on port ${port}`,
+      );
     }
     await Bun.sleep(Math.min(100 * 2 ** attempts, remaining));
     attempts++;
@@ -224,50 +226,66 @@ async function downloadConvexBinaryImpl(): Promise<string> {
   logInfo(`Latest release: ${match.version}`);
   logInfo(`Downloading: ${match.asset.browser_download_url}`);
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
-  try {
-    const resp = await fetch(match.asset.browser_download_url, {
-      signal: controller.signal,
-    });
-    if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-
-    const data = await resp.arrayBuffer();
-    const zipPath = join(binaryDir, match.asset.name);
-    writeFileSync(zipPath, Buffer.from(data));
-    logInfo(
-      `Downloaded: ${match.asset.name} (${(data.byteLength / 1024 / 1024).toFixed(1)} MB)`,
-    );
-
-    // Extract binary from zip
-    const zip = await JSZip.loadAsync(data);
-    const expectedName = `convex-local-backend${isWindows ? ".exe" : ""}`;
-    const entry = zip.file(expectedName);
-    if (!entry) {
-      throw new Error(
-        `Expected '${expectedName}' in zip but not found. Contents: ${Object.keys(zip.files).join(", ")}`,
-      );
-    }
-
-    const content = await entry.async("nodebuffer");
-    writeFileSync(binaryPath, content);
-
-    if (!isWindows) {
-      chmodSync(binaryPath, 0o755);
-    }
-
-    // Clean up zip
+  const MAX_DOWNLOAD_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_DOWNLOAD_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
     try {
-      unlinkSync(zipPath);
-    } catch {
-      // ignore
-    }
+      const resp = await fetch(match.asset.browser_download_url, {
+        signal: controller.signal,
+      });
+      if (!resp.ok) {
+        if (attempt < MAX_DOWNLOAD_RETRIES) {
+          logInfo(
+            `[backend] Binary download failed (HTTP ${resp.status}), retrying (attempt ${attempt}/${MAX_DOWNLOAD_RETRIES})...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+        throw new InfrastructureError(
+          `Binary download failed after ${MAX_DOWNLOAD_RETRIES} attempts: HTTP ${resp.status}`,
+        );
+      }
 
-    logInfo(`Extracted binary to: ${binaryPath}`);
-    return binaryPath;
-  } finally {
-    clearTimeout(timeoutId);
+      const data = await resp.arrayBuffer();
+      const zipPath = join(binaryDir, match.asset.name);
+      writeFileSync(zipPath, Buffer.from(data));
+      logInfo(
+        `Downloaded: ${match.asset.name} (${(data.byteLength / 1024 / 1024).toFixed(1)} MB)`,
+      );
+
+      // Extract binary from zip
+      const zip = await JSZip.loadAsync(data);
+      const expectedName = `convex-local-backend${isWindows ? ".exe" : ""}`;
+      const entry = zip.file(expectedName);
+      if (!entry) {
+        throw new InfrastructureError(
+          `Expected '${expectedName}' in zip but not found. Contents: ${Object.keys(zip.files).join(", ")}`,
+        );
+      }
+
+      const content = await entry.async("nodebuffer");
+      writeFileSync(binaryPath, content);
+
+      if (!isWindows) {
+        chmodSync(binaryPath, 0o755);
+      }
+
+      // Clean up zip
+      try {
+        unlinkSync(zipPath);
+      } catch {
+        // ignore
+      }
+
+      logInfo(`Extracted binary to: ${binaryPath}`);
+      return binaryPath;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
+  // unreachable
+  throw new InfrastructureError("Binary download failed");
 }
 
 function findMatchingAsset(
