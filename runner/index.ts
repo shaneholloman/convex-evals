@@ -27,6 +27,7 @@ import {
 } from "./models/index.js";
 import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
+import { InfrastructureError } from "./convexBackend.js";
 import {
   startRun,
   completeRun,
@@ -250,42 +251,59 @@ export async function runEvalsForModel(
     const queue = [...filteredPaths];
     const inFlight = new Set<Promise<void>>();
 
-    while (queue.length > 0 || inFlight.size > 0) {
-      // Abort early if we've hit too many rate-limit errors
-      if (rateLimitCount >= RATE_LIMIT_ABORT_THRESHOLD) {
-        // Drain remaining queue — don't start new evals
-        if (queue.length > 0) {
-          logInfo(
-            `Aborting run: ${rateLimitCount} rate-limit errors exceeded threshold (${RATE_LIMIT_ABORT_THRESHOLD}). Skipping ${queue.length} remaining eval(s).`,
-          );
-          queue.length = 0;
+    try {
+      while (queue.length > 0 || inFlight.size > 0) {
+        // Abort early if we've hit too many rate-limit errors
+        if (rateLimitCount >= RATE_LIMIT_ABORT_THRESHOLD) {
+          // Drain remaining queue — don't start new evals
+          if (queue.length > 0) {
+            logInfo(
+              `Aborting run: ${rateLimitCount} rate-limit errors exceeded threshold (${RATE_LIMIT_ABORT_THRESHOLD}). Skipping ${queue.length} remaining eval(s).`,
+            );
+            queue.length = 0;
+          }
+          // Wait for in-flight evals to finish, but don't start new ones
+          if (inFlight.size > 0) {
+            await Promise.race(inFlight);
+            continue;
+          }
+          break;
         }
-        // Wait for in-flight evals to finish, but don't start new ones
+
+        while (queue.length > 0 && inFlight.size < DEFAULT_MAX_CONCURRENCY) {
+          const evalInfo = queue.shift()!;
+          const promise = processOneEval(
+            model,
+            modelImpl,
+            evalInfo,
+            runId,
+            allResults,
+            filteredPaths.length,
+            tempdir,
+          ).then((wasRateLimited) => {
+            if (wasRateLimited) rateLimitCount++;
+          }).finally(() => inFlight.delete(promise));
+          inFlight.add(promise);
+        }
         if (inFlight.size > 0) {
           await Promise.race(inFlight);
-          continue;
         }
-        break;
       }
-
-      while (queue.length > 0 && inFlight.size < DEFAULT_MAX_CONCURRENCY) {
-        const evalInfo = queue.shift()!;
-        const promise = processOneEval(
-          model,
-          modelImpl,
-          evalInfo,
-          runId,
-          allResults,
-          filteredPaths.length,
-          tempdir,
-        ).then((wasRateLimited) => {
-          if (wasRateLimited) rateLimitCount++;
-        }).finally(() => inFlight.delete(promise));
-        inFlight.add(promise);
+    } catch (e) {
+      if (e instanceof InfrastructureError) {
+        const reason = `[infrastructure] ${e.message}`;
+        console.error(`Infrastructure failure, aborting run: ${e.message}`);
+        if (runId) {
+          await completeRun(runId, {
+            kind: "failed",
+            failureReason: reason,
+            durationMs: Date.now() - runStartTime,
+          });
+          logInfo(`Run failed: ${reason}`);
+        }
+        return allResults;
       }
-      if (inFlight.size > 0) {
-        await Promise.race(inFlight);
-      }
+      throw e;
     }
 
     // Print summary
@@ -398,6 +416,10 @@ async function processOneEval(
     logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
     return false;
   } catch (e) {
+    // Infrastructure failures (binary download, GitHub API) should abort the
+    // entire run rather than being recorded as individual eval failures.
+    if (e instanceof InfrastructureError) throw e;
+
     const errorStr = String(e);
     const rateLimited = isRateLimitError(errorStr);
     const prefix = rateLimited ? "[rate_limit] " : "";

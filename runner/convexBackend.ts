@@ -15,6 +15,17 @@ import JSZip from "jszip";
 import getPort from "get-port";
 import { logInfo } from "./logging.js";
 
+/**
+ * Thrown when infrastructure (binary download, GitHub API) fails fatally.
+ * Caught at the run level to fail the whole run rather than individual evals.
+ */
+export class InfrastructureError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InfrastructureError";
+  }
+}
+
 const INSTANCE_NAME = "carnitas";
 const INSTANCE_SECRET =
   "4361726e697461732c206c69746572616c6c79206d65616e696e6720226c6974";
@@ -149,12 +160,31 @@ let cachedReleases: GitHubRelease[] | null = null;
 
 async function fetchConvexReleases(): Promise<GitHubRelease[]> {
   if (cachedReleases) return cachedReleases;
-  const resp = await fetch(
-    "https://api.github.com/repos/get-convex/convex-backend/releases?per_page=50",
-  );
-  if (!resp.ok) throw new Error(`Failed to fetch releases: ${resp.status}`);
-  cachedReleases = (await resp.json()) as GitHubRelease[];
-  return cachedReleases;
+
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 5000;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const resp = await fetch(
+      "https://api.github.com/repos/get-convex/convex-backend/releases?per_page=50",
+    );
+    if (resp.ok) {
+      cachedReleases = (await resp.json()) as GitHubRelease[];
+      return cachedReleases;
+    }
+    if (attempt < MAX_RETRIES) {
+      logInfo(
+        `[backend] Failed to fetch releases (${resp.status}), retrying in ${RETRY_DELAY_MS / 1000}s (attempt ${attempt}/${MAX_RETRIES})...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    } else {
+      throw new InfrastructureError(
+        `Failed to fetch releases after ${MAX_RETRIES} attempts: ${resp.status}`,
+      );
+    }
+  }
+  // unreachable
+  throw new InfrastructureError("Failed to fetch releases");
 }
 
 // Serialize concurrent download requests so only one download happens at a time
