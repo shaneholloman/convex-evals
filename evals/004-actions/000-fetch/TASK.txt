@@ -4,7 +4,7 @@ Export a single public API action `fetchFromHttpBin` in `convex/index.ts` that:
    - Takes no arguments
    - Makes a GET request to https://httpbin.org/get using the global `fetch` API
    - Parses the JSON response
-   - Returns the parsed response data as any
+   - Returns the parsed JSON response
 
 Notes:
 - No schema is required since this demo doesn't interact with the database
