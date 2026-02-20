@@ -16,6 +16,7 @@ jobs:
           - "anthropic/claude-sonnet-4.6"
           - "qwen/qwen3.5-plus-02-15"
           - "minimax/minimax-m2.5"
+          - "google/gemini-3.1-pro-preview"
 
     env:
       ENVIRONMENT: ci

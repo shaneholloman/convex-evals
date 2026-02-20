@@ -169,11 +169,16 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "google/gemini-2.5-pro",
     formattedName: "Gemini 2.5 Pro",
-    ciRunFrequency: "weekly",
+    ciRunFrequency: "monthly",
   },
   {
     name: "google/gemini-3-pro-preview",
     formattedName: "Gemini 3 Pro",
+    ciRunFrequency: "weekly",
+  },
+  {
+    name: "google/gemini-3.1-pro-preview",
+    formattedName: "Gemini 3.1 Pro",
     ciRunFrequency: "daily",
   },
   // MiniMax models – via OpenRouter
