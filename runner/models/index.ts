@@ -94,11 +94,6 @@ export const ALL_MODELS: ModelTemplate[] = [
   // {
   //   name: "openai/gpt-5.3-codex",
   //   formattedName: "GPT-5.3 Codex",
-  //   maxConcurrency: envInt("OPENROUTER_CONCURRENCY", 8),
-  //   requiresChainOfThought: false,
-  //   usesSystemPrompt: false,
-  //   provider: ModelProvider.OPENROUTER,
-  //   supportsTemperature: false,
   //   ciRunFrequency: "daily",
   //   apiKind: "responses",
   // },
