@@ -107,19 +107,23 @@ gh workflow run manual_evals.yml --ref main
 
 Run this command 3 times, waiting ~5 seconds between dispatches to avoid collisions.
 
-## Step 8: Monitor the Runs
+## Step 8: Monitor the Runs Until Completion
 
-List and watch the triggered runs:
+**You MUST poll until all 3 runs reach a terminal state (completed/failed/cancelled). Do not stop monitoring early or hand back to the user while runs are still in progress.**
+
+Poll every ~2 minutes using:
 
 ```bash
 gh run list --workflow=manual_evals.yml --limit=6
 ```
 
-Poll periodically until all 3 runs complete. Report the final status (success/failure) and any errors to the user. If a run fails, investigate the logs:
+Runs typically take 20-30 minutes. Keep checking until all show `completed`. If a run fails, immediately investigate:
 
 ```bash
 gh run view <run-id> --log-failed
 ```
+
+Report the final pass/fail status for each run to the user once all 3 are done.
 
 ## Summary Checklist
 
