@@ -174,6 +174,7 @@ const OLD_TO_NEW_MODEL_NAMES: Record<string, string> = {
   "grok-4": "x-ai/grok-4",
   "grok-3-mini-beta": "x-ai/grok-3-mini-beta",
   "gpt-5.2-codex": "openai/gpt-5.2-codex",
+  "zai-org/GLM-4.7": "z-ai/glm-4.7",
   // z-ai/glm-5 and z-ai/glm-4.7 already use OpenRouter names
 };
 
