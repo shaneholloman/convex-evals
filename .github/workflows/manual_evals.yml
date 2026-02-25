@@ -1,18 +1,29 @@
 name: Manual Model Evaluations
 
 on:
-  workflow_dispatch: # Manual trigger only
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated model names to evaluate"
+        required: false
+        default: "google/gemini-3.1-pro-preview"
+      test_filter:
+        description: "Regex to filter evals (e.g. '000-fundamentals', '000-fundamentals/000')"
+        required: false
+        default: ""
+      run_no_guidelines:
+        description: "Also run the no_guidelines experiment"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 jobs:
   run-evals:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      max-parallel: 2
-      matrix:
-        model:
-          - "google/gemini-3.1-pro-preview"
 
     env:
       ENVIRONMENT: ci
@@ -41,9 +52,10 @@ jobs:
           echo "CONVEX_EVAL_URL=${{ secrets.CONVEX_EVAL_URL }}" >> $GITHUB_ENV
           echo "CONVEX_AUTH_TOKEN=${{ secrets.CONVEX_AUTH_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Set model
+      - name: Set model and filter
         run: |
-          echo "MODELS=${{ matrix.model }}" >> $GITHUB_ENV
+          echo "MODELS=${{ inputs.models }}" >> $GITHUB_ENV
+          echo "TEST_FILTER=${{ inputs.test_filter }}" >> $GITHUB_ENV
 
       - name: Run evaluations
         env:
@@ -51,6 +63,7 @@ jobs:
         run: bun run runner/index.ts
 
       - name: Run evaluations (no_guidelines experiment)
+        if: ${{ inputs.run_no_guidelines == 'true' }}
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines

@@ -1,6 +1,6 @@
 import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { evalStatus } from "./schema.js";
+import { evalStatus, languageModelUsage } from "./schema.js";
 
 export const createEval = internalMutation({
   args: {
@@ -81,8 +81,8 @@ export const completeEval = internalMutation({
   args: {
     evalId: v.id("evals"),
     status: v.union(
-      v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
-      v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
+      v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")), usage: v.optional(languageModelUsage) }),
+      v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")), usage: v.optional(languageModelUsage) }),
     ),
   },
   returns: v.null(),

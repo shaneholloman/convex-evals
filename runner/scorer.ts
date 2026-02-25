@@ -24,6 +24,7 @@ import {
   runCommandStep,
 } from "./logging.js";
 import { recordStep, completeEval, uploadEvalOutput } from "./reporting.js";
+import type { LanguageModelUsage } from "ai";
 
 // ── Timeout constants (ms) ───────────────────────────────────────────
 
@@ -86,6 +87,7 @@ class ScoringContext {
     readonly name: string,
     readonly evalId: string | undefined,
     readonly outputProjectDir: string,
+    readonly usage?: LanguageModelUsage,
   ) {
     this.evalPrefix = `${category}/${name}`;
     this.runLogPath = join(outputProjectDir, "run.log");
@@ -135,6 +137,7 @@ class ScoringContext {
           kind: "failed",
           failureReason,
           durationMs: Date.now() - this.evalStartTime,
+          usage: this.usage,
         },
         this.outputProjectDir,
       );
@@ -152,7 +155,11 @@ class ScoringContext {
     if (allPassed) {
       await completeEval(
         this.evalId,
-        { kind: "passed", durationMs: evalDuration },
+        { 
+          kind: "passed", 
+          durationMs: evalDuration,
+          usage: this.usage,
+        },
         this.outputProjectDir,
       );
     } else {
@@ -171,6 +178,7 @@ class ScoringContext {
           kind: "failed",
           failureReason: failureReasons[0] ?? "unknown fail",
           durationMs: evalDuration,
+          usage: this.usage,
         },
         this.outputProjectDir,
       );
@@ -218,13 +226,14 @@ export async function convexScorer(
   const category = metadata.category as string;
   const name = metadata.eval_name as string;
   const evalId = metadata.eval_id as string | undefined;
+  const usage = metadata.usage as LanguageModelUsage | undefined;
 
   const outputProjectDir = resolve(
     join(tempdir, "output", model, category, name),
   );
   mkdirSync(outputProjectDir, { recursive: true });
 
-  const ctx = new ScoringContext(category, name, evalId, outputProjectDir);
+  const ctx = new ScoringContext(category, name, evalId, outputProjectDir, usage);
 
   // ── Step 1: Write filesystem ──
   const fsStart = Date.now();

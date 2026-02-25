@@ -5,7 +5,7 @@
  * providers. When the "web_search" experiment is active, a Tavily-powered
  * search tool is made available to every model.
  */
-import { generateText, type LanguageModel } from "ai";
+import { generateText, type LanguageModel, type LanguageModelUsage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
@@ -78,6 +78,10 @@ function createLanguageModel(
 
 // ── Token limit helpers ──────────────────────────────────────────────
 
+// Re-export LanguageModelUsage so callers can import it from here without
+// coupling directly to the ai package.
+export type { LanguageModelUsage };
+
 function getMaxOutputTokens(template: ModelTemplate): number {
   // Former Together models (DeepSeek) had 4096 limit
   if (template.name.startsWith("deepseek/")) return 4096;
@@ -96,7 +100,7 @@ export class Model {
     this.languageModel = createLanguageModel(model, apiKey);
   }
 
-  async generate(prompt: string): Promise<Record<string, string>> {
+  async generate(prompt: string): Promise<{ files: Record<string, string>; usage?: LanguageModelUsage }> {
     const userPrompt = renderPrompt(prompt);
     const useWebSearch = isWebSearchEnabled();
 
@@ -138,7 +142,10 @@ export class Model {
     }
 
     const result = await generateText(options);
-    return parseMarkdownResponse(result.text);
+    return {
+      files: parseMarkdownResponse(result.text),
+      usage: result.usage,
+    };
   }
 }
 

@@ -18,19 +18,43 @@ export const stepNameLiteral = v.union(
   v.literal("tests"),
 );
 
-// Status discriminated unions
+// Mirrors the LanguageModelUsage type from the Vercel AI SDK (ai package).
+// All fields are optional in the validator because JSON serialization strips
+// undefined values before storage. The `raw` field holds the unmodified
+// provider response (OpenRouter-specific fields like cost, is_byok, etc.) and
+// uses v.any() since its shape is opaque and varies by provider.
+export const languageModelUsage = v.object({
+  inputTokens: v.optional(v.number()),
+  inputTokenDetails: v.optional(v.object({
+    noCacheTokens: v.optional(v.number()),
+    cacheReadTokens: v.optional(v.number()),
+    cacheWriteTokens: v.optional(v.number()),
+  })),
+  outputTokens: v.optional(v.number()),
+  outputTokenDetails: v.optional(v.object({
+    textTokens: v.optional(v.number()),
+    reasoningTokens: v.optional(v.number()),
+  })),
+  totalTokens: v.optional(v.number()),
+  // Deprecated SDK fields, kept for backward compat with stored data
+  reasoningTokens: v.optional(v.number()),
+  cachedInputTokens: v.optional(v.number()),
+  // Unmodified provider response - shape varies by provider
+  raw: v.optional(v.any()),
+});
+
 export const runStatus = v.union(
   v.object({ kind: v.literal("pending") }),
   v.object({ kind: v.literal("running") }),
-  v.object({ kind: v.literal("completed"), durationMs: v.number() }),
-  v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number() }),
+  v.object({ kind: v.literal("completed"), durationMs: v.number(), usage: v.optional(languageModelUsage) }),
+  v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), usage: v.optional(languageModelUsage) }),
 );
 
 export const evalStatus = v.union(
   v.object({ kind: v.literal("pending") }),
   v.object({ kind: v.literal("running"), outputStorageId: v.optional(v.id("_storage")) }),
-  v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
-  v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")) }),
+  v.object({ kind: v.literal("passed"), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")), usage: v.optional(languageModelUsage) }),
+  v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), outputStorageId: v.optional(v.id("_storage")), usage: v.optional(languageModelUsage) }),
 );
 
 export const stepStatus = v.union(

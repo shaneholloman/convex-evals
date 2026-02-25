@@ -16,6 +16,7 @@ import { ConvexClient } from "convex/browser";
 import { logInfo } from "./logging.js";
 import { api } from "../evalScores/convex/_generated/api.js";
 import type { Id } from "../evalScores/convex/_generated/dataModel.js";
+import type { LanguageModelUsage } from "ai";
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -112,8 +113,8 @@ export async function startRun(
 export async function completeRun(
   runId: string,
   status:
-    | { kind: "completed"; durationMs: number }
-    | { kind: "failed"; failureReason: string; durationMs: number },
+    | { kind: "completed"; durationMs: number; usage?: LanguageModelUsage }
+    | { kind: "failed"; failureReason: string; durationMs: number; usage?: LanguageModelUsage },
 ): Promise<boolean> {
   const result = await safeMutate(
     "completeRun",
@@ -211,19 +212,21 @@ type EvalCompleteStatus =
       kind: "passed";
       durationMs: number;
       outputStorageId?: Id<"_storage">;
+      usage?: LanguageModelUsage;
     }
   | {
       kind: "failed";
       failureReason: string;
       durationMs: number;
       outputStorageId?: Id<"_storage">;
+      usage?: LanguageModelUsage;
     };
 
 export async function completeEval(
   evalId: string,
   status:
-    | { kind: "passed"; durationMs: number }
-    | { kind: "failed"; failureReason: string; durationMs: number },
+    | { kind: "passed"; durationMs: number; usage?: LanguageModelUsage }
+    | { kind: "failed"; failureReason: string; durationMs: number; usage?: LanguageModelUsage },
   outputDir?: string,
 ): Promise<boolean> {
   let outputStorageId: Id<"_storage"> | undefined;
@@ -302,6 +305,7 @@ export interface EvalIndividualResult {
   failure_reason: string | null;
   directory_path: string | null;
   scores: Record<string, number>;
+  usage?: LanguageModelUsage;
 }
 
 /** Print a console summary after all evals complete. */
@@ -317,6 +321,9 @@ export function printEvalSummary(
   let totalTests = 0;
   let totalPassed = 0;
 
+  let runInputTokens = 0;
+  let runOutputTokens = 0;
+
   for (const r of individualResults) {
     const cat = stats.get(r.category) ?? { count: 0, score: 0, passed: 0 };
     cat.count++;
@@ -327,6 +334,11 @@ export function printEvalSummary(
     totalTests++;
     totalScore += r.tests_pass_score;
     if (r.tests_pass_score >= 1) totalPassed++;
+    
+    if (r.usage) {
+      runInputTokens += r.usage.inputTokens ?? 0;
+      runOutputTokens += r.usage.outputTokens ?? 0;
+    }
   }
 
   const overallRate = totalTests > 0 ? totalScore / totalTests : 0;
@@ -337,6 +349,9 @@ export function printEvalSummary(
   logInfo(
     `Overall: ${(overallRate * 100).toFixed(2)}% (${totalPassed} pass, ${totalTests - totalPassed} fail)`,
   );
+  if (runInputTokens > 0 || runOutputTokens > 0) {
+    logInfo(`Tokens: ${runInputTokens.toLocaleString()} input, ${runOutputTokens.toLocaleString()} output`);
+  }
 
   for (const [category, cat] of [...stats.entries()].sort()) {
     const rate = cat.count > 0 ? cat.score / cat.count : 0;

@@ -25,6 +25,7 @@ import {
   OPENROUTER_API_KEY_VAR,
   DEFAULT_MAX_CONCURRENCY,
 } from "./models/index.js";
+import { logInfo } from "./logging.js";
 import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
 import { InfrastructureError } from "./convexBackend.js";
@@ -38,7 +39,7 @@ import {
   closeClient,
   type EvalIndividualResult,
 } from "./reporting.js";
-import { logInfo } from "./logging.js";
+import type { LanguageModelUsage } from "ai";
 
 config(); // Load .env
 
@@ -327,9 +328,25 @@ export async function runEvalsForModel(
 
     // Complete run
     if (runId) {
+      const runUsage: LanguageModelUsage = {
+        inputTokens: 0,
+        inputTokenDetails: { noCacheTokens: undefined, cacheReadTokens: undefined, cacheWriteTokens: undefined },
+        outputTokens: 0,
+        outputTokenDetails: { textTokens: undefined, reasoningTokens: undefined },
+        totalTokens: 0,
+      };
+      for (const r of allResults) {
+        if (r.usage) {
+          if (typeof r.usage.inputTokens === "number") runUsage.inputTokens = (runUsage.inputTokens ?? 0) + r.usage.inputTokens;
+          if (typeof r.usage.outputTokens === "number") runUsage.outputTokens = (runUsage.outputTokens ?? 0) + r.usage.outputTokens;
+          if (typeof r.usage.totalTokens === "number") runUsage.totalTokens = (runUsage.totalTokens ?? 0) + r.usage.totalTokens;
+        }
+      }
+      
       await completeRun(runId, {
         kind: "completed",
         durationMs: Date.now() - runStartTime,
+        usage: runUsage,
       });
       logInfo(`Completed run ${runId}`);
     }
@@ -383,7 +400,7 @@ async function processOneEval(
     );
   }
 
-  const metadata = {
+  const metadata: Record<string, unknown> = {
     name: evalPathStr,
     category,
     eval_name: name,
@@ -396,8 +413,17 @@ async function processOneEval(
 
   const evalStartTime = Date.now();
 
+  let usageStats: LanguageModelUsage | undefined;
+  
   try {
-    const output = await modelImpl.generate(taskDescription);
+    const { files: output, usage } = await modelImpl.generate(taskDescription);
+    usageStats = usage;
+    
+    // update metadata with tokens
+    if (usage) {
+      metadata.usage = usage;
+    }
+    
     const generateDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
     logInfo(
       `[${evalPathStr}] Model responded (${generateDuration}s), scoring...`,
@@ -411,7 +437,7 @@ async function processOneEval(
       output,
     );
 
-    const result = buildEvalResult(category, name, model.name, scores, tempdir);
+    const result = buildEvalResult(category, name, model.name, scores, tempdir, usage);
     allResults.push(result);
     logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
     return false;
@@ -445,6 +471,7 @@ async function processOneEval(
         kind: "failed",
         failureReason: `${prefix}error: ${errorStr}`,
         durationMs: Date.now() - evalStartTime,
+        usage: usageStats,
       });
     }
 
@@ -496,6 +523,7 @@ function buildEvalResult(
   modelName: string,
   scores: Array<{ name: string; score: number }>,
   tempdir: string,
+  usage?: LanguageModelUsage,
 ): EvalIndividualResult {
   const scoresMap: Record<string, number> = {};
   for (const s of scores) {
@@ -524,6 +552,7 @@ function buildEvalResult(
     failure_reason: failureReason,
     directory_path: join(tempdir, "output", modelName, category, name),
     scores: scoresMap,
+    usage,
   };
 }
 

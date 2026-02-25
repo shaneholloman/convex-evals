@@ -1,7 +1,7 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { experimentLiteral, runStatus, evalStatus } from "./schema.js";
+import { experimentLiteral, languageModelUsage, runStatus, evalStatus } from "./schema.js";
 
 /** Number of recent runs to use for mean/stddev computation in leaderboard */
 const LEADERBOARD_HISTORY_SIZE = 5;
@@ -83,8 +83,8 @@ export const completeRun = internalMutation({
   args: {
     runId: v.id("runs"),
     status: v.union(
-      v.object({ kind: v.literal("completed"), durationMs: v.number() }),
-      v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number() }),
+      v.object({ kind: v.literal("completed"), durationMs: v.number(), usage: v.optional(languageModelUsage) }),
+      v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number(), usage: v.optional(languageModelUsage) }),
     ),
   },
   returns: v.null(),

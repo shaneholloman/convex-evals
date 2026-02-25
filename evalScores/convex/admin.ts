@@ -9,7 +9,7 @@ import { mutation, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { experimentLiteral, stepNameLiteral, stepStatus } from "./schema.js";
+import { experimentLiteral, languageModelUsage, stepNameLiteral, stepStatus } from "./schema.js";
 
 // ── Helper ───────────────────────────────────────────────────────────
 
@@ -50,11 +50,12 @@ export const completeRun = mutation({
     token: v.string(),
     runId: v.id("runs"),
     status: v.union(
-      v.object({ kind: v.literal("completed"), durationMs: v.number() }),
+      v.object({ kind: v.literal("completed"), durationMs: v.number(), usage: v.optional(languageModelUsage) }),
       v.object({
         kind: v.literal("failed"),
         failureReason: v.string(),
         durationMs: v.number(),
+        usage: v.optional(languageModelUsage),
       }),
     ),
   },
@@ -148,12 +149,14 @@ export const completeEval = mutation({
         kind: v.literal("passed"),
         durationMs: v.number(),
         outputStorageId: v.optional(v.id("_storage")),
+        usage: v.optional(languageModelUsage),
       }),
       v.object({
         kind: v.literal("failed"),
         failureReason: v.string(),
         durationMs: v.number(),
         outputStorageId: v.optional(v.id("_storage")),
+        usage: v.optional(languageModelUsage),
       }),
     ),
   },
