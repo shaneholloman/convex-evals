@@ -86,17 +86,15 @@ export const ALL_MODELS: ModelTemplate[] = [
   {
     name: "openai/gpt-5.2-codex",
     formattedName: "GPT-5.2 Codex",
+    ciRunFrequency: "weekly",
+    apiKind: "responses",
+  },
+  {
+    name: "openai/gpt-5.3-codex",
+    formattedName: "GPT-5.3 Codex",
     ciRunFrequency: "daily",
     apiKind: "responses",
   },
-  // NOTE: gpt-5.3-codex was announced Feb 5, 2026 but API access is not yet available
-  // Uncomment when API access is enabled:
-  // {
-  //   name: "openai/gpt-5.3-codex",
-  //   formattedName: "GPT-5.3 Codex",
-  //   ciRunFrequency: "daily",
-  //   apiKind: "responses",
-  // },
   {
     name: "openai/gpt-5",
     formattedName: "GPT-5",
