@@ -15,6 +15,7 @@ Behavioral expectations:
 - `normalizedPath` must equal "/some/test/path" consistently for all inputs.
 
 This function should assume it needs libraries not available with the default Convex runtime.
+This will require the @types/node npm dev dependency.
 Create only the `convex/index.ts` and `package.json` files. Do not generate any other files.
 No schema is required for this demo since it doesn't use the database.
 

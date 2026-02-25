@@ -330,6 +330,12 @@ export const exampleQuery = query({
       'Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.',
     ),
     guideline(
+      'Never add `"use node";` to a file that also exports queries or mutations. Only actions can run in the Node.js runtime; queries and mutations must stay in the default Convex runtime. If you need Node.js built-ins alongside queries or mutations, put the action in a separate file.',
+    ),
+    guideline(
+      '`fetch()` is available in the default Convex runtime. You do NOT need `"use node";` just to use `fetch()`.',
+    ),
+    guideline(
       "Never use `ctx.db` inside of an action. Actions don't have access to the database.",
     ),
     guideline(`Below is an example of the syntax for an action:
@@ -593,6 +599,12 @@ export const exampleQuery = query({
     section("action_guidelines", [
       guideline(
         'Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.',
+      ),
+      guideline(
+        'Never add `"use node";` to a file that also exports queries or mutations. Only actions can run in the Node.js runtime; queries and mutations must stay in the default Convex runtime. If you need Node.js built-ins alongside queries or mutations, put the action in a separate file.',
+      ),
+      guideline(
+        '`fetch()` is available in the default Convex runtime. You do NOT need `"use node";` just to use `fetch()`.',
       ),
       guideline(
         "Never use `ctx.db` inside of an action. Actions don't have access to the database.",

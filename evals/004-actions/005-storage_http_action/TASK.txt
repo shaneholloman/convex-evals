@@ -14,6 +14,7 @@ Implement these functions in `convex/http.ts`:
 
 No schema is required since this demo only uses file storage.
 
+This will require the @types/node npm dev dependency.
 Create only the `convex/http.ts` and `package.json` files. Do not generate any other files.
 
 The HTTP action should be accessible at the path `/store`.
