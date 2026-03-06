@@ -26,6 +26,17 @@ export class InfrastructureError extends Error {
   }
 }
 
+/**
+ * Thrown when a run is aborted because too many rate-limit errors accumulated
+ * even after per-eval retries. Non-recoverable - should exit(1) in CI.
+ */
+export class RateLimitAbortError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RateLimitAbortError";
+  }
+}
+
 const INSTANCE_NAME = "carnitas";
 const INSTANCE_SECRET =
   "4361726e697461732c206c69746572616c6c79206d65616e696e6720226c6974";

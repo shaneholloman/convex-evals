@@ -28,7 +28,7 @@ import {
 import { logInfo } from "./logging.js";
 import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
-import { InfrastructureError } from "./convexBackend.js";
+import { InfrastructureError, RateLimitAbortError } from "./convexBackend.js";
 import {
   startRun,
   completeRun,
@@ -313,17 +313,16 @@ export async function runEvalsForModel(
     // If we aborted due to rate limits, fail the run so it doesn't
     // appear on the leaderboard with partial (misleading) results.
     if (rateLimitCount >= RATE_LIMIT_ABORT_THRESHOLD) {
+      const reason = `[rate_limit] Aborted after ${rateLimitCount} rate-limit errors`;
       if (runId) {
         await completeRun(runId, {
           kind: "failed",
-          failureReason: `[rate_limit] Aborted after ${rateLimitCount} rate-limit errors`,
+          failureReason: reason,
           durationMs: Date.now() - runStartTime,
         });
-        logInfo(
-          `Run failed: aborted after ${rateLimitCount} rate-limit errors`,
-        );
       }
-      return allResults;
+      console.error(`Run failed: aborted after ${rateLimitCount} rate-limit errors (threshold: ${RATE_LIMIT_ABORT_THRESHOLD})`);
+      throw new RateLimitAbortError(reason);
     }
 
     // Complete run
@@ -366,6 +365,9 @@ export async function runEvalsForModel(
     }
   }
 }
+
+const RATE_LIMIT_MAX_RETRIES = 2; // 3 total attempts
+const RATE_LIMIT_RETRY_BASE_MS = 30_000; // 30s, then 60s
 
 /** Process a single eval. Returns `true` if the failure was a rate-limit error. */
 async function processOneEval(
@@ -413,17 +415,40 @@ async function processOneEval(
 
   const evalStartTime = Date.now();
 
-  let usageStats: LanguageModelUsage | undefined;
-  
-  try {
-    const { files: output, usage } = await modelImpl.generate(taskDescription);
-    usageStats = usage;
-    
-    // update metadata with tokens
+  // Attempt to generate with retries on rate-limit errors.
+  let generateResult: { files: Record<string, string>; usage: LanguageModelUsage | undefined } | null = null;
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+    try {
+      const { files, usage } = await modelImpl.generate(taskDescription);
+      generateResult = { files, usage };
+      break;
+    } catch (e) {
+      // Infrastructure failures always abort immediately - no retry.
+      if (e instanceof InfrastructureError) throw e;
+
+      lastError = e;
+      const errorStr = String(e);
+
+      if (isRateLimitError(errorStr) && attempt < RATE_LIMIT_MAX_RETRIES) {
+        const delayMs = RATE_LIMIT_RETRY_BASE_MS * Math.pow(2, attempt);
+        logInfo(
+          `[${evalPathStr}] Rate limited, retrying in ${delayMs / 1000}s (attempt ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES})...`,
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+      // Non-rate-limit errors, or retries exhausted - fall through to error handling.
+    }
+  }
+
+  if (generateResult !== null) {
+    const { files: output, usage } = generateResult;
+
     if (usage) {
       metadata.usage = usage;
     }
-    
+
     const generateDuration = ((Date.now() - evalStartTime) / 1000).toFixed(1);
     logInfo(
       `[${evalPathStr}] Model responded (${generateDuration}s), scoring...`,
@@ -441,50 +466,47 @@ async function processOneEval(
     allResults.push(result);
     logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
     return false;
-  } catch (e) {
-    // Infrastructure failures (binary download, GitHub API) should abort the
-    // entire run rather than being recorded as individual eval failures.
-    if (e instanceof InfrastructureError) throw e;
-
-    const errorStr = String(e);
-    const rateLimited = isRateLimitError(errorStr);
-    const prefix = rateLimited ? "[rate_limit] " : "";
-    console.error(`[${evalPathStr}] ERROR: ${errorStr}`);
-    allResults.push({
-      category,
-      name,
-      passed: false,
-      tests_pass_score: 0,
-      failure_reason: `${prefix}error: ${errorStr}`,
-      directory_path: null,
-      scores: {},
-    });
-
-    // Mark the eval as failed in Convex so the run can be fully completed.
-    // Without this, the eval stays "pending" and isFullyCompletedRun returns
-    // false, preventing the run from appearing on the leaderboard.
-    // Rate-limit failures are tagged with [rate_limit] so the leaderboard
-    // can exclude them from scoring (they reflect infrastructure limits,
-    // not model quality).
-    if (evalId) {
-      await completeEval(evalId, {
-        kind: "failed",
-        failureReason: `${prefix}error: ${errorStr}`,
-        durationMs: Date.now() - evalStartTime,
-        usage: usageStats,
-      });
-    }
-
-    logProgress(
-      evalPathStr,
-      allResults[allResults.length - 1],
-      allResults,
-      totalEvals,
-      evalStartTime,
-    );
-
-    return rateLimited;
   }
+
+  // Generation failed after all attempts.
+  const errorStr = String(lastError);
+  const rateLimited = isRateLimitError(errorStr);
+  const prefix = rateLimited ? "[rate_limit] " : "";
+  console.error(`[${evalPathStr}] ERROR: ${errorStr}`);
+  allResults.push({
+    category,
+    name,
+    passed: false,
+    tests_pass_score: 0,
+    failure_reason: `${prefix}error: ${errorStr}`,
+    directory_path: null,
+    scores: {},
+  });
+
+  // Mark the eval as failed in Convex so the run can be fully completed.
+  // Without this, the eval stays "pending" and isFullyCompletedRun returns
+  // false, preventing the run from appearing on the leaderboard.
+  // Rate-limit failures are tagged with [rate_limit] so the leaderboard
+  // can exclude them from scoring (they reflect infrastructure limits,
+  // not model quality).
+  if (evalId) {
+    await completeEval(evalId, {
+      kind: "failed",
+      failureReason: `${prefix}error: ${errorStr}`,
+      durationMs: Date.now() - evalStartTime,
+      usage: undefined,
+    });
+  }
+
+  logProgress(
+    evalPathStr,
+    allResults[allResults.length - 1],
+    allResults,
+    totalEvals,
+    evalStartTime,
+  );
+
+  return rateLimited;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -587,7 +609,9 @@ const isMain =
 
 if (isMain) {
   main().catch((e) => {
-    if (!(e instanceof InfrastructureError)) {
+    // InfrastructureError and RateLimitAbortError already print their message
+    // before throwing, so skip the double-print here.
+    if (!(e instanceof InfrastructureError) && !(e instanceof RateLimitAbortError)) {
       console.error(e);
     }
     process.exit(1);
