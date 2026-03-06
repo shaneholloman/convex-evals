@@ -29,19 +29,6 @@ function section(
 
 export const CONVEX_GUIDELINES: GuidelineSection = section("convex_guidelines", [
   section("function_guidelines", [
-    section("new_function_syntax", [
-      guideline(`ALWAYS use the new function syntax for Convex functions. For example:
-\`\`\`typescript
-import { query } from "./_generated/server";
-import { v } from "convex/values";
-export const f = query({
-    args: {},
-    handler: async (ctx, args) => {
-    // Function body
-    },
-});
-\`\`\``),
-    ]),
     section("http_endpoint_syntax", [
       guideline(`HTTP endpoints are defined in \`convex/http.ts\` and require an \`httpAction\` decorator. For example:
 \`\`\`typescript
@@ -123,9 +110,6 @@ Convex Type  | TS/JS type  |  Example Usage         | Validator for argument val
       guideline(
         "ALWAYS include argument validators for all Convex functions. This includes all of `query`, `internalQuery`, `mutation`, `internalMutation`, `action`, and `internalAction`.",
       ),
-      guideline(
-        "If the JavaScript implementation of a Convex function doesn't have a return value, it implicitly returns `null`.",
-      ),
     ]),
     section("function_calling", [
       guideline("Use `ctx.runQuery` to call a query from a query, mutation, or action."),
@@ -159,7 +143,6 @@ export const g = query({
 \`\`\``),
     ]),
     section("function_references", [
-      guideline("Function references are pointers to registered Convex functions."),
       guideline(
         "Use the `api` object defined by the framework in `convex/_generated/api.ts` to call public functions registered with `query`, `mutation`, or `action`.",
       ),
@@ -176,18 +159,8 @@ export const g = query({
         "Functions can also registered within directories nested within the `convex/` folder. For example, a public function `h` defined in `convex/messages/access.ts` has a function reference of `api.messages.access.h`.",
       ),
     ]),
-    section("api_design", [
-      guideline(
-        "Convex uses file-based routing, so thoughtfully organize files with public query, mutation, or action functions within the `convex/` directory.",
-      ),
-      guideline("Use `query`, `mutation`, and `action` to define public functions."),
-      guideline(
-        "Use `internalQuery`, `internalMutation`, and `internalAction` to define private, internal functions.",
-      ),
-    ]),
     section("pagination", [
-      guideline("Paginated queries are queries that return a list of results in incremental pages."),
-      guideline(`You can define pagination using the following syntax:
+      guideline(`Define pagination using the following syntax:
 
 \`\`\`ts
 import { v } from "convex/values";
@@ -212,14 +185,6 @@ Note: \`paginationOpts\` is an object with the following properties:
 - isDone (a boolean that represents whether or not this is the last page of documents)
 - continueCursor (a string that represents the cursor to use to fetch the next page of documents)`),
     ]),
-  ]),
-  section("validator_guidelines", [
-    guideline(
-      "`v.bigint()` is deprecated for representing signed 64-bit integers. Use `v.int64()` instead.",
-    ),
-    guideline(
-      "Use `v.record()` for defining a record type. `v.map()` and `v.set()` are not supported.",
-    ),
   ]),
   section("schema_guidelines", [
     guideline("Always define your schema in `convex/schema.ts`."),
@@ -304,13 +269,6 @@ export const exampleQuery = query({
 \`\`\``),
     guideline(
       "Be strict with types, particularly around id's of documents. For example, if a function takes in an id for a document in the 'users' table, take in `Id<'users'>` rather than `string`.",
-    ),
-    guideline("Always use `as const` for string literals in discriminated union types."),
-    guideline(
-      "When using the `Array` type, make sure to always define your arrays as `const array: Array<T> = [...];`",
-    ),
-    guideline(
-      "When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`",
     ),
   ]),
   section("full_text_search_guidelines", [
@@ -415,9 +373,6 @@ export default crons;
   ]),
   section("file_storage_guidelines", [
     guideline(
-      "Convex includes file storage for large files like images, videos, and PDFs.",
-    ),
-    guideline(
       "The `ctx.storage.getUrl()` method returns a signed URL for a given file. It returns `null` if the file doesn't exist.",
     ),
     guideline(`Do NOT use the deprecated \`ctx.storage.getMetadata\` call for loading a file's metadata.
@@ -452,7 +407,7 @@ export const exampleQuery = query({
 
 // ── Compact guidelines (ablation-validated for AGENTS.md) ───────────────────
 // Excludes: validator_guidelines, full_text_search_guidelines;
-// function_guidelines excludes new_function_syntax, function_references;
+// function_guidelines excludes function_references;
 // validators, function_registration, function_calling, pagination are compacted.
 
 export const COMPACT_CONVEX_GUIDELINES: GuidelineSection = section(
