@@ -141,6 +141,11 @@ export const ALL_MODELS: ModelTemplate[] = [
     formattedName: "Qwen3.5 Plus",
     ciRunFrequency: "daily",
   },
+  {
+    name: "qwen/qwen3.5-397b-a17b",
+    formattedName: "Qwen3.5 397B A17B",
+    ciRunFrequency: "daily",
+  },
   // Z.AI (GLM) models – via OpenRouter
   {
     name: "z-ai/glm-5",
