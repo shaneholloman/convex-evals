@@ -6,7 +6,7 @@ on:
       models:
         description: "Comma-separated model names to evaluate"
         required: false
-        default: "qwen/qwen3.5-397b-a17b"
+        default: "google/gemini-3.1-flash-lite-preview"
       test_filter:
         description: "Regex to filter evals (e.g. '000-fundamentals', '000-fundamentals/000')"
         required: false
