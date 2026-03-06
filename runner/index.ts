@@ -302,7 +302,7 @@ export async function runEvalsForModel(
           });
           logInfo(`Run failed: ${reason}`);
         }
-        return allResults;
+        throw e;
       }
       throw e;
     }
@@ -587,7 +587,9 @@ const isMain =
 
 if (isMain) {
   main().catch((e) => {
-    console.error(e);
+    if (!(e instanceof InfrastructureError)) {
+      console.error(e);
+    }
     process.exit(1);
   });
 }
