@@ -84,6 +84,11 @@ export const ALL_MODELS: ModelTemplate[] = [
     ciRunFrequency: "weekly",
   },
   {
+    name: "openai/gpt-5.4",
+    formattedName: "GPT-5.4",
+    ciRunFrequency: "daily",
+  },
+  {
     name: "openai/gpt-5.3-codex",
     formattedName: "GPT-5.3 Codex",
     ciRunFrequency: "daily",
