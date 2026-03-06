@@ -72,6 +72,10 @@ function createLanguageModel(
     name: "openrouter",
     baseURL,
     apiKey,
+    transformRequestBody: (body: Record<string, unknown>) => ({
+      ...body,
+      reasoning: { effort: "medium" },
+    }),
   });
   return openrouter.chatModel(template.name);
 }
@@ -318,6 +322,14 @@ export class Model {
       ...baseOptions,
       ...promptOptions,
     };
+
+    // For responses API models, pass reasoning effort via providerOptions.
+    // Chat models handle this via transformRequestBody on the provider.
+    if (this.template.apiKind === "responses") {
+      options.providerOptions = {
+        openai: { reasoningEffort: "medium" },
+      };
+    }
 
     // When the web search experiment is active, provide the tool and
     // allow multiple steps so the model can search then generate.
