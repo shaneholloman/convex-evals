@@ -1,0 +1,20 @@
+Create a backend for listing audit log entries for a workspace.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  auditLogs: defineTable({
+    workspaceId: v.string(),
+    actor: v.string(),
+    action: v.string(),
+  }).index("by_workspaceId", ["workspaceId"]),
+});
+```
+
+Create a query function `listAuditLogs` in `convex/index.ts` that:
+- Takes arguments `{ workspaceId: string }`
+- Returns audit log entries for that workspace
+- Returns an empty array when the workspace has no audit log entries
