@@ -1,0 +1,13 @@
+Build a backend for a task management app with checklist support.
+
+Design the schema in `convex/schema.ts` and implement the functions in `convex/index.ts`.
+
+Requirements:
+- A `tasks` table with fields: `title` (string) and `status` (string)
+- Each task can have checklist items. A checklist item has `text` (string) and `completed` (boolean). Tasks can accumulate hundreds or thousands of checklist items over time.
+
+Create these functions in `convex/index.ts`:
+- A mutation `createTask` that takes `{ title: string, status: string }`, creates a task, and returns its ID directly
+- A mutation `addChecklistItem` that takes `{ taskId: Id<"tasks">, text: string }` and adds a checklist item (defaulting `completed` to false)
+- A mutation `toggleChecklistItem` that toggles the `completed` field of a checklist item
+- A query `getChecklistItems` that takes a task ID and returns all checklist items for that task

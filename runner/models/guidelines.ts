@@ -198,6 +198,9 @@ Note: \`paginationOpts\` is an object with the following properties:
     guideline(
       'Index fields must be queried in the same order they are defined. If you want to be able to query by "field1" then "field2" and by "field2" then "field1", you must create separate indexes.',
     ),
+    guideline(
+      "Do not store unbounded lists as an array field inside a document (e.g. `v.array(v.object({...}))`). As the array grows it will hit the 1MB document size limit, and every update rewrites the entire document. Instead, create a separate table for the child items with a foreign key back to the parent.",
+    ),
   ]),
   section("authentication_guidelines", [
     guideline(
@@ -509,6 +512,9 @@ http.route({
       ),
       guideline(
         'Index fields must be queried in the same order they are defined. If you want to be able to query by "field1" then "field2" and by "field2" then "field1", you must create separate indexes.',
+      ),
+      guideline(
+        "Do not store unbounded lists as an array field inside a document (e.g. `v.array(v.object({...}))`). As the array grows it will hit the 1MB document size limit, and every update rewrites the entire document. Instead, create a separate table for the child items with a foreign key back to the parent.",
       ),
     ]),
     section("authentication_guidelines", [
