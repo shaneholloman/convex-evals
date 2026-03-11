@@ -1,0 +1,23 @@
+Build a backend for tracking and counting support tickets per organization.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  tickets: defineTable({
+    orgId: v.string(),
+    title: v.string(),
+    status: v.string(),
+  }).index("by_orgId", ["orgId"]),
+});
+```
+
+Create these functions in `convex/index.ts`:
+- A mutation `createTicket` that takes `{ orgId: string, title: string, status: string }` and inserts a new ticket
+- A query `getTicketCount` that takes `{ orgId: string }` and returns the total number of tickets for that organization as a number
+
+The tickets table is append-only and can accumulate millions of rows per organization over time. The `getTicketCount` query will be called on every page load, so it must remain efficient regardless of how many tickets exist.
+
+You may modify the schema to add additional tables if needed for efficiency.

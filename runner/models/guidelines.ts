@@ -284,6 +284,9 @@ export const exampleQuery = query({
       "If the user does not explicitly tell you to return all results from a query you should ALWAYS return a bounded collection instead. So that is instead of using `.collect()` you should use `.take()` or paginate on database queries. This prevents future performance issues when tables grow in an unbounded way.",
     ),
     guideline(
+      "Never use `.collect().length` to count rows. Convex has no built-in count operator, so if you need a count that stays efficient at scale, maintain a denormalized counter in a separate document and update it in your mutations.",
+    ),
+    guideline(
       "Convex queries do NOT support `.delete()`. If you need to delete all documents matching a query, use `.take(n)` to read them in batches, iterate over each batch calling `ctx.db.delete(row._id)`, and repeat until no more results are returned.",
     ),
     guideline(
@@ -568,8 +571,11 @@ export const exampleQuery = query({
         "You should NEVER use `.collect()` in queries or mutations UNLESS the user explicitly asks you to return ALL rows from a table. Using `.collect()` can cause performance issues when tables grow in an unbounded way.You should instead use `.take()` with sensible values or pagination.",
       ),
       guideline(
+        "Never use `.collect().length` to count rows. Convex has no built-in count operator, so if you need a count that stays efficient at scale, maintain a denormalized counter in a separate document and update it in your mutations.",
+      ),
+      guideline(
         "Convex queries do NOT support `.delete()`. If you need to delete all documents matching a query, use `.take(n)` to read them in batches, iterate over each batch calling `ctx.db.delete(row._id)`, and repeat until no more results are returned.",
-      ),      
+      ),
       guideline(
         "Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.",
       ),
