@@ -1,0 +1,247 @@
+---
+name: add-eval
+description: Design, implement, validate, and calibrate a new eval for the convex-evals suite. Use when the user wants to add a new eval, create an eval, test a new Convex concept, or expand eval coverage.
+---
+
+# Add a New Eval
+
+Follow these steps whenever the user asks to create a new eval. Read `.cursor/skills/add-eval/reference.md` for grader helpers, test patterns, and conventions.
+
+**Switch to Plan mode immediately.** Steps 0-2 (gather info, research, design) are collaborative and read-only. The user should see the research findings and approve the eval design before any files are created. Switch back to Agent mode at Step 3.
+
+## Step 0: Gather Information
+
+Determine the following (ask the user if not provided):
+
+1. **Concept to test** - what Convex feature or pattern should this eval exercise? (e.g. "vector search", "pagination with joins", "cascade deletes")
+2. **Specific focus** - any edge cases, constraints, or behaviors the user wants to emphasize?
+
+### Category Selection
+
+List the existing categories by scanning `evals/` top-level directories, then propose the best-fit category. The current categories are:
+
+| Category | Scope |
+|----------|-------|
+| `000-fundamentals` | Basic Convex concepts (empty functions, schema definition, crons, scheduling) |
+| `001-data_modeling` | Schema design, indexes, relationships, unions, optional fields |
+| `002-queries` | Reading data, joins, pagination, aggregation, filtering |
+| `003-mutations` | Writing data, inserts, patches, deletes, cascades |
+| `004-actions` | HTTP fetch, file storage, node runtime, HTTP action routing |
+| `005-idioms` | File organization, internal functions, batch patterns |
+| `006-clients` | useQuery, useMutation, usePaginatedQuery |
+
+- If the concept **clearly fits** one category, propose it with a brief justification.
+- If it's **ambiguous** (e.g. "scheduled mutations" could be fundamentals or mutations), stop and ask the user. Present the candidate categories with reasoning for each.
+- If it **doesn't fit** any existing category, propose creating a new category and ask the user to confirm.
+
+Determine the eval number by listing existing evals in the chosen category and picking the next sequential number.
+
+## Step 1: Research
+
+Run these four research tracks. Use sub-agents or parallel tool calls where possible.
+
+### A. Convex Docs (source of truth)
+
+1. Fetch `https://docs.convex.dev/llms.txt` to get the docs table of contents.
+2. Identify the 1-3 most relevant doc pages for the concept being tested.
+3. Use WebFetch to retrieve those specific pages.
+4. Extract the correct API patterns, constraints, and best practices. These are ground truth for designing the eval and answer.
+
+### B. Existing Guidelines
+
+1. Read the relevant sections of `runner/models/guidelines.ts` (or the generated guidelines) for the concept being tested.
+2. Record:
+   - Which existing guidelines are relevant
+   - What behavior those guidelines would lead a model to produce
+   - Whether the current guidelines would already be expected to make strong models pass
+   - Whether any guideline seems to conflict with what the proposed eval is trying to reward
+3. Do **not** treat this as a reason to block the eval automatically. This is context for design and later calibration.
+4. If an existing guideline appears to directly contradict the proposed eval, **STOP and discuss with the user** before proceeding.
+
+### C. Existing Eval Patterns
+
+1. Read 2-3 evals in the same or a similar category.
+2. Study: TASK.txt style, answer structure, test approach, schema design.
+3. Note which grader helpers and test patterns they use. See `reference.md` for the full catalog.
+
+### D. Overlap Check
+
+1. List ALL eval directory names under `evals/` to get a high-level view of coverage.
+2. For any eval whose name suggests overlap with the proposed concept, read its TASK.txt.
+3. If an existing eval tests the **same or very similar** concept, **STOP and warn the user**:
+   - Name the overlapping eval(s) and explain what they already cover.
+   - Ask whether to: differentiate the new eval (narrow its scope), adjust the existing eval, or abandon.
+4. Flag even **partial overlap**, e.g. "002-queries/012-index_and_filter already tests index usage but doesn't cover compound indexes."
+
+## Step 2: Design the Eval
+
+You should already be in Plan mode. Present the full eval design to the user for review.
+
+### TASK.txt Draft
+
+Write the complete TASK.txt content. Follow these principles:
+
+- **Laser-focused** on the concept being tested. Control other variables (keep schema simple, minimize unrelated code).
+- **Explicit** about schema, function names, argument types, return shapes, and which files to create.
+- **Don't over-specify** Convex implementation details that are covered by the guidelines. If a model needs the task to spell out how to use `internalMutation` or how pagination works, that's a meaningful signal, not a task problem.
+- **Don't under-specify** the problem domain. The model should not need to guess what the feature does, only how to implement it in Convex.
+- **Include schema** as a TypeScript code block when applicable.
+- **Specify edge cases** (empty results, error messages, missing data).
+
+### Answer Outline
+
+Describe the files that will be created and the key implementation approach. Don't write the full code yet, just the structure and important decisions.
+
+### Test Approach
+
+Describe how the eval will be graded:
+
+- Pick the primary grading primitive first: behavior tests, schema inspection, function-spec comparison, HTTP testing, AI grading, AST analysis, or some combination.
+- Which grader helpers to use (see `reference.md` for the catalog and decision tree).
+- What behaviors to assert on.
+- Whether standard unit tests are sufficient, or if you need schema inspection, HTTP testing, AI grading, or something else.
+
+**If unit tests cannot fully verify the concept** (e.g. testing that a model uses an index rather than a filter, or testing code organization patterns), **STOP and discuss with the user.** Present the options:
+
+- Schema/index inspection (using `getSchema`, `hasIndexForFields`)
+- AI grading (`createAIGraderTest`, currently disabled and requires a repo change to re-enable)
+- AST analysis (parse the generated TypeScript files)
+- Restructure the eval so the concept can be tested via behavior
+- Accept the limitation and test what we can
+
+Let the user decide before proceeding.
+
+### Guidelines Hypothesis
+
+Summarize the guideline context before implementation:
+
+- Which existing guidelines are relevant to this eval
+- What you would expect guideline-following models to do
+- Whether failures on this eval would likely indicate a model gap, an eval/task problem, or a missing/weak guideline
+- Any existing guideline that might need to be revised if calibration shows an unexpected result
+
+### Push Back
+
+Before presenting the design, critically evaluate it. Warn the user if:
+
+- The eval overlaps heavily with an existing eval (should have been caught in Step 1C, but re-check).
+- The task tests too many concepts at once. Each eval should focus on one thing.
+- The task is so explicit that it tells the model exactly how to solve it (e.g. specifying `.withIndex()` calls). We're testing knowledge, not instruction-following.
+- The current guidelines suggest a different approach than the eval is rewarding, or make the expected signal unclear.
+- The eval seems too easy (every model will pass) or too hard (no model will pass).
+
+## Step 3: Implement the Eval
+
+After the user approves the design, **switch back to Agent mode** and implement:
+
+1. **Create directory:** `evals/<category>/<eval_slug>/`
+
+2. **Write TASK.txt** with the approved content.
+
+3. **Create answer directory:**
+   - `answer/package.json`:
+     ```json
+     {
+       "name": "convexbot",
+       "version": "1.0.0",
+       "dependencies": {
+         "convex": "^1.31.2"
+       }
+     }
+     ```
+   - `answer/convex/schema.ts` (if applicable)
+   - Implementation files (e.g. `answer/convex/index.ts`)
+
+4. **Run codegen:**
+   ```bash
+   cd evals/<category>/<eval_slug>/answer && bunx convex codegen
+   ```
+
+5. **Write grader.test.ts** using the approved test approach. Import paths are relative:
+   ```typescript
+   import { responseClient, responseAdminClient, addDocuments } from "../../../grader";
+   import { api } from "./answer/convex/_generated/api";
+   ```
+   Adjust the depth of `../` based on the eval's nesting level.
+
+6. **Typecheck:**
+   ```bash
+   bun run typecheck
+   ```
+
+## Step 4: Validate the Answer
+
+Run the eval for one model as a smoke test. This validates that the answer, tests, and codegen are all working:
+
+```bash
+MODELS=anthropic/claude-sonnet-4.6 TEST_FILTER=<category>/<eval_slug> bun run local:run
+```
+
+Do NOT set `CONVEX_EVAL_URL` or `CONVEX_AUTH_TOKEN`, so results stay local-only.
+
+If the smoke test fails:
+
+1. Read the output directory and `run.log` to understand what happened.
+2. Determine whether it's a **test problem** (fix the grader) or a **model problem** (expected, move on).
+3. If the test itself is broken, fix it and re-run before proceeding.
+
+## Step 5: Run Against Multiple Models
+
+Start with a smaller representative set of models to calibrate difficulty. If the result is unclear, expand to a broader sweep. Launch separate background processes, one per model:
+
+```bash
+# Suggested first-pass set
+MODELS=anthropic/claude-sonnet-4.6 TEST_FILTER=<category>/<eval_slug> bun run local:run &
+MODELS=openai/gpt-5.4 TEST_FILTER=<category>/<eval_slug> bun run local:run &
+MODELS=google/gemini-3.1-pro-preview TEST_FILTER=<category>/<eval_slug> bun run local:run &
+MODELS=anthropic/claude-haiku-4.5 TEST_FILTER=<category>/<eval_slug> bun run local:run &
+wait
+```
+
+If those results are too noisy or too uniform, expand to a broader sweep across providers and tiers. The user can override the list. Do NOT set `CONVEX_EVAL_URL` or `CONVEX_AUTH_TOKEN`.
+
+Monitor the background processes by reading their terminal output files. Each process runs one eval so they should complete in a few minutes.
+
+## Step 6: Review Results and Calibrate
+
+Collect pass/fail from all model runs and present a summary table:
+
+```
+Model                          Result
+-----------------------------  ------
+anthropic/claude-sonnet-4.6    PASS
+anthropic/claude-haiku-4.5     FAIL
+openai/gpt-5.4                 PASS
+...
+```
+
+Then assess the results:
+
+- **All pass** - The eval is likely too easy or the task is too explicit. Recommend tightening the task (remove implementation hints) or adding harder edge cases.
+- **All fail** - The eval might be too hard, poorly specified, or testing something not covered by the guidelines. Investigate the failures. Common causes: ambiguous requirements, missing context, concept beyond current model capabilities.
+- **Mixed results (ideal)** - The eval discriminates between model capabilities. Note whether the pass/fail pattern makes sense given model tiers.
+- **Unexpected pattern** (e.g. only one provider's models fail) - Might indicate a provider-specific quirk rather than a meaningful eval. Investigate before keeping.
+
+Then explicitly ask: is this primarily an **eval/task gap**, a **model gap**, or a **guideline gap**?
+
+- **Eval/task gap** - The task is ambiguous, over-specified, under-specified, or the grader is not testing the right thing. Fix the eval first.
+- **Model gap** - The task is sound, the grading is sound, and failures are what we would expect. Keep the eval.
+- **Guideline gap** - The failures suggest there should be a guideline that helps here, or an existing guideline is weak/confusing/contradictory. Recommend following up with the `validate-guidelines` skill after the eval is settled.
+
+**Push back** with specific recommendations if calibration looks off. Suggest concrete changes to the task, answer, or tests.
+
+## Summary Checklist
+
+- [ ] Concept and category confirmed with user
+- [ ] Convex docs consulted for the feature being tested
+- [ ] Relevant existing guidelines checked, with expected implications noted
+- [ ] No significant overlap with existing evals (or overlap discussed with user)
+- [ ] TASK.txt reviewed and approved by user (Plan mode)
+- [ ] Test approach discussed, especially if non-standard grading is needed
+- [ ] Answer implemented and codegen run
+- [ ] grader.test.ts written
+- [ ] `bun run typecheck` passes
+- [ ] Smoke test passes for at least one model
+- [ ] Calibrated on a representative set of models, expanded if needed
+- [ ] Results reviewed, including eval gap vs model gap vs guideline gap
+- [ ] Difficulty is appropriate

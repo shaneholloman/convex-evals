@@ -131,14 +131,6 @@ Note that test or category names cannot contain dashes.
 4. Add a `grader.test.ts` file with unit tests
 5. Run the eval to verify it works
 
-### Scaffolding
-
-Use the helper script to create the directory structure and initialise a Convex project:
-
-```bash
-python3 create_eval.py <eval_name> <category>
-```
-
 ### Implementing the answer
 
 1. Create `schema.ts` first
