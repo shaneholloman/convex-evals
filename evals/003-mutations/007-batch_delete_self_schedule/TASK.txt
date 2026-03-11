@@ -1,0 +1,19 @@
+Build a backend for bulk-deleting activity log entries for a workspace.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  activityLog: defineTable({
+    workspaceId: v.string(),
+    action: v.string(),
+  }).index("by_workspaceId", ["workspaceId"]),
+});
+```
+
+Create a mutation `deleteActivityLogs` in `convex/index.ts` that:
+- Takes arguments `{ workspaceId: string }`
+- Deletes all activity log entries for that workspace
+- The activityLog table can contain millions of rows per workspace, so the mutation must handle arbitrarily large tables without hitting Convex transaction limits

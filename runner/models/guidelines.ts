@@ -290,6 +290,9 @@ export const exampleQuery = query({
       "Convex queries do NOT support `.delete()`. If you need to delete all documents matching a query, use `.take(n)` to read them in batches, iterate over each batch calling `ctx.db.delete(row._id)`, and repeat until no more results are returned.",
     ),
     guideline(
+      "Convex mutations are transactions with limits on the number of documents read and written. If a mutation needs to process more documents than fit in a single transaction (e.g. bulk deletion on a large table), process a batch with `.take(n)` and then call `ctx.scheduler.runAfter(0, api.myModule.myMutation, args)` to schedule itself to continue. This way each invocation stays within transaction limits.",
+    ),
+    guideline(
       "Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.",
     ),
     guideline(
@@ -569,12 +572,6 @@ export const exampleQuery = query({
       ),
       guideline(
         "You should NEVER use `.collect()` in queries or mutations UNLESS the user explicitly asks you to return ALL rows from a table. Using `.collect()` can cause performance issues when tables grow in an unbounded way.You should instead use `.take()` with sensible values or pagination.",
-      ),
-      guideline(
-        "Never use `.collect().length` to count rows. Convex has no built-in count operator, so if you need a count that stays efficient at scale, maintain a denormalized counter in a separate document and update it in your mutations.",
-      ),
-      guideline(
-        "Convex queries do NOT support `.delete()`. If you need to delete all documents matching a query, use `.take(n)` to read them in batches, iterate over each batch calling `ctx.db.delete(row._id)`, and repeat until no more results are returned.",
       ),
       guideline(
         "Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.",
