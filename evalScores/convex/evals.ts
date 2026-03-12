@@ -174,15 +174,11 @@ export const seedMissingEvalCosts = internalMutation({
       if (!model) {
         const run = await ctx.db.get(evalDoc.runId);
         if (run) {
-          if (run.modelId) {
-            const modelDoc = await ctx.db.get(run.modelId);
-            model =
-              modelDoc && "slug" in modelDoc
-                ? modelDoc.slug
-                : run.model ?? "unknown-model";
-          } else {
-            model = run.model ?? "unknown-model";
-          }
+          const modelDoc = await ctx.db.get(run.modelId);
+          model =
+            modelDoc && "slug" in modelDoc
+              ? modelDoc.slug
+              : "unknown-model";
         } else {
           model = "unknown-model";
         }

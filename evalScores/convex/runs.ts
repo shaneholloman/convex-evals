@@ -302,11 +302,11 @@ export const getRunDetails = query({
       model:
         model && "slug" in model
           ? model.slug
-          : (run.model ?? "unknown-model"),
+          : "unknown-model",
       formattedName:
         model && "formattedName" in model
           ? model.formattedName
-          : (run.formattedName ?? run.model ?? "Unknown model"),
+          : "Unknown model",
       provider: run.provider,
       runId: run.runId,
       plannedEvals: run.plannedEvals,
@@ -386,13 +386,11 @@ export const listRuns = query({
         const failedCount = evals.filter((e) => e.status.kind === "failed").length;
         const totalCount = evals.length;
         
-        const model = run.modelId ? modelMap.get(run.modelId) : undefined;
+        const model = modelMap.get(run.modelId);
         return {
           ...run,
-          model: model?.slug ?? (run.model ?? "unknown-model"),
-          formattedName:
-            model?.formattedName ??
-            (run.formattedName ?? run.model ?? "Unknown model"),
+          model: model?.slug ?? "unknown-model",
+          formattedName: model?.formattedName ?? "Unknown model",
           evalCounts: {
             total: totalCount,
             passed: passedCount,
@@ -412,29 +410,13 @@ export const listExperiments = query({
   args: {},
   handler: async (ctx) => {
     const experiments = await ctx.db.query("experiments").collect();
-    const models = await ctx.db.query("models").collect();
-    const modelIdBySlug = new Map(models.map((m) => [m.slug, m._id]));
-    const knownModelIds = new Set(models.map((m) => String(m._id)));
-    
     // Transform to expected format and sort by latest run
     const result = experiments.map((exp) => ({
-      modelIds: exp.models
-        .map((entry) => {
-          if (typeof entry !== "string") return entry;
-          if (knownModelIds.has(entry)) return entry as Id<"models">;
-          return modelIdBySlug.get(entry) ?? null;
-        })
-        .filter((id): id is Id<"models"> => id !== null),
+      modelIds: exp.models,
       name: exp.name,
       runCount: exp.runCount,
       modelCount: exp.models.length,
-      models: exp.models
-        .map((entry) => {
-          if (typeof entry !== "string") return entry;
-          if (knownModelIds.has(entry)) return entry as Id<"models">;
-          return modelIdBySlug.get(entry) ?? null;
-        })
-        .filter((id): id is Id<"models"> => id !== null),
+      models: exp.models,
       latestRun: exp.latestRunTime,
       totalEvals: exp.totalEvals,
       passedEvals: exp.passedEvals,
@@ -470,21 +452,15 @@ export const leaderboardScores = query({
 
     // Sort by total score descending (highest first), then by model name for ties
     rows.sort((a, b) => {
-      const modelA = a.modelId ? modelMap.get(a.modelId)?.slug ?? "" : "";
-      const modelB = b.modelId ? modelMap.get(b.modelId)?.slug ?? "" : "";
+      const modelA = modelMap.get(a.modelId)?.slug ?? "";
+      const modelB = modelMap.get(b.modelId)?.slug ?? "";
       return b.totalScore - a.totalScore || modelA.localeCompare(modelB);
     });
 
     return rows.map((r) => ({
       modelId: r.modelId,
-      model: r.modelId
-        ? modelMap.get(r.modelId)?.slug ?? (r.model ?? "unknown-model")
-        : (r.model ?? "unknown-model"),
-      formattedName:
-        r.modelId
-          ? modelMap.get(r.modelId)?.formattedName ??
-            (r.formattedName ?? "Unknown model")
-          : (r.formattedName ?? "Unknown model"),
+      model: modelMap.get(r.modelId)?.slug ?? "unknown-model",
+      formattedName: modelMap.get(r.modelId)?.formattedName ?? "Unknown model",
       totalScore: r.totalScore,
       totalScoreErrorBar: r.totalScoreErrorBar,
       averageRunDurationMs: r.averageRunDurationMs,
