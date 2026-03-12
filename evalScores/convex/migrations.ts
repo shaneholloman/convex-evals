@@ -132,7 +132,12 @@ export const backfillExperimentsModelIds = migrations.define({
       if (typeof entry !== "string") continue;
       const canonical = toCanonicalSlug(entry);
       const possibleId = canonical as Id<"models">;
-      const maybeModelDoc = await ctx.db.get(possibleId);
+      let maybeModelDoc: any = null;
+      try {
+        maybeModelDoc = await ctx.db.get(possibleId);
+      } catch {
+        maybeModelDoc = null;
+      }
       if (maybeModelDoc && "slug" in maybeModelDoc) {
         ids.push(possibleId);
       } else {
@@ -159,7 +164,12 @@ export const repairExperimentsModelIds = migrations.define({
       if (typeof entry !== "string") continue;
       const canonical = toCanonicalSlug(entry);
       const possibleId = canonical as Id<"models">;
-      const maybeModelDoc = await ctx.db.get(possibleId);
+      let maybeModelDoc: any = null;
+      try {
+        maybeModelDoc = await ctx.db.get(possibleId);
+      } catch {
+        maybeModelDoc = null;
+      }
       if (maybeModelDoc && "slug" in maybeModelDoc) {
         ids.push(possibleId);
       } else {
