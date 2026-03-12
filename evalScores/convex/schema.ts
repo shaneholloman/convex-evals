@@ -102,6 +102,8 @@ export default defineSchema({
 
   runs: defineTable({
     modelId: v.id("models"),
+    model: v.optional(v.string()),
+    formattedName: v.optional(v.string()),
     provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
