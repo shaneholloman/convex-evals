@@ -149,6 +149,8 @@ export default defineSchema({
   // recomputing from runs + evals on every request.
   modelScores: defineTable({
     modelId: v.id("models"),
+    model: v.optional(v.string()),
+    formattedName: v.optional(v.string()),
     experiment: v.optional(experimentLiteral),
     totalScore: v.number(),
     totalScoreErrorBar: v.number(),
