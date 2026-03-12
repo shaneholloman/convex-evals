@@ -26,6 +26,7 @@ import {
   OPENROUTER_API_KEY_VAR,
   DEFAULT_MAX_CONCURRENCY,
 } from "./models/index.js";
+import { discoverOpenRouterModel } from "./models/openRouterDiscovery.js";
 import { logInfo } from "./logging.js";
 import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
@@ -155,11 +156,24 @@ async function main(): Promise<void> {
     ? process.env.MODELS.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_MODEL_NAMES;
 
+  const resolvedModels: ModelTemplate[] = [];
   for (const modelName of modelNames) {
-    if (!MODELS_BY_NAME[modelName]) {
-      console.error(`Model ${modelName} not supported`);
+    const knownModel = MODELS_BY_NAME[modelName];
+    if (knownModel) {
+      resolvedModels.push(knownModel);
+      continue;
+    }
+
+    const discovered = await discoverOpenRouterModel(modelName);
+    if (!discovered) {
+      console.error(`Model ${modelName} not supported and not found on OpenRouter`);
       process.exit(1);
     }
+
+    logInfo(
+      `Discovered dynamic model ${discovered.name} (${discovered.formattedName})`,
+    );
+    resolvedModels.push(discovered);
   }
 
   const td =
@@ -170,9 +184,9 @@ async function main(): Promise<void> {
     ? new RegExp(process.env.TEST_FILTER)
     : undefined;
 
-  for (const modelName of modelNames) {
+  for (const model of resolvedModels) {
     const cfg: RunConfig = {
-      model: MODELS_BY_NAME[modelName],
+      model,
       tempdir: td,
       testFilter: tf,
       executionMode,

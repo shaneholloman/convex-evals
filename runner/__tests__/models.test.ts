@@ -35,6 +35,12 @@ describe("ALL_MODELS", () => {
     }
   });
 
+  it('does not keep "never" models in ALL_MODELS', () => {
+    for (const model of ALL_MODELS) {
+      expect(model.ciRunFrequency).not.toBe("never");
+    }
+  });
+
   it("has no duplicate model names", () => {
     const names = ALL_MODELS.map((m) => m.name);
     expect(new Set(names).size).toBe(names.length);
