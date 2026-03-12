@@ -247,12 +247,12 @@ export function AppSidebar() {
 
 function SidebarHome() {
   const experiments = useQuery(api.runs.listExperiments, {});
-  const modelNames = experiments
+  const modelIds = experiments
     ? [...new Set(experiments.flatMap((e) => e.models))]
     : [];
   const models = useQuery(
     api.runs.listModels,
-    experiments ? { models: modelNames } : "skip"
+    experiments ? { modelIds } : "skip"
   );
 
   if (experiments === undefined || models === undefined) {
@@ -298,9 +298,9 @@ function SidebarHome() {
             const percentage = (model.passRate * 100).toFixed(1);
             return (
               <Link
-                key={model.name}
+                key={model.modelId}
                 to="/model/$model"
-                params={{ model: model.name }}
+                params={{ model: model.modelId }}
                 className="sidebar-item block mb-1"
               >
                 <div className="flex items-center justify-between">
@@ -692,7 +692,9 @@ function EvalLinkRow({
 // Model-based sidebar components
 
 function SidebarModel({ model }: { model: string }) {
-  const runs = useQuery(api.runs.listRuns, { model });
+  const runs = useQuery(api.runs.listRuns, {
+    modelId: model as Id<"models">,
+  });
 
   if (runs === undefined) {
     return (
@@ -767,7 +769,9 @@ function SidebarModelExperiment({
   model: string;
   experimentId: string;
 }) {
-  const runs = useQuery(api.runs.listRuns, { model });
+  const runs = useQuery(api.runs.listRuns, {
+    modelId: model as Id<"models">,
+  });
 
   const filteredRuns =
     runs === undefined

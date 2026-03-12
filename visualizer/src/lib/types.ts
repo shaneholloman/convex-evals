@@ -48,7 +48,9 @@ export interface Eval {
 // Run type
 export interface Run {
   _id: Id<"runs">;
+  modelId?: Id<"models">;
   model: string;
+  formattedName?: string;
   provider?: string;
   runId?: string;
   plannedEvals: string[];

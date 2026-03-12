@@ -29,6 +29,13 @@ export const getRunRecord = internalQuery({
   },
 });
 
+export const getModelRecord = internalQuery({
+  args: { modelId: v.id("models") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.modelId);
+  },
+});
+
 /**
  * Get a lightweight summary of all failed evals for a run.
  * Returns the eval IDs, names, categories, and failure reasons
@@ -78,11 +85,12 @@ export const getFailedEvalsForRun = internalQuery({
         };
       }),
     );
+    const modelDoc = run.modelId ? await ctx.db.get(run.modelId) : null;
 
     return {
       run: {
         _id: run._id,
-        model: run.model,
+        model: modelDoc && "slug" in modelDoc ? modelDoc.slug : "unknown-model",
         provider: run.provider ?? null,
         experiment: run.experiment ?? "default",
         status: run.status,

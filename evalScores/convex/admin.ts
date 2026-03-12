@@ -30,8 +30,7 @@ async function assertValidToken(
 export const startRun = mutation({
   args: {
     token: v.string(),
-    model: v.string(),
-    formattedName: v.string(),
+    modelId: v.id("models"),
     provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
@@ -67,6 +66,26 @@ export const completeRun = mutation({
       status: args.status,
     });
     return null;
+  },
+});
+
+export const ensureModelFromSlug = mutation({
+  args: {
+    token: v.string(),
+    slug: v.string(),
+    formattedName: v.string(),
+    provider: v.optional(v.string()),
+    apiKind: v.optional(v.union(v.literal("chat"), v.literal("responses"))),
+  },
+  returns: v.id("models"),
+  handler: async (ctx, args): Promise<Id<"models">> => {
+    await assertValidToken(ctx, args.token);
+    return await ctx.runMutation(internal.models.upsertFromSlug, {
+      slug: args.slug,
+      formattedName: args.formattedName,
+      provider: args.provider,
+      apiKind: args.apiKind,
+    });
   },
 });
 

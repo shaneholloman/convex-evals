@@ -49,7 +49,7 @@ interface ModelChoice {
  */
 function discoverModels(): ModelChoice[] {
   return ALL_MODELS.map((m) => ({
-    name: m.formattedName,
+    name: m.name,
     value: m.name,
   }));
 }

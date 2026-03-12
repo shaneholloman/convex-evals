@@ -204,7 +204,7 @@ describe("leaderboardScores", () => {
     });
 
     const results = await t.query(api.runs.leaderboardScores, {});
-    const entry = results.find((r) => r.model === "cost-model");
+    const entry = results.find((r: any) => r.model === "cost-model");
     expect(entry).toBeDefined();
 
     // Mean of [1.0, 3.0] = 2.0
@@ -226,7 +226,7 @@ describe("leaderboardScores", () => {
     });
 
     const results = await t.query(api.runs.leaderboardScores, {});
-    const entry = results.find((r) => r.model === "no-cost-model");
+    const entry = results.find((r: any) => r.model === "no-cost-model");
     expect(entry).toBeDefined();
     expect(entry!.averageRunCostUsd).toBeNull();
     expect(entry!.averageRunCostUsdErrorBar).toBeNull();
@@ -402,8 +402,8 @@ describe("leaderboardScores", () => {
 
     expect(results).toHaveLength(2);
     // Sorted by model name
-    const modelA = results.find((r) => r.model === "model-a");
-    const modelB = results.find((r) => r.model === "model-b");
+    const modelA = results.find((r: any) => r.model === "model-a");
+    const modelB = results.find((r: any) => r.model === "model-b");
     expect(modelA).toBeDefined();
     expect(modelB).toBeDefined();
     expect(modelA!.totalScore).toBe(1.0);

@@ -7,7 +7,12 @@ import type { GenericId } from "convex/values";
 /**
  * Table names in the evalScores data model.
  */
-export type TableNames = "runs" | "evals" | "steps" | "evalAssets";
+export type TableNames =
+  | "models"
+  | "runs"
+  | "evals"
+  | "steps"
+  | "evalAssets";
 
 /**
  * System table names.

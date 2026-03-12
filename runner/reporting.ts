@@ -86,8 +86,7 @@ async function safeMutate<T>(
 // ── Run lifecycle ─────────────────────────────────────────────────────
 
 export async function startRun(
-  model: string,
-  formattedName: string,
+  modelId: string,
   plannedEvals: string[],
   provider: string,
   experiment?: string,
@@ -98,8 +97,7 @@ export async function startRun(
   }
 
   return safeMutate<string>("startRun", api.admin.startRun, {
-    model,
-    formattedName,
+    modelId: modelId as Id<"models">,
     plannedEvals,
     provider,
     experiment: (experiment ?? EVALS_EXPERIMENT) as
@@ -108,6 +106,32 @@ export async function startRun(
       | "web_search_no_guidelines"
       | undefined,
   });
+}
+
+export async function ensureModelFromSlug(
+  slug: string,
+  formattedName: string,
+  provider?: string,
+  apiKind?: "chat" | "responses",
+): Promise<string | null> {
+  if (!getClient() || !CONVEX_AUTH_TOKEN) {
+    logInfo(
+      "Skipping ensureModelFromSlug: CONVEX_EVAL_URL or CONVEX_AUTH_TOKEN not set",
+    );
+    return null;
+  }
+
+  const result = await safeMutate(
+    "ensureModelFromSlug",
+    api.admin.ensureModelFromSlug,
+    {
+      slug,
+      formattedName,
+      provider,
+      apiKind,
+    },
+  );
+  return (result as string | null) ?? null;
 }
 
 export async function completeRun(

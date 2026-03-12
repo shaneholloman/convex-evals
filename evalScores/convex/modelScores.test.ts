@@ -314,8 +314,8 @@ describe("recomputeModelScores", () => {
     const results = await t.query(api.runs.leaderboardScores, {});
     expect(results).toHaveLength(2);
 
-    const a = results.find((r) => r.model === "model-a");
-    const b = results.find((r) => r.model === "model-b");
+    const a = results.find((r: any) => r.model === "model-a");
+    const b = results.find((r: any) => r.model === "model-b");
     expect(a?.totalScore).toBe(1.0);
     expect(b?.totalScore).toBe(0.0);
   });

@@ -5,6 +5,7 @@ const OPENROUTER_MODEL_SEARCH_URL =
 
 interface FrontendEndpointInfo {
   adapter_name?: string;
+  provider_slug?: string;
   provider_info?: {
     adapterName?: string;
   };
@@ -42,7 +43,10 @@ function inferApiKind(
 
 export async function discoverOpenRouterModel(
   modelName: string,
-): Promise<ModelTemplate | null> {
+): Promise<{
+  template: ModelTemplate;
+  provider: string;
+} | null> {
   const url = `${OPENROUTER_MODEL_SEARCH_URL}?q=${encodeURIComponent(modelName)}`;
   const response = await fetch(url, {
     headers: {
@@ -73,11 +77,18 @@ export async function discoverOpenRouterModel(
       ? exactMatch.name.trim()
       : modelName;
 
+  const provider =
+    exactMatch.endpoint?.provider_slug ??
+    (modelName.includes("/") ? modelName.split("/")[0] : "openrouter");
+
   return {
-    name: modelName,
-    formattedName,
-    // Dynamic models are runtime-only and not part of scheduled tiers.
-    ciRunFrequency: "never",
-    apiKind: inferApiKind(modelName, exactMatch.endpoint),
+    template: {
+      name: modelName,
+      formattedName,
+      // Dynamic models are runtime-only and not part of scheduled tiers.
+      ciRunFrequency: "never",
+      apiKind: inferApiKind(modelName, exactMatch.endpoint),
+    },
+    provider,
   };
 }

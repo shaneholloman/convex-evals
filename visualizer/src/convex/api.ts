@@ -16,7 +16,7 @@ type ExperimentInfo = {
   name: string;
   runCount: number;
   modelCount: number;
-  models: string[];
+  models: Id<"models">[];
   latestRun: number;
   totalEvals: number;
   passedEvals: number;
@@ -26,6 +26,8 @@ type ExperimentInfo = {
 
 // Model stats returned by listModels
 type ModelInfo = {
+  modelId: Id<"models">;
+  slug: string;
   name: string;
   runCount: number;
   experimentCount: number;
@@ -72,9 +74,9 @@ type QueryRef<
 export const api = anyApi as unknown as {
   runs: {
     listExperiments: QueryRef<Record<string, never>, ExperimentInfo[]>;
-    listModels: QueryRef<{ models: string[] }, ModelInfo[]>;
+    listModels: QueryRef<{ modelIds: Id<"models">[] }, ModelInfo[]>;
     listRuns: QueryRef<
-      { experiment?: string; model?: string; limit?: number },
+      { experiment?: string; modelId?: Id<"models">; model?: string; limit?: number },
       RunWithCounts[]
     >;
     getRunDetails: QueryRef<{ runId: Id<"runs"> }, RunDetails | null>;

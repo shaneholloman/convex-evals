@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../convex/api";
 import { getRunStatusIcon, formatDuration, type Run } from "../lib/types";
 import { shortRunId } from "../lib/breadcrumbs";
+import type { Id } from "../convex/types";
 
 export const Route = createFileRoute("/model/$model/experiment/$experimentId/")({
   component: ModelExperimentRunsPage,
@@ -13,7 +14,7 @@ function ModelExperimentRunsPage() {
     from: "/model/$model/experiment/$experimentId/",
   });
 
-  const runs = useQuery(api.runs.listRuns, { model });
+  const runs = useQuery(api.runs.listRuns, { modelId: model as Id<"models"> });
 
   if (runs === undefined) {
     return (
@@ -31,12 +32,14 @@ function ModelExperimentRunsPage() {
 
   const displayName = experimentId === "default" ? "with_guidelines" : experimentId;
 
+  const modelDisplayName = filteredRuns[0]?.formattedName ?? model;
+
   return (
     <main className="flex-1 overflow-auto p-6">
       <div className="max-w-6xl mx-auto">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">
-            {model} / {displayName}
+            {modelDisplayName} / {displayName}
           </h1>
           <p className="text-slate-400">Select a run to view detailed results</p>
         </header>

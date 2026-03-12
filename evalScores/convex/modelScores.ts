@@ -41,14 +41,15 @@ export const backfillAllModelScores = internalMutation({
       .filter((q) => q.eq(q.field("status.kind"), "completed"))
       .collect();
 
-    // Collect unique (model, experiment) pairs
+    // Collect unique (modelId, experiment) pairs
     const seen = new Set<string>();
-    const pairs: Array<{ model: string; experiment?: "no_guidelines" | "web_search" | "web_search_no_guidelines" | "agents_md" }> = [];
+    const pairs: Array<{ modelId: Id<"models">; experiment?: "no_guidelines" | "web_search" | "web_search_no_guidelines" | "agents_md" }> = [];
     for (const run of runs) {
-      const key = `${run.model}|${run.experiment ?? ""}`;
+      if (!run.modelId) continue;
+      const key = `${run.modelId}|${run.experiment ?? ""}`;
       if (!seen.has(key)) {
         seen.add(key);
-        pairs.push({ model: run.model, experiment: run.experiment });
+        pairs.push({ modelId: run.modelId, experiment: run.experiment });
       }
     }
 
@@ -64,7 +65,7 @@ export const backfillAllModelScores = internalMutation({
 
 export const recomputeModelScores = internalMutation({
   args: {
-    model: v.string(),
+    modelId: v.id("models"),
     experiment: v.optional(experimentLiteral),
   },
   returns: v.null(),
@@ -73,7 +74,7 @@ export const recomputeModelScores = internalMutation({
     // We over-fetch (2x) to account for incomplete/ghost runs that get filtered out.
     const candidateRuns = await ctx.db
       .query("runs")
-      .withIndex("by_model", (q) => q.eq("model", args.model))
+      .withIndex("by_modelId", (q) => q.eq("modelId", args.modelId))
       .order("desc")
       .take(LEADERBOARD_HISTORY_SIZE * 2);
 
@@ -114,8 +115,8 @@ export const recomputeModelScores = internalMutation({
     // If no scored runs remain (e.g. after deletion), remove the row
     const existing = await ctx.db
       .query("modelScores")
-      .withIndex("by_model_experiment", (q) =>
-        q.eq("model", args.model).eq("experiment", args.experiment),
+      .withIndex("by_modelId_experiment", (q) =>
+        q.eq("modelId", args.modelId).eq("experiment", args.experiment),
       )
       .unique();
 
@@ -156,9 +157,8 @@ export const recomputeModelScores = internalMutation({
     }
 
     const row = {
-      model: args.model,
+      modelId: args.modelId,
       experiment: args.experiment,
-      formattedName: latest.run.formattedName ?? latest.run.model,
       totalScore,
       totalScoreErrorBar,
       averageRunDurationMs,

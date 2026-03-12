@@ -21,6 +21,8 @@ interface Experiment {
 }
 
 interface Model {
+  modelId: string;
+  slug: string;
   name: string;
   runCount: number;
   experimentCount: number;
@@ -159,12 +161,12 @@ function ExperimentRow({
 
 function ModelsTab() {
   const experiments = useQuery(api.runs.listExperiments, {});
-  const modelNames = experiments
+  const modelIds = experiments
     ? [...new Set(experiments.flatMap((e) => e.models))]
     : [];
   const models = useQuery(
     api.runs.listModels,
-    experiments ? { models: modelNames } : "skip"
+    experiments ? { modelIds } : "skip"
   );
   const navigate = useNavigate();
 
@@ -186,12 +188,12 @@ function ModelsTab() {
       <tbody>
         {models.map((model) => (
           <ModelRow
-            key={model.name}
+            key={model.modelId}
             model={model}
             onClick={() =>
               navigate({
                 to: "/model/$model",
-                params: { model: model.name },
+                params: { model: model.modelId },
               })
             }
           />

@@ -12,10 +12,18 @@ import {
   computeRunScores,
 } from "./scoringUtils.js";
 
+async function getModelMap(
+  ctx: { db: any },
+): Promise<Map<Id<"models">, Doc<"models">>> {
+  const models = await ctx.db.query("models").collect();
+  return new Map(models.map((m: Doc<"models">) => [m._id, m]));
+}
+
 export const createRun = internalMutation({
   args: {
-    model: v.string(),
-    formattedName: v.string(),
+    modelId: v.optional(v.id("models")),
+    model: v.optional(v.string()),
+    formattedName: v.optional(v.string()),
     provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
@@ -25,11 +33,43 @@ export const createRun = internalMutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const expName = args.experiment ?? "default";
+    let modelId = args.modelId;
+
+    if (!modelId) {
+      if (!args.model) {
+        throw new Error("createRun requires either modelId or model slug");
+      }
+      const existingModel = await ctx.db
+        .query("models")
+        .withIndex("by_slug", (q) => q.eq("slug", args.model!))
+        .unique();
+      if (existingModel) {
+        modelId = existingModel._id;
+      } else {
+        const provider =
+          args.model.includes("/") ? args.model.split("/")[0] : args.provider;
+        const apiKind =
+          args.model.startsWith("openai/") && args.model.includes("codex")
+            ? "responses"
+            : "chat";
+        modelId = await ctx.db.insert("models", {
+          slug: args.model,
+          formattedName: args.formattedName ?? args.model,
+          provider,
+          apiKind,
+          createdAt: now,
+          updatedAt: now,
+          lastSeenAt: now,
+        });
+      }
+    }
+    if (!modelId) {
+      throw new Error("Failed to resolve modelId");
+    }
     
     // Create the run
     const id = await ctx.db.insert("runs", {
-      model: args.model,
-      formattedName: args.formattedName,
+      modelId,
       provider: args.provider,
       runId: args.runId,
       plannedEvals: args.plannedEvals,
@@ -44,9 +84,9 @@ export const createRun = internalMutation({
       .unique();
     
     if (existing) {
-      const models = existing.models.includes(args.model)
+      const models = existing.models.includes(modelId)
         ? existing.models
-        : [...existing.models, args.model];
+        : [...existing.models, modelId];
       await ctx.db.patch(existing._id, {
         runCount: existing.runCount + 1,
         models,
@@ -59,7 +99,7 @@ export const createRun = internalMutation({
         completedRuns: 0,
         totalEvals: 0,
         passedEvals: 0,
-        models: [args.model],
+        models: [modelId],
         latestRunTime: now,
       });
     }
@@ -113,10 +153,12 @@ export const completeRun = internalMutation({
     }
 
     // Schedule a recompute of the materialised leaderboard row for this model
-    await ctx.scheduler.runAfter(0, internal.modelScores.recomputeModelScores, {
-      model: run.model,
-      experiment: run.experiment,
-    });
+    if (run.modelId) {
+      await ctx.scheduler.runAfter(0, internal.modelScores.recomputeModelScores, {
+        modelId: run.modelId,
+        experiment: run.experiment,
+      });
+    }
     
     return null;
   },
@@ -202,10 +244,12 @@ export const deleteRun = internalMutation({
     await ctx.db.delete(args.runId);
 
     // Recompute the leaderboard row for this model now that a run is gone
-    await ctx.scheduler.runAfter(0, internal.modelScores.recomputeModelScores, {
-      model: run.model,
-      experiment: run.experiment,
-    });
+    if (run.modelId) {
+      await ctx.scheduler.runAfter(0, internal.modelScores.recomputeModelScores, {
+        modelId: run.modelId,
+        experiment: run.experiment,
+      });
+    }
 
     return null;
   },
@@ -215,56 +259,10 @@ export const getRunDetails = query({
   args: {
     runId: v.id("runs"),
   },
-  returns: v.union(
-    v.object({
-      _id: v.id("runs"),
-      model: v.string(),
-      provider: v.string(),
-      runId: v.optional(v.string()),
-      plannedEvals: v.array(v.string()),
-      status: runStatus,
-      experiment: v.optional(experimentLiteral),
-      _creationTime: v.number(),
-      evals: v.array(
-        v.object({
-          _id: v.id("evals"),
-          runId: v.id("runs"),
-          evalPath: v.string(),
-          category: v.string(),
-          name: v.string(),
-          status: evalStatus,
-          task: v.optional(v.string()),
-          evalSourceStorageId: v.optional(v.id("_storage")),
-          _creationTime: v.number(),
-          steps: v.array(
-            v.object({
-              _id: v.id("steps"),
-              evalId: v.id("evals"),
-              name: v.union(
-                v.literal("filesystem"),
-                v.literal("install"),
-                v.literal("deploy"),
-                v.literal("tsc"),
-                v.literal("eslint"),
-                v.literal("tests"),
-              ),
-              status: v.union(
-                v.object({ kind: v.literal("running") }),
-                v.object({ kind: v.literal("passed"), durationMs: v.number() }),
-                v.object({ kind: v.literal("failed"), failureReason: v.string(), durationMs: v.number() }),
-                v.object({ kind: v.literal("skipped") }),
-              ),
-              _creationTime: v.number(),
-            }),
-          ),
-        }),
-      ),
-    }),
-    v.null(),
-  ),
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId);
     if (!run) return null;
+    const model = run.modelId ? await ctx.db.get(run.modelId) : null;
 
     const evals = await ctx.db
       .query("evals")
@@ -300,7 +298,15 @@ export const getRunDetails = query({
 
     return {
       _id: run._id,
-      model: run.model,
+      modelId: run.modelId,
+      model:
+        model && "slug" in model
+          ? model.slug
+          : (run.model ?? "unknown-model"),
+      formattedName:
+        model && "formattedName" in model
+          ? model.formattedName
+          : (run.formattedName ?? run.model ?? "Unknown model"),
       provider: run.provider,
       runId: run.runId,
       plannedEvals: run.plannedEvals,
@@ -328,6 +334,7 @@ export const getOutputUrl = query({
 export const listRuns = query({
   args: {
     experiment: v.optional(experimentLiteral),
+    modelId: v.optional(v.id("models")),
     model: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
@@ -340,12 +347,23 @@ export const listRuns = query({
         .query("runs")
         .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
         .order("desc");
-    } else if (args.model) {
-      const model = args.model;
+    } else if (args.modelId) {
+      const modelId = args.modelId;
       runsQuery = ctx.db
         .query("runs")
-        .withIndex("by_model", (q) => q.eq("model", model))
+        .withIndex("by_modelId", (q) => q.eq("modelId", modelId))
         .order("desc");
+    } else if (args.model) {
+      const modelDoc = await ctx.db
+        .query("models")
+        .withIndex("by_slug", (q) => q.eq("slug", args.model!))
+        .unique();
+      if (modelDoc) {
+        runsQuery = ctx.db
+          .query("runs")
+          .withIndex("by_modelId", (q) => q.eq("modelId", modelDoc._id))
+          .order("desc");
+      }
     }
     
     // This query also loads eval documents per returned run to compute counts.
@@ -356,6 +374,7 @@ export const listRuns = query({
     const runs = await runsQuery.take(limit);
     
     // Fetch eval counts for each run
+    const modelMap = await getModelMap(ctx);
     const runsWithCounts = await Promise.all(
       runs.map(async (run) => {
         const evals = await ctx.db
@@ -367,8 +386,13 @@ export const listRuns = query({
         const failedCount = evals.filter((e) => e.status.kind === "failed").length;
         const totalCount = evals.length;
         
+        const model = run.modelId ? modelMap.get(run.modelId) : undefined;
         return {
           ...run,
+          model: model?.slug ?? (run.model ?? "unknown-model"),
+          formattedName:
+            model?.formattedName ??
+            (run.formattedName ?? run.model ?? "Unknown model"),
           evalCounts: {
             total: totalCount,
             passed: passedCount,
@@ -388,13 +412,29 @@ export const listExperiments = query({
   args: {},
   handler: async (ctx) => {
     const experiments = await ctx.db.query("experiments").collect();
+    const models = await ctx.db.query("models").collect();
+    const modelIdBySlug = new Map(models.map((m) => [m.slug, m._id]));
+    const knownModelIds = new Set(models.map((m) => String(m._id)));
     
     // Transform to expected format and sort by latest run
     const result = experiments.map((exp) => ({
+      modelIds: exp.models
+        .map((entry) => {
+          if (typeof entry !== "string") return entry;
+          if (knownModelIds.has(entry)) return entry as Id<"models">;
+          return modelIdBySlug.get(entry) ?? null;
+        })
+        .filter((id): id is Id<"models"> => id !== null),
       name: exp.name,
       runCount: exp.runCount,
       modelCount: exp.models.length,
-      models: exp.models,
+      models: exp.models
+        .map((entry) => {
+          if (typeof entry !== "string") return entry;
+          if (knownModelIds.has(entry)) return entry as Id<"models">;
+          return modelIdBySlug.get(entry) ?? null;
+        })
+        .filter((id): id is Id<"models"> => id !== null),
       latestRun: exp.latestRunTime,
       totalEvals: exp.totalEvals,
       passedEvals: exp.passedEvals,
@@ -421,35 +461,30 @@ export const leaderboardScores = query({
   args: {
     experiment: v.optional(experimentLiteral),
   },
-  returns: v.array(
-    v.object({
-      model: v.string(),
-      formattedName: v.string(),
-      totalScore: v.number(),
-      totalScoreErrorBar: v.number(),
-      averageRunDurationMs: v.number(),
-      averageRunDurationMsErrorBar: v.number(),
-      averageRunCostUsd: v.union(v.number(), v.null()),
-      averageRunCostUsdErrorBar: v.union(v.number(), v.null()),
-      scores: v.record(v.string(), v.number()),
-      scoreErrorBars: v.record(v.string(), v.number()),
-      runCount: v.number(),
-      latestRunId: v.id("runs"),
-      latestRunTime: v.number(),
-    }),
-  ),
   handler: async (ctx, args) => {
     const rows = await ctx.db
       .query("modelScores")
       .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
       .collect();
+    const modelMap = await getModelMap(ctx);
 
     // Sort by total score descending (highest first), then by model name for ties
-    rows.sort((a, b) => b.totalScore - a.totalScore || a.model.localeCompare(b.model));
+    rows.sort((a, b) => {
+      const modelA = a.modelId ? modelMap.get(a.modelId)?.slug ?? "" : "";
+      const modelB = b.modelId ? modelMap.get(b.modelId)?.slug ?? "" : "";
+      return b.totalScore - a.totalScore || modelA.localeCompare(modelB);
+    });
 
     return rows.map((r) => ({
-      model: r.model,
-      formattedName: r.formattedName,
+      modelId: r.modelId,
+      model: r.modelId
+        ? modelMap.get(r.modelId)?.slug ?? (r.model ?? "unknown-model")
+        : (r.model ?? "unknown-model"),
+      formattedName:
+        r.modelId
+          ? modelMap.get(r.modelId)?.formattedName ??
+            (r.formattedName ?? "Unknown model")
+          : (r.formattedName ?? "Unknown model"),
       totalScore: r.totalScore,
       totalScoreErrorBar: r.totalScoreErrorBar,
       averageRunDurationMs: r.averageRunDurationMs,
@@ -472,7 +507,8 @@ export const leaderboardScores = query({
  */
 export const leaderboardModelHistory = query({
   args: {
-    model: v.string(),
+    modelId: v.optional(v.id("models")),
+    model: v.optional(v.string()),
     experiment: v.optional(experimentLiteral),
     limit: v.optional(v.number()),
   },
@@ -485,12 +521,24 @@ export const leaderboardModelHistory = query({
     }),
   ),
   handler: async (ctx, args) => {
+    let targetModelId = args.modelId;
+    if (!targetModelId && args.model) {
+      const modelDoc = await ctx.db
+        .query("models")
+        .withIndex("by_slug", (q) => q.eq("slug", args.model!))
+        .unique();
+      targetModelId = modelDoc?._id;
+    }
+    if (!targetModelId) {
+      return [];
+    }
+
     // Fetch runs for this model, limited to last 60 days, ordered chronologically
     const sixtyDaysAgo = Date.now() - LEADERBOARD_MAX_AGE_MS;
     let runs = await ctx.db
       .query("runs")
-      .withIndex("by_model", (q) =>
-        q.eq("model", args.model).gte("_creationTime", sixtyDaysAgo))
+      .withIndex("by_modelId", (q) =>
+        q.eq("modelId", targetModelId).gte("_creationTime", sixtyDaysAgo))
       .order("asc")
       .collect();
 
@@ -550,24 +598,25 @@ const LIST_MODELS_RUNS_PER_MODEL = 20;
 /** Max recent runs to use for pass rate calculation per model */
 const LIST_MODELS_EVALS_RUNS = 3;
 
-// List models with aggregated stats. Uses by_model index for bounded queries.
-// Caller must pass model names (e.g. derived from experiments.models).
+// List models with aggregated stats. Uses by_modelId index for bounded queries.
+// Caller passes model IDs (e.g. derived from experiments.models).
 export const listModels = query({
-  args: { models: v.array(v.string()) },
+  args: { modelIds: v.array(v.id("models")) },
   handler: async (ctx, args) => {
-    if (args.models.length === 0) return [];
+    if (args.modelIds.length === 0) return [];
 
-    const modelStats = new Map<string, {
+    const modelStats = new Map<Id<"models">, {
       runCount: number;
       experiments: Set<string>;
       latestRunTime: number;
       runIds: Id<"runs">[];
     }>();
+    const modelMap = await getModelMap(ctx);
 
-    for (const modelName of args.models) {
+    for (const modelId of args.modelIds) {
       const runs = await ctx.db
         .query("runs")
-        .withIndex("by_model", (q) => q.eq("model", modelName))
+        .withIndex("by_modelId", (q) => q.eq("modelId", modelId))
         .order("desc")
         .take(LIST_MODELS_RUNS_PER_MODEL);
 
@@ -585,7 +634,7 @@ export const listModels = query({
         }
       }
 
-      modelStats.set(modelName, {
+      modelStats.set(modelId, {
         runCount: runs.length,
         experiments,
         latestRunTime,
@@ -611,8 +660,11 @@ export const listModels = query({
           passedEvals += scorable.filter((e) => e.status.kind === "passed").length;
         }
 
+        const modelDoc = modelMap.get(model);
         return {
-          name: model,
+          modelId: model,
+          slug: modelDoc?.slug ?? "unknown-model",
+          name: modelDoc?.formattedName ?? "Unknown model",
           runCount: stats.runCount,
           experimentCount: stats.experiments.size,
           experiments: Array.from(stats.experiments),
@@ -659,17 +711,31 @@ export const getSchedulingStats = query({
       firstRunTime: number | null;
     }> = [];
 
-    for (const modelName of args.models) {
+    for (const modelSlug of args.models) {
+      const modelDoc = await ctx.db
+        .query("models")
+        .withIndex("by_slug", (q) => q.eq("slug", modelSlug))
+        .unique();
+      if (!modelDoc) {
+        results.push({
+          model: modelSlug,
+          completedRunCount: 0,
+          scoreStdDev: 0,
+          lastRunTime: null,
+          firstRunTime: null,
+        });
+        continue;
+      }
       // Fetch all runs for this model (no time cap) ordered newest first
       const allRuns = await ctx.db
         .query("runs")
-        .withIndex("by_model", (q) => q.eq("model", modelName))
+        .withIndex("by_modelId", (q) => q.eq("modelId", modelDoc._id))
         .order("desc")
         .collect();
 
       if (allRuns.length === 0) {
         results.push({
-          model: modelName,
+          model: modelDoc.slug,
           completedRunCount: 0,
           scoreStdDev: 0,
           lastRunTime: null,
@@ -716,7 +782,7 @@ export const getSchedulingStats = query({
       }
 
       results.push({
-        model: modelName,
+        model: modelDoc.slug,
         completedRunCount,
         scoreStdDev,
         lastRunTime,

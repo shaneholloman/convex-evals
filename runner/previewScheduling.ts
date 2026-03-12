@@ -126,7 +126,7 @@ async function main(): Promise<void> {
       model.ciRunFrequency !== undefined ? model.ciRunFrequency : "(none - auto)";
 
     console.log(
-      col(model.formattedName, 30) +
+      col(model.name, 30) +
         rCol(String(s.completedRunCount), 6) +
         rCol(s.scoreStdDev.toFixed(3), 8) +
         rCol(fmtAge(s.firstRunTime), 8) +
@@ -167,7 +167,7 @@ async function main(): Promise<void> {
       fmtDays(computeTargetDays(runs, s.scoreStdDev, 0));
 
     console.log(
-      col(model.formattedName, 30) +
+      col(model.name, 30) +
         rCol(s.scoreStdDev.toFixed(3), 8) +
         rCol(project(3), 8) +
         rCol(project(5), 8) +

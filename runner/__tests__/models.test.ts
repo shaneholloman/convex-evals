@@ -18,7 +18,6 @@ describe("ALL_MODELS", () => {
   it("every model has required fields", () => {
     for (const model of ALL_MODELS) {
       expect(model.name).toBeTruthy();
-      expect(model.formattedName).toBeTruthy();
       expect(model.apiKind === undefined || model.apiKind === "chat" || model.apiKind === "responses").toBe(true);
     }
   });
@@ -63,7 +62,7 @@ describe("MODELS_BY_NAME", () => {
   it("looks up a model by name", () => {
     const model = MODELS_BY_NAME["openai/gpt-5"];
     expect(model).toBeDefined();
-    expect(model.formattedName).toBe("GPT-5");
+    expect(model.name).toBe("openai/gpt-5");
   });
 
   it("returns undefined for non-existent model", () => {

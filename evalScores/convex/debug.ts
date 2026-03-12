@@ -112,6 +112,11 @@ export const getEvalDebugInfo = internalAction({
       internal.debugQueries.getRunRecord,
       { runId: evalDoc.runId },
     );
+    const modelDoc = run?.modelId
+      ? await ctx.runQuery(internal.debugQueries.getModelRecord, {
+          modelId: run.modelId,
+        })
+      : null;
 
     // 4. Extract output files from the zip if available
     const outputStorageId =
@@ -151,7 +156,7 @@ export const getEvalDebugInfo = internalAction({
       run: run
         ? {
             _id: run._id,
-            model: run.model,
+            model: modelDoc?.slug ?? "unknown-model",
             provider: run.provider ?? null,
             runId: run.runId ?? null,
             experiment: run.experiment ?? "default",

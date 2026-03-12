@@ -68,6 +68,16 @@ export const stepStatus = v.union(
 const experimentName = v.union(v.literal("default"), experimentLiteral);
 
 export default defineSchema({
+  models: defineTable({
+    slug: v.string(),
+    formattedName: v.string(),
+    provider: v.string(),
+    apiKind: v.union(v.literal("chat"), v.literal("responses")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastSeenAt: v.number(),
+  }).index("by_slug", ["slug"]),
+
   // Denormalized experiment stats - updated when runs/evals are created/completed
   experiments: defineTable({
     name: experimentName,
@@ -76,7 +86,7 @@ export default defineSchema({
     totalEvals: v.number(),
     passedEvals: v.number(),
     // Store models as an array since Set isn't supported
-    models: v.array(v.string()),
+    models: v.array(v.union(v.id("models"), v.string())),
     latestRunTime: v.number(),
   })
     .index("by_name", ["name"]),
@@ -91,16 +101,16 @@ export default defineSchema({
     .index("by_name", ["name"]),
 
   runs: defineTable({
-    model: v.string(),
-    // Display name for UI (e.g., "Claude 4.5 Opus")
-    formattedName: v.string(),
+    modelId: v.optional(v.id("models")),
+    model: v.optional(v.string()),
+    formattedName: v.optional(v.string()),
     provider: v.string(),
     runId: v.optional(v.string()),
     plannedEvals: v.array(v.string()),
     status: runStatus,
     experiment: v.optional(experimentLiteral),
   })
-    .index("by_model", ["model"])
+    .index("by_modelId", ["modelId"])
     .index("by_experiment", ["experiment"]),
 
   evals: defineTable({
@@ -140,9 +150,10 @@ export default defineSchema({
   // The leaderboardScores query reads directly from this table instead of
   // recomputing from runs + evals on every request.
   modelScores: defineTable({
-    model: v.string(),
+    modelId: v.optional(v.id("models")),
+    model: v.optional(v.string()),
+    formattedName: v.optional(v.string()),
     experiment: v.optional(experimentLiteral),
-    formattedName: v.string(),
     totalScore: v.number(),
     totalScoreErrorBar: v.number(),
     averageRunDurationMs: v.number(),
@@ -155,6 +166,6 @@ export default defineSchema({
     latestRunId: v.id("runs"),
     latestRunTime: v.number(),
   })
-    .index("by_model_experiment", ["model", "experiment"])
+    .index("by_modelId_experiment", ["modelId", "experiment"])
     .index("by_experiment", ["experiment"]),
 });

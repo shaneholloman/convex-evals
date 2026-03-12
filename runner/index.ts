@@ -32,6 +32,7 @@ import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
 import { InfrastructureError, RateLimitAbortError } from "./convexBackend.js";
 import {
+  ensureModelFromSlug,
   startRun,
   completeRun,
   startEval,
@@ -54,6 +55,7 @@ config(); // Load .env
  */
 export interface RunConfig {
   model: ModelTemplate;
+  provider?: string;
   tempdir: string;
   testFilter?: RegExp;
   executionMode?: ExecutionMode;
@@ -156,24 +158,45 @@ async function main(): Promise<void> {
     ? process.env.MODELS.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_MODEL_NAMES;
 
-  const resolvedModels: ModelTemplate[] = [];
+  const resolvedModels: Array<{ model: ModelTemplate; provider: string }> = [];
   for (const modelName of modelNames) {
     const knownModel = MODELS_BY_NAME[modelName];
+    const discovered = await discoverOpenRouterModel(modelName).catch((error) => {
+      logInfo(
+        `OpenRouter metadata lookup failed for ${modelName}: ${String(error)}`,
+      );
+      return null;
+    });
+
     if (knownModel) {
-      resolvedModels.push(knownModel);
+      const provider = discovered?.provider ?? "openrouter";
+      resolvedModels.push({
+        model: {
+          ...knownModel,
+          formattedName: discovered?.template.formattedName ?? knownModel.name,
+          apiKind: discovered?.template.apiKind ?? knownModel.apiKind,
+        },
+        provider,
+      });
       continue;
     }
 
-    const discovered = await discoverOpenRouterModel(modelName);
     if (!discovered) {
       console.error(`Model ${modelName} not supported and not found on OpenRouter`);
       process.exit(1);
     }
 
     logInfo(
-      `Discovered dynamic model ${discovered.name} (${discovered.formattedName})`,
+      `Discovered dynamic model ${discovered.template.name} (${discovered.template.formattedName})`,
     );
-    resolvedModels.push(discovered);
+    resolvedModels.push({
+      model: {
+        ...discovered.template,
+        formattedName:
+          discovered.template.formattedName ?? discovered.template.name,
+      },
+      provider: discovered.provider,
+    });
   }
 
   const td =
@@ -184,9 +207,10 @@ async function main(): Promise<void> {
     ? new RegExp(process.env.TEST_FILTER)
     : undefined;
 
-  for (const model of resolvedModels) {
+  for (const resolved of resolvedModels) {
     const cfg: RunConfig = {
-      model,
+      model: resolved.model,
+      provider: resolved.provider,
       tempdir: td,
       testFilter: tf,
       executionMode,
@@ -217,6 +241,7 @@ export async function runEvalsForModel(
 ): Promise<EvalIndividualResult[]> {
   const {
     model,
+    provider = "openrouter",
     tempdir,
     testFilter,
     executionMode = "generate",
@@ -224,6 +249,7 @@ export async function runEvalsForModel(
     convexAuthToken,
   } =
     config;
+  const modelDisplayName = model.formattedName ?? model.name;
 
   // Set CUSTOM_GUIDELINES_PATH so getGuidelinesContent() in modelCodegen
   // picks it up. We restore it afterwards to avoid cross-run leakage.
@@ -251,7 +277,7 @@ export async function runEvalsForModel(
       : evalPaths;
 
     logInfo(
-      `Running ${filteredPaths.length} evals for model ${model.formattedName}`,
+      `Running ${filteredPaths.length} evals for model ${modelDisplayName}`,
     );
 
     // Start run if Convex is configured
@@ -262,11 +288,19 @@ export async function runEvalsForModel(
       const plannedEvals = filteredPaths.map(
         (e) => `${e.category}/${e.name}`,
       );
-      runId = await startRun(
+      const modelId = await ensureModelFromSlug(
         model.name,
-        model.formattedName,
+        modelDisplayName,
+        provider,
+        model.apiKind ?? "chat",
+      );
+      if (!modelId) {
+        throw new Error(`Failed to upsert model metadata for ${model.name}`);
+      }
+      runId = await startRun(
+        modelId,
         plannedEvals,
-        "openrouter",
+        provider,
         config.experiment,
       );
       if (runId) {
@@ -356,7 +390,7 @@ export async function runEvalsForModel(
     }
 
     // Print summary
-    printEvalSummary(model.formattedName, allResults);
+    printEvalSummary(modelDisplayName, allResults);
 
     if (executionMode === "answer" && allResults.some((result) => !result.passed)) {
       const reason = "[answer_validation] Canonical answers must pass all evals";
