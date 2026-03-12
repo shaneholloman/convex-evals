@@ -1,6 +1,6 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 import { experimentLiteral, languageModelUsage, runStatus, evalStatus } from "./schema.js";
 import { internal } from "./_generated/api.js";
 import {
@@ -11,13 +11,6 @@ import {
   isRateLimitFailure,
   computeRunScores,
 } from "./scoringUtils.js";
-
-async function getModelMap(
-  ctx: { db: any },
-): Promise<Map<Id<"models">, Doc<"models">>> {
-  const models = await ctx.db.query("models").collect();
-  return new Map(models.map((m: Doc<"models">) => [m._id, m]));
-}
 
 export const createRun = internalMutation({
   args: {
@@ -374,7 +367,8 @@ export const listRuns = query({
     const runs = await runsQuery.take(limit);
     
     // Fetch eval counts for each run
-    const modelMap = await getModelMap(ctx);
+    const models = await ctx.db.query("models").collect();
+    const modelMap = new Map(models.map((m) => [m._id, m] as const));
     const runsWithCounts = await Promise.all(
       runs.map(async (run) => {
         const evals = await ctx.db
@@ -448,7 +442,8 @@ export const leaderboardScores = query({
       .query("modelScores")
       .withIndex("by_experiment", (q) => q.eq("experiment", args.experiment))
       .collect();
-    const modelMap = await getModelMap(ctx);
+    const models = await ctx.db.query("models").collect();
+    const modelMap = new Map(models.map((m) => [m._id, m] as const));
 
     // Sort by total score descending (highest first), then by model name for ties
     rows.sort((a, b) => {
@@ -587,7 +582,8 @@ export const listModels = query({
       latestRunTime: number;
       runIds: Id<"runs">[];
     }>();
-    const modelMap = await getModelMap(ctx);
+    const models = await ctx.db.query("models").collect();
+    const modelMap = new Map(models.map((m) => [m._id, m] as const));
 
     for (const modelId of args.modelIds) {
       const runs = await ctx.db

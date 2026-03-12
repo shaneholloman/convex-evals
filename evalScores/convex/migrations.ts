@@ -1,6 +1,7 @@
 import { Migrations } from "@convex-dev/migrations";
 import { components, internal } from "./_generated/api.js";
 import type { DataModel, Id } from "./_generated/dataModel.js";
+import type { MutationCtx } from "./_generated/server";
 
 export const migrations = new Migrations<DataModel>(components.migrations);
 
@@ -52,7 +53,7 @@ function inferApiKind(slug: string): "chat" | "responses" {
 }
 
 async function getOrCreateModelId(
-  ctx: { db: any },
+  ctx: MutationCtx,
   slugRaw: string,
   formattedNameRaw: string | undefined,
   providerRaw: string | undefined,
@@ -61,7 +62,7 @@ async function getOrCreateModelId(
   const now = Date.now();
   const existing = await ctx.db
     .query("models")
-    .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+    .withIndex("by_slug", (q) => q.eq("slug", slug))
     .unique();
   const formattedName =
     formattedNameRaw && formattedNameRaw.length > 0 ? formattedNameRaw : slug;
@@ -90,17 +91,44 @@ async function getOrCreateModelId(
   });
 }
 
+function readLegacyString(
+  doc: unknown,
+  key: string,
+): string | undefined {
+  if (typeof doc !== "object" || doc === null) return undefined;
+  const value = (doc as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+async function resolveLegacyModelEntryToId(
+  ctx: MutationCtx,
+  entry: string,
+): Promise<Id<"models">> {
+  const canonical = toCanonicalSlug(entry);
+  // Heuristic: Convex IDs are long opaque strings, short strings are legacy slugs.
+  if (canonical.length > 20) {
+    try {
+      const possibleId = canonical as Id<"models">;
+      const doc = await ctx.db.get(possibleId);
+      if (doc && "slug" in doc) return possibleId;
+    } catch {
+      // Not a valid Convex id, treat as legacy slug.
+    }
+  }
+  return await getOrCreateModelId(ctx, canonical, undefined, undefined);
+}
+
 export const backfillRunsModelId = migrations.define({
   table: "runs",
   migrateOne: async (ctx, doc) => {
-    const anyDoc = doc as any;
-    if (anyDoc.modelId) return;
-    const modelSlug = typeof anyDoc.model === "string" ? anyDoc.model : "unknown-model";
+    const existingModelId = readLegacyString(doc, "modelId");
+    if (existingModelId) return;
+    const modelSlug = readLegacyString(doc, "model") ?? "unknown-model";
     const modelId = await getOrCreateModelId(
       ctx,
       modelSlug,
-      typeof anyDoc.formattedName === "string" ? anyDoc.formattedName : undefined,
-      typeof anyDoc.provider === "string" ? anyDoc.provider : undefined,
+      readLegacyString(doc, "formattedName"),
+      readLegacyString(doc, "provider"),
     );
     return { modelId };
   },
@@ -109,13 +137,13 @@ export const backfillRunsModelId = migrations.define({
 export const backfillModelScoresModelId = migrations.define({
   table: "modelScores",
   migrateOne: async (ctx, doc) => {
-    const anyDoc = doc as any;
-    if (anyDoc.modelId) return;
-    const modelSlug = typeof anyDoc.model === "string" ? anyDoc.model : "unknown-model";
+    const existingModelId = readLegacyString(doc, "modelId");
+    if (existingModelId) return;
+    const modelSlug = readLegacyString(doc, "model") ?? "unknown-model";
     const modelId = await getOrCreateModelId(
       ctx,
       modelSlug,
-      typeof anyDoc.formattedName === "string" ? anyDoc.formattedName : undefined,
+      readLegacyString(doc, "formattedName"),
       undefined,
     );
     return { modelId };
@@ -125,30 +153,15 @@ export const backfillModelScoresModelId = migrations.define({
 export const backfillExperimentsModelIds = migrations.define({
   table: "experiments",
   migrateOne: async (ctx, doc) => {
-    const anyDoc = doc as any;
-    if (!Array.isArray(anyDoc.models) || anyDoc.models.length === 0) return;
+    const modelsRaw =
+      typeof doc === "object" && doc !== null
+        ? (doc as Record<string, unknown>).models
+        : undefined;
+    if (!Array.isArray(modelsRaw) || modelsRaw.length === 0) return;
     const ids: Id<"models">[] = [];
-    for (const entry of anyDoc.models as unknown[]) {
+    for (const entry of modelsRaw) {
       if (typeof entry !== "string") continue;
-      const canonical = toCanonicalSlug(entry);
-      const possibleId = canonical as Id<"models">;
-      let maybeModelDoc: any = null;
-      try {
-        maybeModelDoc = await ctx.db.get(possibleId);
-      } catch {
-        maybeModelDoc = null;
-      }
-      if (maybeModelDoc && "slug" in maybeModelDoc) {
-        ids.push(possibleId);
-      } else {
-        const modelId = await getOrCreateModelId(
-          ctx,
-          canonical,
-          undefined,
-          undefined,
-        );
-        ids.push(modelId);
-      }
+      ids.push(await resolveLegacyModelEntryToId(ctx, entry));
     }
     return { models: [...new Set(ids)] };
   },
@@ -157,56 +170,17 @@ export const backfillExperimentsModelIds = migrations.define({
 export const repairExperimentsModelIds = migrations.define({
   table: "experiments",
   migrateOne: async (ctx, doc) => {
-    const anyDoc = doc as any;
-    if (!Array.isArray(anyDoc.models) || anyDoc.models.length === 0) return;
+    const modelsRaw =
+      typeof doc === "object" && doc !== null
+        ? (doc as Record<string, unknown>).models
+        : undefined;
+    if (!Array.isArray(modelsRaw) || modelsRaw.length === 0) return;
     const ids: Id<"models">[] = [];
-    for (const entry of anyDoc.models as unknown[]) {
+    for (const entry of modelsRaw) {
       if (typeof entry !== "string") continue;
-      const canonical = toCanonicalSlug(entry);
-      const possibleId = canonical as Id<"models">;
-      let maybeModelDoc: any = null;
-      try {
-        maybeModelDoc = await ctx.db.get(possibleId);
-      } catch {
-        maybeModelDoc = null;
-      }
-      if (maybeModelDoc && "slug" in maybeModelDoc) {
-        ids.push(possibleId);
-      } else {
-        const modelId = await getOrCreateModelId(
-          ctx,
-          canonical,
-          undefined,
-          undefined,
-        );
-        ids.push(modelId);
-      }
+      ids.push(await resolveLegacyModelEntryToId(ctx, entry));
     }
     return { models: [...new Set(ids)] };
-  },
-});
-
-export const stripLegacyRunsDisplayFields = migrations.define({
-  table: "runs",
-  migrateOne: async (_ctx, doc) => {
-    const anyDoc = doc as any;
-    if (!("model" in anyDoc) && !("formattedName" in anyDoc)) return;
-    await (_ctx.db.patch as any)(doc._id, {
-      model: undefined,
-      formattedName: undefined,
-    });
-  },
-});
-
-export const stripLegacyModelScoresDisplayFields = migrations.define({
-  table: "modelScores",
-  migrateOne: async (_ctx, doc) => {
-    const anyDoc = doc as any;
-    if (!("model" in anyDoc) && !("formattedName" in anyDoc)) return;
-    await (_ctx.db.patch as any)(doc._id, {
-      model: undefined,
-      formattedName: undefined,
-    });
   },
 });
 
@@ -217,6 +191,4 @@ export const runAll = migrations.runner([
   internal.migrations.backfillModelScoresModelId,
   internal.migrations.backfillExperimentsModelIds,
   internal.migrations.repairExperimentsModelIds,
-  internal.migrations.stripLegacyRunsDisplayFields,
-  internal.migrations.stripLegacyModelScoresDisplayFields,
 ]);
