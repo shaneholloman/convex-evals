@@ -191,10 +191,10 @@ export const stripLegacyRunsDisplayFields = migrations.define({
   migrateOne: async (_ctx, doc) => {
     const anyDoc = doc as any;
     if (!("model" in anyDoc) && !("formattedName" in anyDoc)) return;
-    return {
+    await (_ctx.db.patch as any)(doc._id, {
       model: undefined,
       formattedName: undefined,
-    };
+    });
   },
 });
 
@@ -203,10 +203,10 @@ export const stripLegacyModelScoresDisplayFields = migrations.define({
   migrateOne: async (_ctx, doc) => {
     const anyDoc = doc as any;
     if (!("model" in anyDoc) && !("formattedName" in anyDoc)) return;
-    return {
+    await (_ctx.db.patch as any)(doc._id, {
       model: undefined,
       formattedName: undefined,
-    };
+    });
   },
 });
 
