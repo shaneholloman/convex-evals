@@ -327,6 +327,31 @@ export function readOutputFile(
 }
 
 /**
+ * Create a client that acts as a specific authenticated user.
+ * Uses setAdminAuth with an identity object so that
+ * ctx.auth.getUserIdentity() returns the given identity in the
+ * model's deployed functions.
+ */
+export function withIdentity(identity: {
+  subject: string;
+  issuer: string;
+  name?: string;
+  email?: string;
+}): {
+  query: typeof responseClient.query;
+  mutation: typeof responseClient.mutation;
+  action: typeof responseClient.action;
+} {
+  const client = new ConvexClient(cloudUrl);
+  (client as any).setAdminAuth(adminKey, identity);
+  return {
+    query: client.query.bind(client),
+    mutation: client.mutation.bind(client),
+    action: client.action.bind(client),
+  };
+}
+
+/**
  * AST check: returns true if the source contains a `.collect()` call.
  */
 export function containsCollectCall(
