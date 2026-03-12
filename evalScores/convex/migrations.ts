@@ -186,6 +186,30 @@ export const repairExperimentsModelIds = migrations.define({
   },
 });
 
+export const stripLegacyRunsDisplayFields = migrations.define({
+  table: "runs",
+  migrateOne: async (_ctx, doc) => {
+    const anyDoc = doc as any;
+    if (!("model" in anyDoc) && !("formattedName" in anyDoc)) return;
+    return {
+      model: undefined,
+      formattedName: undefined,
+    };
+  },
+});
+
+export const stripLegacyModelScoresDisplayFields = migrations.define({
+  table: "modelScores",
+  migrateOne: async (_ctx, doc) => {
+    const anyDoc = doc as any;
+    if (!("model" in anyDoc) && !("formattedName" in anyDoc)) return;
+    return {
+      model: undefined,
+      formattedName: undefined,
+    };
+  },
+});
+
 export const run = migrations.runner();
 
 export const runAll = migrations.runner([
@@ -193,4 +217,6 @@ export const runAll = migrations.runner([
   internal.migrations.backfillModelScoresModelId,
   internal.migrations.backfillExperimentsModelIds,
   internal.migrations.repairExperimentsModelIds,
+  internal.migrations.stripLegacyRunsDisplayFields,
+  internal.migrations.stripLegacyModelScoresDisplayFields,
 ]);
