@@ -56,6 +56,19 @@ export function computeRunCostUsd(evals: Doc<"evals">[]): number | null {
   return withCost.reduce((sum, e) => sum + getEvalCostUsd(e), 0);
 }
 
+export function computeRunDurationMs(evals: Doc<"evals">[]): number | null {
+  let total = 0;
+  let completedCount = 0;
+  for (const evalDoc of evals) {
+    const status = evalDoc.status;
+    if (status.kind !== "passed" && status.kind !== "failed") continue;
+    if (!Number.isFinite(status.durationMs)) continue;
+    total += status.durationMs;
+    completedCount++;
+  }
+  return completedCount > 0 ? total : null;
+}
+
 export function computeRunScores(
   evals: Doc<"evals">[],
 ): { totalScore: number; scores: Record<string, number> } {

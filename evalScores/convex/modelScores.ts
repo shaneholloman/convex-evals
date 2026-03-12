@@ -19,6 +19,7 @@ import {
   computeMeanAndStdDev,
   isFullyCompletedRun,
   computeRunCostUsd,
+  computeRunDurationMs,
   computeRunScores,
 } from "./scoringUtils.js";
 
@@ -86,21 +87,26 @@ export const recomputeModelScores = internalMutation({
       run: Doc<"runs">;
       evals: Doc<"evals">[];
       scores: ReturnType<typeof computeRunScores>;
+      durationMs: number;
       costUsd: number | null;
     };
 
     const scoredRuns: ScoredRun[] = [];
     for (const run of completedRuns) {
       if (scoredRuns.length >= LEADERBOARD_HISTORY_SIZE) break;
+      if (run.status.kind !== "completed") continue;
       const evals = await ctx.db
         .query("evals")
         .withIndex("by_runId", (q) => q.eq("runId", run._id))
         .collect();
       if (!isFullyCompletedRun(run, evals)) continue;
+      const durationMs = computeRunDurationMs(evals);
+      if (durationMs === null || durationMs <= 0) continue;
       scoredRuns.push({
         run,
         evals,
         scores: computeRunScores(evals),
+        durationMs,
         costUsd: computeRunCostUsd(evals),
       });
     }
@@ -122,6 +128,8 @@ export const recomputeModelScores = internalMutation({
     const latest = scoredRuns[0];
     const { mean: totalScore, stdDev: totalScoreErrorBar } =
       computeMeanAndStdDev(scoredRuns.map((sr) => sr.scores.totalScore));
+    const { mean: averageRunDurationMs, stdDev: averageRunDurationMsErrorBar } =
+      computeMeanAndStdDev(scoredRuns.map((sr) => sr.durationMs));
 
     const availableCosts = scoredRuns
       .map((sr) => sr.costUsd)
@@ -153,6 +161,8 @@ export const recomputeModelScores = internalMutation({
       formattedName: latest.run.formattedName ?? latest.run.model,
       totalScore,
       totalScoreErrorBar,
+      averageRunDurationMs,
+      averageRunDurationMsErrorBar,
       averageRunCostUsd,
       averageRunCostUsdErrorBar,
       scores,

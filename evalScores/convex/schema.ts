@@ -145,6 +145,8 @@ export default defineSchema({
     formattedName: v.string(),
     totalScore: v.number(),
     totalScoreErrorBar: v.number(),
+    averageRunDurationMs: v.optional(v.number()),
+    averageRunDurationMsErrorBar: v.optional(v.number()),
     averageRunCostUsd: v.union(v.number(), v.null()),
     averageRunCostUsdErrorBar: v.union(v.number(), v.null()),
     scores: v.record(v.string(), v.number()),

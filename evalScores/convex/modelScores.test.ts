@@ -37,7 +37,9 @@ async function createCompletedRun(
       passed: boolean;
       rateLimited?: boolean;
       costUsd?: number;
+      durationMs?: number;
     }>;
+    runDurationMs?: number;
   },
 ): Promise<Id<"runs">> {
   const runId = await t.mutation(internal.runs.createRun, {
@@ -65,14 +67,18 @@ async function createCompletedRun(
         status: {
           kind: "failed" as const,
           failureReason: "[rate_limit] 429 too many requests",
-          durationMs: 100,
+          durationMs: evalDef.durationMs ?? 100,
           usage,
         },
       });
     } else if (evalDef.passed) {
       await t.mutation(internal.evals.completeEval, {
         evalId,
-        status: { kind: "passed" as const, durationMs: 1000, usage },
+        status: {
+          kind: "passed" as const,
+          durationMs: evalDef.durationMs ?? 1000,
+          usage,
+        },
       });
     } else {
       await t.mutation(internal.evals.completeEval, {
@@ -80,7 +86,7 @@ async function createCompletedRun(
         status: {
           kind: "failed" as const,
           failureReason: "test failure",
-          durationMs: 1000,
+          durationMs: evalDef.durationMs ?? 1000,
           usage,
         },
       });
@@ -89,7 +95,10 @@ async function createCompletedRun(
 
   await t.mutation(internal.runs.completeRun, {
     runId,
-    status: { kind: "completed", durationMs: 5000 },
+    status: {
+      kind: "completed",
+      durationMs: opts.runDurationMs ?? 5000,
+    },
   });
 
   // Advance fake time past the 0ms mark so recomputeModelScores fires
@@ -120,6 +129,24 @@ describe("recomputeModelScores", () => {
     expect(results[0].formattedName).toBe("Model A");
     expect(results[0].totalScore).toBe(0.5);
     expect(results[0].runCount).toBe(1);
+    expect(results[0].averageRunDurationMs).toBe(2000);
+  });
+
+  it("uses sequential eval runtime instead of wall-clock run runtime", async () => {
+    const t = convexTest(schema, modules);
+
+    await createCompletedRun(t, {
+      model: "model-a",
+      runDurationMs: 50_000,
+      evals: [
+        { category: "cat1", name: "eval1", passed: true, durationMs: 4000 },
+        { category: "cat1", name: "eval2", passed: false, durationMs: 2000 },
+      ],
+    });
+
+    const results = await t.query(api.runs.leaderboardScores, {});
+    expect(results).toHaveLength(1);
+    expect(results[0].averageRunDurationMs).toBe(6000);
   });
 
   it("upserts the row on subsequent runs", async () => {
