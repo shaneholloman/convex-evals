@@ -131,12 +131,46 @@ export const backfillExperimentsModelIds = migrations.define({
     for (const entry of anyDoc.models as unknown[]) {
       if (typeof entry !== "string") continue;
       const canonical = toCanonicalSlug(entry);
-      if (!canonical.includes("/")) {
-        ids.push(entry as Id<"models">);
-        continue;
+      const possibleId = canonical as Id<"models">;
+      const maybeModelDoc = await ctx.db.get(possibleId);
+      if (maybeModelDoc && "slug" in maybeModelDoc) {
+        ids.push(possibleId);
+      } else {
+        const modelId = await getOrCreateModelId(
+          ctx,
+          canonical,
+          undefined,
+          undefined,
+        );
+        ids.push(modelId);
       }
-      const modelId = await getOrCreateModelId(ctx, canonical, undefined, undefined);
-      ids.push(modelId);
+    }
+    return { models: [...new Set(ids)] };
+  },
+});
+
+export const repairExperimentsModelIds = migrations.define({
+  table: "experiments",
+  migrateOne: async (ctx, doc) => {
+    const anyDoc = doc as any;
+    if (!Array.isArray(anyDoc.models) || anyDoc.models.length === 0) return;
+    const ids: Id<"models">[] = [];
+    for (const entry of anyDoc.models as unknown[]) {
+      if (typeof entry !== "string") continue;
+      const canonical = toCanonicalSlug(entry);
+      const possibleId = canonical as Id<"models">;
+      const maybeModelDoc = await ctx.db.get(possibleId);
+      if (maybeModelDoc && "slug" in maybeModelDoc) {
+        ids.push(possibleId);
+      } else {
+        const modelId = await getOrCreateModelId(
+          ctx,
+          canonical,
+          undefined,
+          undefined,
+        );
+        ids.push(modelId);
+      }
     }
     return { models: [...new Set(ids)] };
   },
@@ -148,4 +182,5 @@ export const runAll = migrations.runner([
   internal.migrations.backfillRunsModelId,
   internal.migrations.backfillModelScoresModelId,
   internal.migrations.backfillExperimentsModelIds,
+  internal.migrations.repairExperimentsModelIds,
 ]);

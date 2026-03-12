@@ -410,13 +410,28 @@ export const listExperiments = query({
   args: {},
   handler: async (ctx) => {
     const experiments = await ctx.db.query("experiments").collect();
+    const models = await ctx.db.query("models").collect();
+    const modelIdBySlug = new Map(models.map((m) => [m.slug, m._id]));
+    const knownModelIds = new Set(models.map((m) => String(m._id)));
     // Transform to expected format and sort by latest run
     const result = experiments.map((exp) => ({
-      modelIds: exp.models,
+      modelIds: exp.models
+        .map((entry) => {
+          if (typeof entry !== "string") return entry;
+          if (knownModelIds.has(entry)) return entry as Id<"models">;
+          return modelIdBySlug.get(entry) ?? null;
+        })
+        .filter((id): id is Id<"models"> => id !== null),
       name: exp.name,
       runCount: exp.runCount,
       modelCount: exp.models.length,
-      models: exp.models,
+      models: exp.models
+        .map((entry) => {
+          if (typeof entry !== "string") return entry;
+          if (knownModelIds.has(entry)) return entry as Id<"models">;
+          return modelIdBySlug.get(entry) ?? null;
+        })
+        .filter((id): id is Id<"models"> => id !== null),
       latestRun: exp.latestRunTime,
       totalEvals: exp.totalEvals,
       passedEvals: exp.passedEvals,

@@ -86,7 +86,7 @@ export default defineSchema({
     totalEvals: v.number(),
     passedEvals: v.number(),
     // Store models as an array since Set isn't supported
-    models: v.array(v.id("models")),
+    models: v.array(v.union(v.id("models"), v.string())),
     latestRunTime: v.number(),
   })
     .index("by_name", ["name"]),
