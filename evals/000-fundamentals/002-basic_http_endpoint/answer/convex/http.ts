@@ -18,7 +18,7 @@ http.route({
 });
 
 http.route({
-  path: "/api/messages/*",
+  pathPrefix: "/api/messages/",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
     return new Response(null, {

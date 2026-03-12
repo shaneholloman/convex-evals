@@ -1,0 +1,141 @@
+name: Nightly Validate Answers
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # Daily at 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate-answers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Bun
+        run: npm install -g bun@1.3.8
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run validate:answers
+        run: |
+          set -o pipefail
+          bun run validate:answers 2>&1 | tee validate-answers.log
+
+      - name: Upload validate:answers log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-answers-log
+          path: validate-answers.log
+
+      - name: Open or update tracking issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const ISSUE_TITLE = "validate:answers nightly failing";
+            const labels = ["ci", "evals", "validate-answers"];
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let logTail = "Could not read validate-answers.log";
+            try {
+              const fullLog = fs.readFileSync("validate-answers.log", "utf8");
+              const lines = fullLog.trimEnd().split("\n");
+              logTail = lines.slice(-80).join("\n");
+            } catch {
+              // Keep default message
+            }
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: labels.join(","),
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === ISSUE_TITLE);
+
+            const body = [
+              "validate:answers failed in the nightly workflow.",
+              "",
+              `Run: ${runUrl}`,
+              "",
+              "I grabbed the tail of the log here so we can see the failure quickly:",
+              "",
+              "```text",
+              logTail,
+              "```",
+              "",
+              "Artifact: `validate-answers-log`",
+            ].join("\n");
+
+            if (!existing) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: ISSUE_TITLE,
+                body,
+                labels,
+              });
+              core.info("Created nightly validate:answers issue");
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.info(`Updated existing issue #${existing.number}`);
+            }
+
+      - name: Close tracking issue when passing again
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ISSUE_TITLE = "validate:answers nightly failing";
+            const labels = ["ci", "evals", "validate-answers"];
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: labels.join(","),
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === ISSUE_TITLE);
+            if (!existing) {
+              core.info("No open validate:answers tracking issue to close");
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existing.number,
+              body: `Nightly validate:answers passed again. Closing this issue.\n\nRun: ${runUrl}`,
+            });
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existing.number,
+              state: "closed",
+            });
+            core.info(`Closed issue #${existing.number}`);

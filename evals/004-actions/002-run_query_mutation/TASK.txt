@@ -15,12 +15,12 @@ export default defineSchema({
 
 Implement these functions in `convex/index.ts`:
 
-1. Create a query `getFetchResult` that:
+1. Create a **public query** `getFetchResult` that:
    - Takes arguments:  `{ url: string }`
    - Uses the "by_url" index to look up any existing fetch result
    - Returns the ID of the record if found, null if not found
 
-2. Create a mutation `saveFetchResult` that:
+2. Create a **public mutation** `saveFetchResult` that:
    - Takes arguments:  `{ url: string, data: any }`
    - Inserts a new record, or updates an existing record if the URL already exists (maintaining only one record per URL)
    - Has the handler return type of `Promise<Id<"fetchRequests">>`

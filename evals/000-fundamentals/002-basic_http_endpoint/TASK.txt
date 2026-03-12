@@ -8,6 +8,6 @@ Create a backend with only two HTTP routes.
      - body: "hello" -> response: "hellothere"
    - Set `Content-Type: text/plain`
 
-2) POST `/api/messages/*`
+2) POST any path under `/api/messages/` (for example, `/api/messages/123`)
    - Return HTTP 200 with an empty response body
-   - This route should match any path under `/api/messages/` (e.g. `/api/messages/123`). In Convex, use a wildcard route (e.g. `pathPrefix: "/api/messages/"`).
+   - This route should match any path under `/api/messages/`. In Convex, use `pathPrefix: "/api/messages/"`.

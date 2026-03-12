@@ -10,6 +10,7 @@
  *   TEST_FILTER      - regex to filter evals by "category/name"
  *   OUTPUT_TEMPDIR   - output directory (default: OS temp dir)
  *   EVALS_EXPERIMENT - experiment name (e.g. "no_guidelines")
+ *   EVALS_EXECUTION_MODE - "generate" (default) or "answer"
  *   CONVEX_EVAL_URL  - Convex deployment URL (e.g. "https://xxx.convex.cloud")
  *   CONVEX_AUTH_TOKEN - auth token for the Convex backend
  *   CUSTOM_GUIDELINES_PATH - path to custom guidelines markdown file
@@ -54,10 +55,31 @@ export interface RunConfig {
   model: ModelTemplate;
   tempdir: string;
   testFilter?: RegExp;
+  executionMode?: ExecutionMode;
   customGuidelinesPath?: string;
   convexEvalUrl?: string;
   convexAuthToken?: string;
   experiment?: string;
+}
+
+type ExecutionMode = "generate" | "answer";
+
+const ANSWER_VALIDATION_MODEL: ModelTemplate = {
+  name: "answer-validation",
+  formattedName: "Answer Validation",
+  ciRunFrequency: "never",
+};
+
+type SharedRunOptions = Omit<RunConfig, "model" | "executionMode">;
+
+export function runAnswerValidation(
+  config: SharedRunOptions,
+): Promise<EvalIndividualResult[]> {
+  return runEvalsForModel({
+    ...config,
+    model: ANSWER_VALIDATION_MODEL,
+    executionMode: "answer",
+  });
 }
 
 // ── Default models ────────────────────────────────────────────────────
@@ -128,6 +150,7 @@ const SCORE_FAILURE_REASONS: Record<string, string> = {
 // ── Main (CLI entrypoint) ─────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  const executionMode = parseExecutionMode(process.env.EVALS_EXECUTION_MODE);
   const modelNames = process.env.MODELS
     ? process.env.MODELS.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_MODEL_NAMES;
@@ -152,6 +175,7 @@ async function main(): Promise<void> {
       model: MODELS_BY_NAME[modelName],
       tempdir: td,
       testFilter: tf,
+      executionMode,
       customGuidelinesPath: process.env.CUSTOM_GUIDELINES_PATH,
       convexEvalUrl: process.env.CONVEX_EVAL_URL,
       convexAuthToken: process.env.CONVEX_AUTH_TOKEN,
@@ -177,7 +201,14 @@ async function main(): Promise<void> {
 export async function runEvalsForModel(
   config: RunConfig,
 ): Promise<EvalIndividualResult[]> {
-  const { model, tempdir, testFilter, convexEvalUrl, convexAuthToken } =
+  const {
+    model,
+    tempdir,
+    testFilter,
+    executionMode = "generate",
+    convexEvalUrl,
+    convexAuthToken,
+  } =
     config;
 
   // Set CUSTOM_GUIDELINES_PATH so getGuidelinesContent() in modelCodegen
@@ -235,15 +266,17 @@ export async function runEvalsForModel(
       }
     }
 
-    // Get API key
-    const apiKeyVar = OPENROUTER_API_KEY_VAR;
-    const apiKey = process.env[apiKeyVar];
-    if (!apiKey) {
-      console.error(`${apiKeyVar} is not set`);
-      process.exit(1);
+    let modelImpl: Model | null = null;
+    if (executionMode === "generate") {
+      const apiKeyVar = OPENROUTER_API_KEY_VAR;
+      const apiKey = process.env[apiKeyVar];
+      if (!apiKey) {
+        console.error(`${apiKeyVar} is not set`);
+        process.exit(1);
+      }
+      modelImpl = new Model(apiKey, model);
     }
 
-    const modelImpl = new Model(apiKey, model);
     const allResults: EvalIndividualResult[] = [];
     let rateLimitCount = 0;
     const RATE_LIMIT_ABORT_THRESHOLD = 3;
@@ -276,6 +309,7 @@ export async function runEvalsForModel(
           const promise = processOneEval(
             model,
             modelImpl,
+            executionMode,
             evalInfo,
             runId,
             allResults,
@@ -309,6 +343,18 @@ export async function runEvalsForModel(
 
     // Print summary
     printEvalSummary(model.formattedName, allResults);
+
+    if (executionMode === "answer" && allResults.some((result) => !result.passed)) {
+      const reason = "[answer_validation] Canonical answers must pass all evals";
+      if (runId) {
+        await completeRun(runId, {
+          kind: "failed",
+          failureReason: reason,
+          durationMs: Date.now() - runStartTime,
+        });
+      }
+      throw new Error(reason);
+    }
 
     // If we aborted due to rate limits, fail the run so it doesn't
     // appear on the leaderboard with partial (misleading) results.
@@ -372,7 +418,8 @@ const RATE_LIMIT_RETRY_BASE_MS = 30_000; // 30s, then 60s
 /** Process a single eval. Returns `true` if the failure was a rate-limit error. */
 async function processOneEval(
   model: ModelTemplate,
-  modelImpl: Model,
+  modelImpl: Model | null,
+  executionMode: ExecutionMode,
   evalInfo: EvalInfo,
   runId: string | null,
   allResults: EvalIndividualResult[],
@@ -382,7 +429,11 @@ async function processOneEval(
   const { category, name, evalPath } = evalInfo;
   const evalPathStr = `${category}/${name}`;
 
-  logInfo(`[${evalPathStr}] Calling model ${model.formattedName}...`);
+  if (executionMode === "answer") {
+    logInfo(`[${evalPathStr}] Running canonical answer validation...`);
+  } else {
+    logInfo(`[${evalPathStr}] Calling model ${model.formattedName}...`);
+  }
 
   // Read task description and expected files
   const taskDescription = readFileSync(join(evalPath, "TASK.txt"), "utf-8");
@@ -415,8 +466,31 @@ async function processOneEval(
 
   const evalStartTime = Date.now();
 
+  if (executionMode === "answer") {
+    const output = readAnswerOutputFiles(evalPath);
+    logInfo(`[${evalPathStr}] Using canonical answer output, scoring...`);
+    const scores = await convexScorer(
+      tempdir,
+      taskDescription,
+      expected,
+      metadata,
+      output,
+    );
+    const result = buildEvalResult(category, name, model.name, scores, tempdir);
+    allResults.push(result);
+    logProgress(evalPathStr, result, allResults, totalEvals, evalStartTime);
+    return false;
+  }
+
+  if (modelImpl === null) {
+    throw new Error(`Model implementation missing for mode: ${executionMode}`);
+  }
+
   // Attempt to generate with retries on rate-limit errors.
-  let generateResult: { files: Record<string, string>; usage: LanguageModelUsage | undefined } | null = null;
+  let generateResult: {
+    files: Record<string, string>;
+    usage: LanguageModelUsage | undefined;
+  } | null = null;
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
@@ -524,6 +598,13 @@ function isRateLimitError(errorStr: string): boolean {
   );
 }
 
+function parseExecutionMode(value: string | undefined): ExecutionMode {
+  if (!value || value === "generate") return "generate";
+  if (value === "answer") return "answer";
+  console.error(`Invalid EVALS_EXECUTION_MODE: ${value}`);
+  process.exit(1);
+}
+
 function readExpectedFiles(evalPath: string): Record<string, string> {
   const answerPaths = [...walkAnswer(join(evalPath, "answer"))].sort(
     (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b),
@@ -537,6 +618,21 @@ function readExpectedFiles(evalPath: string): Record<string, string> {
     expected[relativePath] = readFileSync(filePath, "utf-8").trim();
   }
   return expected;
+}
+
+function readAnswerOutputFiles(evalPath: string): Record<string, string> {
+  const answerPaths = [...walkAnswer(join(evalPath, "answer"))].sort(
+    (a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b),
+  );
+  const output: Record<string, string> = {};
+  const basePath = join(evalPath, "answer");
+  for (const filePath of answerPaths) {
+    const relativePath = filePath
+      .slice(basePath.length + 1)
+      .replace(/\\/g, "/");
+    output[relativePath] = readFileSync(filePath, "utf-8");
+  }
+  return output;
 }
 
 function buildEvalResult(

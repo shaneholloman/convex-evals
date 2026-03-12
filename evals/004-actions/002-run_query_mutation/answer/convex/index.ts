@@ -1,9 +1,9 @@
-import { internalQuery, internalMutation, action } from "./_generated/server";
+import { query, mutation, action } from "./_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
+import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
-export const getFetchResult = internalQuery({
+export const getFetchResult = query({
   args: { url: v.string() },
   handler: async (ctx, args): Promise<Id<"fetchRequests"> | null> => {
     const result = await ctx.db
@@ -14,7 +14,7 @@ export const getFetchResult = internalQuery({
   },
 });
 
-export const saveFetchResult = internalMutation({
+export const saveFetchResult = mutation({
   args: {
     url: v.string(),
     data: v.any(),
@@ -37,7 +37,9 @@ export const saveFetchResult = internalMutation({
 export const fetchIfNeeded = action({
   args: { url: v.string() },
   handler: async (ctx, args): Promise<Id<"fetchRequests">> => {
-    const existing = await ctx.runQuery(internal.index.getFetchResult, { url: args.url });
+    const existing = await ctx.runQuery(api.index.getFetchResult, {
+      url: args.url,
+    });
 
     if (existing) {
       return existing;
@@ -50,7 +52,7 @@ export const fetchIfNeeded = action({
       throw new Error(`Failed to fetch ${args.url}: ${response.statusText}`);
     }
 
-    const id = await ctx.runMutation(internal.index.saveFetchResult, {
+    const id = await ctx.runMutation(api.index.saveFetchResult, {
       url: args.url,
       data,
     });

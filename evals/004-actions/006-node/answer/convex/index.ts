@@ -1,28 +1,20 @@
 "use node";
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import crypto from "crypto";
-import path from "path";
+import * as crypto from "node:crypto";
+import * as path from "node:path";
 
 // Define the action using Node runtime
 export const processWithNode = action({
   args: { data: v.string() },
-  handler: async (ctx, args) => {
-    // Specify Node runtime to access Node.js built-in modules
+  handler: async (_ctx, args) => {
+    const hash = crypto.createHash("sha256").update(args.data).digest("hex");
+    // Keep path behavior deterministic across Windows and Linux.
+    const normalizedPath = path.posix.normalize("/some/test/path");
 
-
-      // Generate SHA-256 hash of input string
-      const hash = crypto
-        .createHash("sha256")
-        .update(args.data)
-        .digest("hex");
-
-      // Normalize a test path
-      const normalizedPath = path.normalize("/some/test/path");
-
-      return {
-        hash,
-        normalizedPath,
-      };
+    return {
+      hash,
+      normalizedPath,
+    };
   },
 });
