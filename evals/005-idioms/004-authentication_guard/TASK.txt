@@ -1,0 +1,34 @@
+Build a backend for a project export feature where only authenticated users can request exports.
+
+Write this schema to `convex/schema.ts`:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    tokenIdentifier: v.string(),
+    email: v.string(),
+    name: v.string(),
+  }).index("by_tokenIdentifier", ["tokenIdentifier"]),
+  exportRequests: defineTable({
+    projectName: v.string(),
+    requestedByUserId: v.id("users"),
+    destinationEmail: v.string(),
+    status: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
+  }).index("by_requestedByUserId", ["requestedByUserId"]),
+});
+```
+
+Auth is already configured. Do not create `convex/auth.config.ts`.
+
+Create this mutation in `convex/exports.ts`:
+- `requestExport` with args `{ projectName: string, destinationEmail: string }`
+- It inserts one row into `exportRequests` with:
+  - `projectName` from args
+  - `destinationEmail` from args
+  - `requestedByUserId` for the caller's user record
+  - `status: "queued"`
+- Return the inserted `Id<"exportRequests">`.
+
+Only create the files required for this feature.

@@ -222,6 +222,9 @@ The \`domain\` must be the issuer URL of the JWT provider. Convex fetches \`{dom
       "Use `ctx.auth.getUserIdentity()` to get the authenticated user's identity in any query, mutation, or action. This returns `null` if the user is not authenticated, or a `UserIdentity` object with fields like `subject`, `issuer`, `name`, `email`, etc. The `subject` field is the unique user identifier.",
     ),
     guideline(
+      "In Convex `UserIdentity`, `tokenIdentifier` is guaranteed and is the canonical stable identifier for the authenticated identity. For any auth-linked database lookup or ownership check, prefer `identity.tokenIdentifier` over `identity.subject`. Do NOT use `identity.subject` alone as a global identity key.",
+    ),
+    guideline(
       "NEVER accept a `userId` or any user identifier as a function argument for authorization purposes. Always derive the user identity server-side via `ctx.auth.getUserIdentity()`.",
     ),
     guideline(`When using an external auth provider with Convex on the client, use \`ConvexProviderWithAuth\` instead of \`ConvexProvider\`:
@@ -523,6 +526,9 @@ http.route({
       ),
       guideline(
         "Use `ctx.auth.getUserIdentity()` in queries, mutations, and actions to get the authenticated user. Returns `null` if unauthenticated, or a `UserIdentity` with `subject` (unique user ID), `issuer`, `name`, `email`, etc.",
+      ),
+      guideline(
+        "In `UserIdentity`, `tokenIdentifier` is guaranteed and should be the canonical key for auth-linked lookups and ownership checks. Prefer `identity.tokenIdentifier` over `identity.subject`, and never use `identity.subject` alone as a global identity key.",
       ),
       guideline(
         "NEVER accept a `userId` or any user identifier as a function argument for authorization. Always derive identity server-side via `ctx.auth.getUserIdentity()`.",

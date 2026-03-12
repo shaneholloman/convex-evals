@@ -171,7 +171,13 @@ After the user approves the design, **switch back to Agent mode** and implement:
 
 ## Step 4: Validate the Answer
 
-Run the eval for one model as a smoke test. This validates that the answer, tests, and codegen are all working:
+First run canonical answer validation for the new eval:
+
+```bash
+TEST_FILTER=<category>/<eval_slug> bun run validate:answers
+```
+
+Then run the eval for one model as a smoke test. This validates model generation against the new eval:
 
 ```bash
 MODELS=anthropic/claude-sonnet-4.6 TEST_FILTER=<category>/<eval_slug> bun run local:run
@@ -241,6 +247,7 @@ Then explicitly ask: is this primarily an **eval/task gap**, a **model gap**, or
 - [ ] Answer implemented and codegen run
 - [ ] grader.test.ts written
 - [ ] `bun run typecheck` passes
+- [ ] `bun run validate:answers` passes for the new eval
 - [ ] Smoke test passes for at least one model
 - [ ] Calibrated on a representative set of models, expanded if needed
 - [ ] Results reviewed, including eval gap vs model gap vs guideline gap
