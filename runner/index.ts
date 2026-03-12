@@ -635,7 +635,7 @@ function readAnswerOutputFiles(evalPath: string): Record<string, string> {
   return output;
 }
 
-function buildEvalResult(
+export function buildEvalResult(
   category: string,
   name: string,
   modelName: string,
@@ -649,7 +649,9 @@ function buildEvalResult(
   }
 
   const testsPassScore = scoresMap["Tests pass"] ?? 0;
-  const passed = testsPassScore >= 1;
+  // Keep local run summary consistent with Convex eval completion status:
+  // an eval only passes if every recorded scoring step is perfect and tests are 100%.
+  const passed = scores.length > 0 && scores.every((s) => s.score >= 1);
 
   let failureReason: string | null = null;
   if (!passed) {
