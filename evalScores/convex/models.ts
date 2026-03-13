@@ -56,27 +56,6 @@ export const upsertFromSlug = internalMutation({
   },
 });
 
-// Temporary admin utility: used to correct backfilled timestamps for one row.
-export const forceSetOpenRouterFirstSeenAt = internalMutation({
-  args: {
-    slug: v.string(),
-    openRouterFirstSeenAt: v.number(),
-  },
-  returns: v.union(v.id("models"), v.null()),
-  handler: async (ctx, args): Promise<Id<"models"> | null> => {
-    const model = await ctx.db
-      .query("models")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
-    if (!model) return null;
-    await ctx.db.patch(model._id, {
-      openRouterFirstSeenAt: args.openRouterFirstSeenAt,
-      updatedAt: Date.now(),
-    });
-    return model._id;
-  },
-});
-
 export const getBySlug = query({
   args: {
     slug: v.string(),
