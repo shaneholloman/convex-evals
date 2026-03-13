@@ -148,7 +148,7 @@ export async function completeRun(
   return result !== null;
 }
 
-export async function deleteRun(runId: string): Promise<boolean> {
+export async function deleteRunRecord(runId: string): Promise<boolean> {
   const result = await safeMutate("deleteRun", api.admin.deleteRun, {
     runId: runId as Id<"runs">,
   });

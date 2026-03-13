@@ -38,7 +38,7 @@ import {
   ensureModelFromSlug,
   startRun,
   completeRun,
-  deleteRun,
+  deleteRunRecord,
   startEval,
   completeEval,
   getOrUploadEvalSource,
@@ -428,7 +428,7 @@ export async function runEvalsForModel(
         const evalPath = `${zeroTokenEval.category}/${zeroTokenEval.name}`;
         const reason = `[infrastructure] [zero_tokens] Zero total token usage detected for ${evalPath}`;
         console.error(`Run invalid, deleting ${runId}: ${reason}`);
-        const deleted = await deleteRun(runId);
+        const deleted = await deleteRunRecord(runId);
         if (deleted) {
           logInfo(`Deleted run ${runId} due to zero-token eval usage`);
         } else {
