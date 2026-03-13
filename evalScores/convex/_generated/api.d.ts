@@ -19,7 +19,6 @@ import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
 import type * as modelScores from "../modelScores.js";
 import type * as models from "../models.js";
-import type * as openRouterReconcile from "../openRouterReconcile.js";
 import type * as runMaintenance from "../runMaintenance.js";
 import type * as runs from "../runs.js";
 import type * as scoringUtils from "../scoringUtils.js";
@@ -43,7 +42,6 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   modelScores: typeof modelScores;
   models: typeof models;
-  openRouterReconcile: typeof openRouterReconcile;
   runMaintenance: typeof runMaintenance;
   runs: typeof runs;
   scoringUtils: typeof scoringUtils;
