@@ -76,6 +76,7 @@ export const ensureModelFromSlug = mutation({
     formattedName: v.string(),
     provider: v.optional(v.string()),
     apiKind: v.optional(v.union(v.literal("chat"), v.literal("responses"))),
+    openRouterFirstSeenAt: v.optional(v.number()),
   },
   returns: v.id("models"),
   handler: async (ctx, args): Promise<Id<"models">> => {
@@ -85,6 +86,7 @@ export const ensureModelFromSlug = mutation({
       formattedName: args.formattedName,
       provider: args.provider,
       apiKind: args.apiKind,
+      openRouterFirstSeenAt: args.openRouterFirstSeenAt,
     });
   },
 });

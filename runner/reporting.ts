@@ -113,6 +113,7 @@ export async function ensureModelFromSlug(
   formattedName: string,
   provider?: string,
   apiKind?: "chat" | "responses",
+  openRouterFirstSeenAt?: number,
 ): Promise<string | null> {
   if (!getClient() || !CONVEX_AUTH_TOKEN) {
     logInfo(
@@ -129,6 +130,7 @@ export async function ensureModelFromSlug(
       formattedName,
       provider,
       apiKind,
+      openRouterFirstSeenAt,
     },
   );
   return (result as string | null) ?? null;

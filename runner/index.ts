@@ -162,7 +162,11 @@ async function main(): Promise<void> {
     ? process.env.MODELS.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_MODEL_NAMES;
 
-  const resolvedModels: Array<{ model: ModelTemplate; provider: string }> = [];
+  const resolvedModels: Array<{
+    model: ModelTemplate;
+    provider: string;
+    openRouterFirstSeenAt?: number;
+  }> = [];
   for (const modelName of modelNames) {
     const knownModel = MODELS_BY_NAME[modelName];
     const discovered = await discoverOpenRouterModel(modelName).catch((error) => {
@@ -181,6 +185,7 @@ async function main(): Promise<void> {
           apiKind: discovered?.template.apiKind ?? knownModel.apiKind,
         },
         provider,
+        openRouterFirstSeenAt: discovered?.openRouterFirstSeenAt,
       });
       continue;
     }
@@ -200,6 +205,7 @@ async function main(): Promise<void> {
           discovered.template.formattedName ?? discovered.template.name,
       },
       provider: discovered.provider,
+      openRouterFirstSeenAt: discovered.openRouterFirstSeenAt,
     });
   }
 
@@ -223,7 +229,9 @@ async function main(): Promise<void> {
       convexAuthToken: process.env.CONVEX_AUTH_TOKEN,
       experiment: process.env.EVALS_EXPERIMENT,
     };
-    await runEvalsForModel(cfg);
+    await runEvalsForModel(cfg, {
+      openRouterFirstSeenAt: resolved.openRouterFirstSeenAt,
+    });
   }
 
   await closeClient();
@@ -242,6 +250,9 @@ async function main(): Promise<void> {
  */
 export async function runEvalsForModel(
   config: RunConfig,
+  metadata?: {
+    openRouterFirstSeenAt?: number;
+  },
 ): Promise<EvalIndividualResult[]> {
   const {
     model,
@@ -297,6 +308,7 @@ export async function runEvalsForModel(
         modelDisplayName,
         provider,
         model.apiKind ?? "chat",
+        metadata?.openRouterFirstSeenAt,
       );
       if (!modelId) {
         throw new Error(`Failed to upsert model metadata for ${model.name}`);

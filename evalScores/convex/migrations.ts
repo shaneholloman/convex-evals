@@ -4,6 +4,9 @@ import type { DataModel, Id } from "./_generated/dataModel.js";
 import type { MutationCtx } from "./_generated/server";
 
 export const migrations = new Migrations<DataModel>(components.migrations);
+const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
+let openRouterCreatedAtBySlugPromise: Promise<Map<string, number> | null> | null =
+  null;
 
 const OLD_TO_NEW_MODEL_NAMES: Record<string, string> = {
   "claude-3-5-sonnet-latest": "anthropic/claude-3.5-sonnet",
@@ -52,6 +55,50 @@ function inferApiKind(slug: string): "chat" | "responses" {
   return "chat";
 }
 
+function toUnixMs(timestamp: number): number {
+  return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
+}
+
+async function getOpenRouterCreatedAtBySlug(): Promise<Map<string, number> | null> {
+  if (openRouterCreatedAtBySlugPromise) {
+    return openRouterCreatedAtBySlugPromise;
+  }
+
+  openRouterCreatedAtBySlugPromise = (async () => {
+    const response = await fetch(OPENROUTER_MODELS_URL, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "convex-evals-migration/1.0",
+      },
+    });
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as {
+      data?: Array<{
+        id?: string;
+        canonical_slug?: string;
+        created?: number;
+      }>;
+    };
+    if (!Array.isArray(payload.data)) return null;
+
+    const createdAtBySlug = new Map<string, number>();
+    for (const model of payload.data) {
+      if (typeof model.created !== "number") continue;
+      const createdMs = toUnixMs(model.created);
+      if (typeof model.id === "string") {
+        createdAtBySlug.set(model.id, createdMs);
+      }
+      if (typeof model.canonical_slug === "string") {
+        createdAtBySlug.set(model.canonical_slug, createdMs);
+      }
+    }
+    return createdAtBySlug;
+  })();
+
+  return openRouterCreatedAtBySlugPromise;
+}
+
 async function getOrCreateModelId(
   ctx: MutationCtx,
   slugRaw: string,
@@ -85,6 +132,7 @@ async function getOrCreateModelId(
     formattedName,
     provider,
     apiKind,
+    openRouterFirstSeenAt: undefined,
     createdAt: now,
     updatedAt: now,
     lastSeenAt: now,
@@ -98,6 +146,15 @@ function readLegacyString(
   if (typeof doc !== "object" || doc === null) return undefined;
   const value = (doc as Record<string, unknown>)[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function readLegacyNumber(
+  doc: unknown,
+  key: string,
+): number | undefined {
+  if (typeof doc !== "object" || doc === null) return undefined;
+  const value = (doc as Record<string, unknown>)[key];
+  return typeof value === "number" ? value : undefined;
 }
 
 async function resolveLegacyModelEntryToId(
@@ -184,6 +241,28 @@ export const repairExperimentsModelIds = migrations.define({
   },
 });
 
+export const backfillModelsOpenRouterFirstSeenAt = migrations.define({
+  table: "models",
+  migrateOne: async (_ctx, doc) => {
+    const existingFirstSeen = readLegacyNumber(doc, "openRouterFirstSeenAt");
+    if (existingFirstSeen !== undefined) return;
+
+    const slug = readLegacyString(doc, "slug");
+    const localCreatedAt = readLegacyNumber(doc, "createdAt");
+    if (!slug) {
+      if (localCreatedAt !== undefined) {
+        return { openRouterFirstSeenAt: localCreatedAt };
+      }
+      return;
+    }
+
+    const createdAtBySlug = await getOpenRouterCreatedAtBySlug();
+    const openRouterFirstSeenAt = createdAtBySlug?.get(slug) ?? localCreatedAt;
+    if (openRouterFirstSeenAt === undefined) return;
+    return { openRouterFirstSeenAt };
+  },
+});
+
 export const run = migrations.runner();
 
 export const runAll = migrations.runner([
@@ -191,4 +270,5 @@ export const runAll = migrations.runner([
   internal.migrations.backfillModelScoresModelId,
   internal.migrations.backfillExperimentsModelIds,
   internal.migrations.repairExperimentsModelIds,
+  internal.migrations.backfillModelsOpenRouterFirstSeenAt,
 ]);

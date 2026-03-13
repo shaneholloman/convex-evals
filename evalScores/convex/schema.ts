@@ -73,6 +73,8 @@ export default defineSchema({
     formattedName: v.string(),
     provider: v.string(),
     apiKind: v.union(v.literal("chat"), v.literal("responses")),
+    // First-seen timestamp from OpenRouter model metadata (ms since epoch).
+    openRouterFirstSeenAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
     lastSeenAt: v.number(),

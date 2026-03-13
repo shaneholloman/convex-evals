@@ -24,7 +24,58 @@ interface FrontendModelSearchResponse {
   };
 }
 
+interface OpenRouterModelCatalogEntry {
+  id?: string;
+  canonical_slug?: string;
+  created?: number;
+}
+
+interface OpenRouterModelCatalogResponse {
+  data?: OpenRouterModelCatalogEntry[];
+}
+
 const OPENROUTER_PREFLIGHT_TIMEOUT_MS = 15_000;
+const OPENROUTER_MODELS_URL = `${OPENROUTER_BASE_URL}/models`;
+let openRouterCreatedAtBySlugPromise: Promise<Map<string, number> | null> | null =
+  null;
+
+function toUnixMs(timestamp: number): number {
+  // OpenRouter currently returns Unix seconds. Keep ms in our DB.
+  return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
+}
+
+async function getOpenRouterCreatedAtBySlug(): Promise<Map<string, number> | null> {
+  if (openRouterCreatedAtBySlugPromise) {
+    return openRouterCreatedAtBySlugPromise;
+  }
+
+  openRouterCreatedAtBySlugPromise = (async () => {
+    const response = await fetch(OPENROUTER_MODELS_URL, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "convex-evals-ci/1.0",
+      },
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as OpenRouterModelCatalogResponse;
+    if (!Array.isArray(payload.data)) return null;
+
+    const createdAtBySlug = new Map<string, number>();
+    for (const entry of payload.data) {
+      if (typeof entry.created !== "number") continue;
+      const createdMs = toUnixMs(entry.created);
+      if (typeof entry.id === "string") {
+        createdAtBySlug.set(entry.id, createdMs);
+      }
+      if (typeof entry.canonical_slug === "string") {
+        createdAtBySlug.set(entry.canonical_slug, createdMs);
+      }
+    }
+    return createdAtBySlug;
+  })();
+
+  return openRouterCreatedAtBySlugPromise;
+}
 
 function inferApiKind(
   modelName: string,
@@ -49,6 +100,7 @@ export async function discoverOpenRouterModel(
 ): Promise<{
   template: ModelTemplate;
   provider: string;
+  openRouterFirstSeenAt?: number;
 } | null> {
   const url = `${OPENROUTER_MODEL_SEARCH_URL}?q=${encodeURIComponent(modelName)}`;
   const response = await fetch(url, {
@@ -83,6 +135,8 @@ export async function discoverOpenRouterModel(
   const provider =
     exactMatch.endpoint?.provider_slug ??
     (modelName.includes("/") ? modelName.split("/")[0] : "openrouter");
+  const createdAtBySlug = await getOpenRouterCreatedAtBySlug();
+  const openRouterFirstSeenAt = createdAtBySlug?.get(modelName);
 
   return {
     template: {
@@ -93,6 +147,7 @@ export async function discoverOpenRouterModel(
       apiKind: inferApiKind(modelName, exactMatch.endpoint),
     },
     provider,
+    openRouterFirstSeenAt,
   };
 }
 
