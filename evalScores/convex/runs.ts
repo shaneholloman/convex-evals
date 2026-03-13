@@ -458,6 +458,8 @@ export const leaderboardScores = query({
       modelId: r.modelId,
       model: modelMap.get(r.modelId)?.slug ?? "unknown-model",
       formattedName: modelMap.get(r.modelId)?.formattedName ?? "Unknown model",
+      openRouterFirstSeenAt:
+        modelMap.get(r.modelId)?.openRouterFirstSeenAt ?? 0,
       totalScore: r.totalScore,
       totalScoreErrorBar: r.totalScoreErrorBar,
       averageRunDurationMs: r.averageRunDurationMs,
