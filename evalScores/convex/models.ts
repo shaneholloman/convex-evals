@@ -36,7 +36,7 @@ export const upsertFromSlug = internalMutation({
         provider,
         apiKind,
         openRouterFirstSeenAt:
-          existing.openRouterFirstSeenAt ?? args.openRouterFirstSeenAt,
+          existing.openRouterFirstSeenAt ?? args.openRouterFirstSeenAt ?? now,
         updatedAt: now,
         lastSeenAt: now,
       });
@@ -48,7 +48,7 @@ export const upsertFromSlug = internalMutation({
       formattedName: args.formattedName,
       provider,
       apiKind,
-      openRouterFirstSeenAt: args.openRouterFirstSeenAt,
+      openRouterFirstSeenAt: args.openRouterFirstSeenAt ?? now,
       createdAt: now,
       updatedAt: now,
       lastSeenAt: now,
@@ -67,7 +67,7 @@ export const getBySlug = query({
       formattedName: v.string(),
       provider: v.string(),
       apiKind: v.union(v.literal("chat"), v.literal("responses")),
-      openRouterFirstSeenAt: v.optional(v.number()),
+      openRouterFirstSeenAt: v.number(),
       createdAt: v.number(),
       updatedAt: v.number(),
       lastSeenAt: v.number(),

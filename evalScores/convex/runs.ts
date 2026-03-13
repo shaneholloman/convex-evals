@@ -51,7 +51,7 @@ export const createRun = internalMutation({
           formattedName: args.formattedName ?? args.model,
           provider,
           apiKind,
-          openRouterFirstSeenAt: args.openRouterFirstSeenAt,
+          openRouterFirstSeenAt: args.openRouterFirstSeenAt ?? now,
           createdAt: now,
           updatedAt: now,
           lastSeenAt: now,

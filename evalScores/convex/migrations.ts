@@ -85,7 +85,7 @@ async function getOrCreateModelId(
     formattedName,
     provider,
     apiKind,
-    openRouterFirstSeenAt: undefined,
+    openRouterFirstSeenAt: now,
     createdAt: now,
     updatedAt: now,
     lastSeenAt: now,
