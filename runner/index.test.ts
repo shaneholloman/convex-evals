@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildEvalResult } from "../index.js";
+import { buildEvalResult } from "./index.js";
 
 describe("buildEvalResult", () => {
   it("fails eval when eslint fails even if tests pass", () => {

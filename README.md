@@ -225,8 +225,25 @@ This will generate guideline files in the `dist/` directory for various AI codin
 
 ```bash
 bun run list:models
-bun run runner/listModels.ts --frequency daily --format json
+bun run scripts/listModels.ts --frequency daily --format json
 ```
+
+## Automated eval workflows
+
+The repo has three scheduled eval workflows:
+
+- `periodic_evals.yml` runs curated models every 2 hours
+- `top_openrouter_models_evals.yml` runs top non-curated OpenRouter models every 2 hours
+- `benchmark_openrouter_models_evals.yml` runs top OpenRouter benchmark models every 3 hours
+
+All three workflows use the same scheduling policy before they actually queue a model:
+
+- if we have never run a model before, it is due immediately
+- otherwise we look at the model's stored OpenRouter first-seen timestamp
+- the target interval ramps linearly from `24h` for a brand new model to `30d` for a model that is at least 30 days old
+- a model only runs when its most recent recorded run is older than that computed interval
+
+The non-curated OpenRouter workflows also do a lightweight preflight check so obviously dead models are skipped before entering the matrix.
 
 # Outstanding Evals
 

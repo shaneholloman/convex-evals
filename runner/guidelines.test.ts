@@ -4,7 +4,7 @@ import {
   renderGuidelines,
   type Guideline,
   type GuidelineSection,
-} from "../models/guidelines.js";
+} from "./models/guidelines.js";
 
 describe("CONVEX_GUIDELINES structure", () => {
   it("is a section node", () => {

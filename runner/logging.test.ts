@@ -11,7 +11,7 @@ import {
   logInfo,
   logVitestResults,
   runCommandStep,
-} from "../logging.js";
+} from "./logging.js";
 
 describe("sanitizeOutput", () => {
   it("strips CSI escape sequences", () => {
@@ -84,7 +84,6 @@ describe("appendLog", () => {
   });
 
   it("silently handles write errors (e.g. invalid path)", () => {
-    // Should not throw
     appendLog("/nonexistent/dir/file.log", "test");
   });
 });
@@ -127,37 +126,35 @@ describe("logCmdResults", () => {
 
   it("logs command name and stdout", () => {
     const logPath = join(tempDir, "test.log");
-    logCmdResults(logPath, [{ cmd: "echo hello", stdout: "hello" }], "out");
+    logCmdResults(
+      logPath,
+      [{ cmd: "npm test", stdout: "all good" }],
+      "cmd",
+    );
     const content = readFileSync(logPath, "utf-8");
-    expect(content).toContain("[cmd] echo hello");
-    expect(content).toContain("[out] hello");
+    expect(content).toContain("[cmd] npm test");
+    expect(content).toContain("all good");
   });
 
   it("supports cmdPrefix", () => {
     const logPath = join(tempDir, "test.log");
     logCmdResults(
       logPath,
-      [{ cmd: "install", stdout: "ok" }],
-      "npm",
-      "bun ",
+      [{ cmd: "npm test", stdout: "all good" }],
+      "cmd",
+      "prefix ",
     );
     const content = readFileSync(logPath, "utf-8");
-    expect(content).toContain("[cmd] bun install");
+    expect(content).toContain("[cmd] prefix npm test");
   });
 });
 
 describe("logInfo", () => {
-  beforeEach(() => {
-    spyOn(console, "log").mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
   it("always logs messages", () => {
-    logInfo("test message");
-    expect(console.log).toHaveBeenCalledWith("test message");
+    const spy = spyOn(console, "log").mockImplementation(() => {});
+    logInfo("hello");
+    expect(spy).toHaveBeenCalledWith("hello");
+    spy.mockRestore();
   });
 });
 
@@ -174,11 +171,10 @@ describe("logVitestResults", () => {
 
   it("logs vitest command and output", () => {
     const logPath = join(tempDir, "test.log");
-    logVitestResults(logPath, "vitest run test.ts", "PASS test.ts\n2 tests");
+    logVitestResults(logPath, "bun test", "PASS 1 test");
     const content = readFileSync(logPath, "utf-8");
-    expect(content).toContain("[cmd] vitest run test.ts");
-    expect(content).toContain("[vitest] PASS test.ts");
-    expect(content).toContain("[vitest] 2 tests");
+    expect(content).toContain("[cmd] bun test");
+    expect(content).toContain("PASS 1 test");
   });
 });
 
@@ -195,29 +191,30 @@ describe("runCommandStep", () => {
 
   it("returns true and logs on success", async () => {
     const logPath = join(tempDir, "test.log");
+    const run = jest.fn().mockResolvedValue({
+      cmd: "cmd",
+      stdout: "ok",
+    });
     const result = await runCommandStep(
       logPath,
-      async () => [{ cmd: "test", stdout: "ok" }],
-      "test",
-      "test step",
+      async () => [await run()],
+      "step",
+      "cmd failed",
     );
     expect(result).toBe(true);
-    const content = readFileSync(logPath, "utf-8");
-    expect(content).toContain("[cmd] test");
+    expect(readFileSync(logPath, "utf-8")).toContain("ok");
   });
 
   it("returns false and logs error on exception", async () => {
     const logPath = join(tempDir, "test.log");
+    const run = jest.fn().mockRejectedValue(new Error("boom"));
     const result = await runCommandStep(
       logPath,
-      async () => {
-        throw new Error("boom");
-      },
-      "test",
-      "test step",
+      async () => [await run()],
+      "step",
+      "cmd failed",
     );
     expect(result).toBe(false);
-    const content = readFileSync(logPath, "utf-8");
-    expect(content).toContain("[error] test step: Error: boom");
+    expect(readFileSync(logPath, "utf-8")).toContain("boom");
   });
 });

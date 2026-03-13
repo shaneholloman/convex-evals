@@ -6,9 +6,8 @@ import {
   OPENROUTER_API_KEY_VAR,
   OPENROUTER_BASE_URL,
   DEFAULT_MAX_CONCURRENCY,
-  type ModelTemplate,
   type CIRunFrequency,
-} from "../models/index.js";
+} from "./models/index.js";
 
 describe("ALL_MODELS", () => {
   it("contains at least one model", () => {
@@ -18,7 +17,11 @@ describe("ALL_MODELS", () => {
   it("every model has required fields", () => {
     for (const model of ALL_MODELS) {
       expect(model.name).toBeTruthy();
-      expect(model.apiKind === undefined || model.apiKind === "chat" || model.apiKind === "responses").toBe(true);
+      expect(
+        model.apiKind === undefined ||
+          model.apiKind === "chat" ||
+          model.apiKind === "responses",
+      ).toBe(true);
     }
   });
 

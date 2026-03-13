@@ -4,7 +4,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { rmSync } from "fs";
 import JSZip from "jszip";
-import { ADMIN_KEY } from "../convexBackend.js";
+import { ADMIN_KEY } from "./convexBackend.js";
 
 describe("ADMIN_KEY", () => {
   it("is a non-empty hex string", () => {
@@ -26,7 +26,6 @@ describe("binary download URL construction", () => {
       win32: "pc-windows-msvc",
     };
 
-    // Test all combinations
     for (const [nodeArch, targetArch] of Object.entries(archMap)) {
       for (const [nodePlatform, targetOs] of Object.entries(osMap)) {
         const pattern = `convex-local-backend-${targetArch}-${targetOs}`;
@@ -123,46 +122,39 @@ describe("release asset matching", () => {
   }
 
   it("finds windows x64 asset", () => {
-    const result = findAsset(
-      mockReleases,
-      "convex-local-backend-x86_64-pc-windows-msvc",
-    );
-    expect(result).not.toBeNull();
-    expect(result!.name).toContain("windows");
-    expect(result!.version).toBe("precompiled-2026-02-06-beabc80");
+    const result = findAsset(mockReleases, "x86_64-pc-windows-msvc");
+    expect(result).toEqual({
+      name: "convex-local-backend-x86_64-pc-windows-msvc.zip",
+      version: "precompiled-2026-02-06-beabc80",
+    });
   });
 
   it("finds linux x64 asset", () => {
-    const result = findAsset(
-      mockReleases,
-      "convex-local-backend-x86_64-unknown-linux-gnu",
-    );
-    expect(result).not.toBeNull();
-    expect(result!.name).toContain("linux");
+    const result = findAsset(mockReleases, "x86_64-unknown-linux-gnu");
+    expect(result).toEqual({
+      name: "convex-local-backend-x86_64-unknown-linux-gnu.zip",
+      version: "precompiled-2026-02-06-beabc80",
+    });
   });
 
   it("finds macOS arm64 asset", () => {
-    const result = findAsset(
-      mockReleases,
-      "convex-local-backend-aarch64-apple-darwin",
-    );
-    expect(result).not.toBeNull();
-    expect(result!.name).toContain("aarch64");
+    const result = findAsset(mockReleases, "aarch64-apple-darwin");
+    expect(result).toEqual({
+      name: "convex-local-backend-aarch64-apple-darwin.zip",
+      version: "precompiled-2026-02-06-beabc80",
+    });
   });
 
   it("finds macOS x64 asset", () => {
-    const result = findAsset(
-      mockReleases,
-      "convex-local-backend-x86_64-apple-darwin",
-    );
-    expect(result).not.toBeNull();
+    const result = findAsset(mockReleases, "x86_64-apple-darwin");
+    expect(result).toEqual({
+      name: "convex-local-backend-x86_64-apple-darwin.zip",
+      version: "precompiled-2026-02-06-beabc80",
+    });
   });
 
   it("returns null for unsupported platform", () => {
-    const result = findAsset(
-      mockReleases,
-      "convex-local-backend-riscv64-unknown-freebsd",
-    );
+    const result = findAsset(mockReleases, "aarch64-pc-windows-msvc");
     expect(result).toBeNull();
   });
 });
@@ -171,7 +163,7 @@ describe("zip extraction for binary", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "backend-test-"));
+    tempDir = mkdtempSync(join(tmpdir(), "convex-backend-test-"));
   });
 
   afterEach(() => {
@@ -179,56 +171,55 @@ describe("zip extraction for binary", () => {
   });
 
   it("extracts binary from zip and writes to disk", async () => {
-    // Create a mock zip containing the binary
     const zip = new JSZip();
-    const fakeBinaryContent = Buffer.from("fake-binary-content");
-    zip.file("convex-local-backend", fakeBinaryContent);
+    const binaryContent = "fake-binary-content";
+    zip.file("convex-local-backend", binaryContent);
 
-    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+    const zipData = await zip.generateAsync({ type: "nodebuffer" });
+    const zipPath = join(tempDir, "backend.zip");
+    writeFileSync(zipPath, zipData);
 
-    // Simulate the extraction logic from convexBackend.ts
-    const loadedZip = await JSZip.loadAsync(zipBuffer);
-    const expectedName = "convex-local-backend";
-    const entry = loadedZip.file(expectedName);
-    expect(entry).not.toBeNull();
+    const outputPath = join(tempDir, "convex-local-backend");
 
+    const loadedZip = await JSZip.loadAsync(readFileSync(zipPath));
+    const entry = loadedZip.file("convex-local-backend");
+    expect(entry).toBeTruthy();
     const content = await entry!.async("nodebuffer");
-    const binaryPath = join(tempDir, "convex-local-backend-v1");
-    writeFileSync(binaryPath, content);
+    writeFileSync(outputPath, content);
 
-    expect(existsSync(binaryPath)).toBe(true);
-    expect(Buffer.compare(readFileSync(binaryPath), fakeBinaryContent)).toBe(0);
+    expect(existsSync(outputPath)).toBe(true);
+    expect(readFileSync(outputPath, "utf-8")).toBe(binaryContent);
   });
 
   it("extracts .exe binary from zip", async () => {
     const zip = new JSZip();
-    const fakeBinary = Buffer.alloc(1024, 0x42);
-    zip.file("convex-local-backend.exe", fakeBinary);
+    const binaryContent = "fake-windows-binary";
+    zip.file("convex-local-backend.exe", binaryContent);
 
-    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-    const loadedZip = await JSZip.loadAsync(zipBuffer);
+    const zipData = await zip.generateAsync({ type: "nodebuffer" });
+    const zipPath = join(tempDir, "backend-windows.zip");
+    writeFileSync(zipPath, zipData);
+
+    const outputPath = join(tempDir, "convex-local-backend.exe");
+
+    const loadedZip = await JSZip.loadAsync(readFileSync(zipPath));
     const entry = loadedZip.file("convex-local-backend.exe");
-    expect(entry).not.toBeNull();
-
+    expect(entry).toBeTruthy();
     const content = await entry!.async("nodebuffer");
-    const binaryPath = join(tempDir, "convex-local-backend-v1.exe");
-    writeFileSync(binaryPath, content);
+    writeFileSync(outputPath, content);
 
-    expect(existsSync(binaryPath)).toBe(true);
-    expect(readFileSync(binaryPath).length).toBe(1024);
+    expect(existsSync(outputPath)).toBe(true);
+    expect(readFileSync(outputPath, "utf-8")).toBe(binaryContent);
   });
 
   it("reports error when binary not found in zip", async () => {
     const zip = new JSZip();
-    zip.file("README.md", "this is a readme");
+    zip.file("some-other-file.txt", "not a binary");
 
-    const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
-    const loadedZip = await JSZip.loadAsync(zipBuffer);
+    const zipData = await zip.generateAsync({ type: "nodebuffer" });
+    const loadedZip = await JSZip.loadAsync(zipData);
+
     const entry = loadedZip.file("convex-local-backend");
-
     expect(entry).toBeNull();
-    // Should produce an informative error
-    const contents = Object.keys(loadedZip.files).join(", ");
-    expect(contents).toContain("README.md");
   });
 });

@@ -4,18 +4,15 @@
  * Keeps runner/models/index.ts as the single source of truth.
  *
  * Usage:
- *   bun run runner/listModels.ts --frequency daily --format json
+ *   bun run scripts/listModels.ts --frequency daily --format json
  */
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../evalScores/convex/_generated/api.js";
-import { ALL_MODELS, type CIRunFrequency, type ModelTemplate } from "./models/index.js";
-
-const RUN_INTERVAL_MS: Record<CIRunFrequency, number> = {
-  daily: 24 * 60 * 60 * 1000,
-  weekly: 7 * 24 * 60 * 60 * 1000,
-  monthly: 30 * 24 * 60 * 60 * 1000,
-  never: Number.POSITIVE_INFINITY,
-};
+import {
+  ALL_MODELS,
+  type CIRunFrequency,
+  type ModelTemplate,
+} from "../runner/models/index.js";
+import { loadSchedulingDecisions } from "./modelScheduling.js";
 
 function getModels(frequency?: CIRunFrequency): ModelTemplate[] {
   let models = ALL_MODELS;
@@ -48,27 +45,17 @@ async function filterDueModels(models: ModelTemplate[]): Promise<ModelTemplate[]
   }
 
   const client = new ConvexHttpClient(convexUrl);
-  const modelDocs = await Promise.all(
-    models.map((model) => client.query(api.models.getBySlug, { slug: model.name })),
+  const schedulingDecisions = await loadSchedulingDecisions(
+    client,
+    models.map((model) => model.name),
   );
-  const existingModelIds = modelDocs
-    .filter((modelDoc) => modelDoc !== null)
-    .map((modelDoc) => modelDoc._id);
-  const modelSummaries =
-    existingModelIds.length > 0
-      ? await client.query(api.runs.listModels, { modelIds: existingModelIds })
-      : [];
-  const now = Date.now();
 
   return models.filter((model) => {
-    const lastRunTime =
-      modelSummaries.find((entry) => entry.slug === model.name)?.latestRun ?? null;
-    if (lastRunTime === null) return true;
-    return now - lastRunTime >= RUN_INTERVAL_MS[model.ciRunFrequency];
+    return schedulingDecisions.get(model.name)?.isDue ?? true;
   });
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   const { frequency, format, dueOnly } = parseArgs();
 
   const freq =
@@ -88,7 +75,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}

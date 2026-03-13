@@ -5,7 +5,7 @@ import {
   normalizeUsageForScoring,
   parseMarkdownResponse,
   renderPrompt,
-} from "../models/modelCodegen.js";
+} from "./models/modelCodegen.js";
 
 describe("parseMarkdownResponse", () => {
   it("extracts files from a well-formed markdown response", () => {

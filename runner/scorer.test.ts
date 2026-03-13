@@ -1,9 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, readFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  writeFileSync,
+} from "fs";
 import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { rmSync } from "fs";
-import { walkAnswer } from "../scorer.js";
+import { walkAnswer } from "./scorer.js";
 
 describe("writeFilesystem pattern", () => {
   let tempDir: string;
@@ -87,7 +94,6 @@ describe("writeFilesystem pattern", () => {
     mkdirSync(projectDir, { recursive: true });
 
     writeFilesystem(projectDir, {});
-    // Project dir should exist but be empty (no new files created)
     const files = readdirSync(projectDir);
     expect(files).toHaveLength(0);
   });
@@ -178,7 +184,7 @@ describe("walkAnswer", () => {
     writeFileSync(join(answerDir, "script.ts"), "export const x = 1;");
 
     const files = [...walkAnswer(answerDir)];
-    expect(files).toHaveLength(2); // package.json and script.ts
+    expect(files).toHaveLength(2);
   });
 
   it("returns empty array for non-existent directory", () => {
@@ -205,7 +211,6 @@ describe("walkAnswer", () => {
 
 describe("ScoreResult structure", () => {
   it("has the expected shape", () => {
-    // This test validates the ScoreResult interface shape
     const result = { name: "Test score", score: 0.75 };
     expect(result.name).toBe("Test score");
     expect(result.score).toBe(0.75);
