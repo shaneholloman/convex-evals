@@ -8,6 +8,7 @@ import {
   extractEscapedJsonArray,
   selectTopModels as selectTopBenchmarkModels,
 } from "./listTopOpenRouterBenchmarkModels.js";
+import { mergeModelSources } from "./listPeriodicModels.js";
 
 describe("top OpenRouter selector helpers", () => {
   it("deduplicates while preserving ranking order", () => {
@@ -69,5 +70,25 @@ describe("benchmark selector helpers", () => {
       { score: 15 },
     ];
     expect(selectTopBenchmarkModels(rows, 3)).toEqual(["foo/bar", "baz/qux"]);
+  });
+});
+
+describe("periodic selector helpers", () => {
+  it("merges sources and deduplicates in source order", () => {
+    expect(
+      mergeModelSources([
+        ["curated", ["a", "b"]],
+        ["top-day", ["b", "c"]],
+        ["benchmark", ["c", "d", "a"]],
+      ]),
+    ).toEqual({
+      models: ["a", "b", "c", "d"],
+      modelSources: {
+        a: ["curated", "benchmark"],
+        b: ["curated", "top-day"],
+        c: ["top-day", "benchmark"],
+        d: ["benchmark"],
+      },
+    });
   });
 });

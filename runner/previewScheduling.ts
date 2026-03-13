@@ -95,8 +95,7 @@ async function main(): Promise<void> {
       rCol("Target", 8) +
       rCol("LastRun", 9) +
       "  " +
-      col("Due today?", 12) +
-      "  Current override",
+      col("Due today?", 12),
   );
   console.log("─".repeat(110));
 
@@ -122,9 +121,6 @@ async function main(): Promise<void> {
     const dueToday =
       daysSinceLast === null || daysSinceLast >= targetDays ? "YES" : "no";
 
-    const override =
-      model.ciRunFrequency !== undefined ? model.ciRunFrequency : "(none - auto)";
-
     console.log(
       col(model.name, 30) +
         rCol(String(s.completedRunCount), 6) +
@@ -133,9 +129,7 @@ async function main(): Promise<void> {
         rCol(fmtDays(targetDays), 8) +
         rCol(daysSinceLast !== null ? `${Math.round(daysSinceLast)}d` : "never", 9) +
         "  " +
-        col(dueToday, 12) +
-        "  " +
-        override,
+        col(dueToday, 12),
     );
   }
 

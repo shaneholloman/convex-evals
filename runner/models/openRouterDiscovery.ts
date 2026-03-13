@@ -142,8 +142,6 @@ export async function discoverOpenRouterModel(
     template: {
       name: modelName,
       formattedName,
-      // Dynamic models are runtime-only and not part of scheduled tiers.
-      ciRunFrequency: "never",
       apiKind: inferApiKind(modelName, exactMatch.endpoint),
     },
     provider,

@@ -20,6 +20,13 @@ const OPENROUTER_TOP_MODELS_URL =
   "https://openrouter.ai/api/frontend/models/find?order=top-day";
 const DEFAULT_LIMIT = 15;
 
+export interface TopOpenRouterSelectorOptions {
+  limit?: number;
+  excludeKnownModels?: boolean;
+  dueOnly?: boolean;
+  runnableOnly?: boolean;
+}
+
 interface OpenRouterFrontendModel {
   slug?: string;
 }
@@ -63,7 +70,7 @@ function parseArgs(): { limit: number; format: string } {
   return { limit, format };
 }
 
-async function fetchTopDailySlugs(): Promise<string[]> {
+export async function fetchTopDailySlugs(): Promise<string[]> {
   const response = await fetch(OPENROUTER_TOP_MODELS_URL, {
     headers: {
       Accept: "application/json",
@@ -157,14 +164,28 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
   return settled.filter((modelName): modelName is string => modelName !== null);
 }
 
-export async function main(): Promise<void> {
-  const { limit, format } = parseArgs();
+export async function selectTopOpenRouterModels(
+  options: TopOpenRouterSelectorOptions = {},
+): Promise<string[]> {
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  const excludeKnownModels = options.excludeKnownModels ?? true;
+  const dueOnly = options.dueOnly ?? true;
+  const runnableOnly = options.runnableOnly ?? true;
   const topSlugs = await fetchTopDailySlugs();
   const topModels = selectTopModels(topSlugs, limit);
   const knownModels = new Set(ALL_MODELS.map((model) => model.name));
-  const uncategorizedModels = topModels.filter((model) => !knownModels.has(model));
-  const dueModels = await filterDueModels(uncategorizedModels);
-  const models = await filterRunnableModels(dueModels);
+  const candidateModels = excludeKnownModels
+    ? topModels.filter((model) => !knownModels.has(model))
+    : topModels;
+  const dueModels = dueOnly
+    ? await filterDueModels(candidateModels)
+    : candidateModels;
+  return runnableOnly ? filterRunnableModels(dueModels) : dueModels;
+}
+
+export async function main(): Promise<void> {
+  const { limit, format } = parseArgs();
+  const models = await selectTopOpenRouterModels({ limit });
 
   if (format === "json") {
     console.log(JSON.stringify(models));

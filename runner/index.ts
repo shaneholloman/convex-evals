@@ -74,7 +74,6 @@ type ExecutionMode = "generate" | "answer";
 const ANSWER_VALIDATION_MODEL: ModelTemplate = {
   name: "answer-validation",
   formattedName: "Answer Validation",
-  ciRunFrequency: "never",
 };
 
 type SharedRunOptions = Omit<RunConfig, "model" | "executionMode">;

@@ -24,6 +24,12 @@ const OPENROUTER_RANKINGS_URL = "https://openrouter.ai/rankings?view=day";
 const DEFAULT_LIMIT = 10;
 const BENCHMARK_KEY = "agentic";
 
+export interface BenchmarkSelectorOptions {
+  limit?: number;
+  dueOnly?: boolean;
+  runnableOnly?: boolean;
+}
+
 interface BenchmarkRow {
   openrouter_slug?: string | null;
   heuristic_openrouter_slug?: string | null;
@@ -73,7 +79,7 @@ export function extractEscapedJsonArray(html: string, key: string): string {
   throw new Error(`Could not parse ${key} benchmark array from rankings page`);
 }
 
-async function fetchAgenticBenchmarkRows(): Promise<BenchmarkRow[]> {
+export async function fetchAgenticBenchmarkRows(): Promise<BenchmarkRow[]> {
   const response = await fetch(OPENROUTER_RANKINGS_URL, {
     headers: {
       Accept: "text/html",
@@ -172,12 +178,21 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
   return settled.filter((modelName): modelName is string => modelName !== null);
 }
 
-export async function main(): Promise<void> {
-  const { limit, format } = parseArgs();
+export async function selectTopOpenRouterBenchmarkModels(
+  options: BenchmarkSelectorOptions = {},
+): Promise<string[]> {
+  const limit = options.limit ?? DEFAULT_LIMIT;
+  const dueOnly = options.dueOnly ?? true;
+  const runnableOnly = options.runnableOnly ?? true;
   const benchmarkRows = await fetchAgenticBenchmarkRows();
   const topModels = selectTopModels(benchmarkRows, limit);
-  const dueModels = await filterDueModels(topModels);
-  const models = await filterRunnableModels(dueModels);
+  const dueModels = dueOnly ? await filterDueModels(topModels) : topModels;
+  return runnableOnly ? filterRunnableModels(dueModels) : dueModels;
+}
+
+export async function main(): Promise<void> {
+  const { limit, format } = parseArgs();
+  const models = await selectTopOpenRouterBenchmarkModels({ limit });
 
   if (format === "json") {
     console.log(JSON.stringify(models));

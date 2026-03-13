@@ -6,7 +6,6 @@ import {
   OPENROUTER_API_KEY_VAR,
   OPENROUTER_BASE_URL,
   DEFAULT_MAX_CONCURRENCY,
-  type CIRunFrequency,
 } from "./models/index.js";
 
 describe("ALL_MODELS", () => {
@@ -22,24 +21,6 @@ describe("ALL_MODELS", () => {
           model.apiKind === "chat" ||
           model.apiKind === "responses",
       ).toBe(true);
-    }
-  });
-
-  it("every model has a valid ciRunFrequency", () => {
-    const validFrequencies: CIRunFrequency[] = [
-      "daily",
-      "weekly",
-      "monthly",
-      "never",
-    ];
-    for (const model of ALL_MODELS) {
-      expect(validFrequencies).toContain(model.ciRunFrequency);
-    }
-  });
-
-  it('does not keep "never" models in ALL_MODELS', () => {
-    for (const model of ALL_MODELS) {
-      expect(model.ciRunFrequency).not.toBe("never");
     }
   });
 

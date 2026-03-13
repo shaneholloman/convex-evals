@@ -4,35 +4,31 @@
  * Keeps runner/models/index.ts as the single source of truth.
  *
  * Usage:
- *   bun run scripts/listModels.ts --frequency daily --format json
+ *   bun run scripts/listModels.ts --format json
  */
 import { ConvexHttpClient } from "convex/browser";
-import {
-  ALL_MODELS,
-  type CIRunFrequency,
-  type ModelTemplate,
-} from "../runner/models/index.js";
+import { ALL_MODELS, type ModelTemplate } from "../runner/models/index.js";
 import { loadSchedulingDecisions } from "./modelScheduling.js";
 
-function getModels(frequency?: CIRunFrequency): ModelTemplate[] {
-  let models = ALL_MODELS;
-  if (frequency) models = models.filter((m) => m.ciRunFrequency === frequency);
-  return models;
+export interface CuratedSelectorOptions {
+  dueOnly?: boolean;
 }
 
-function parseArgs(): { frequency?: string; format: string; dueOnly: boolean } {
+function getModels(): ModelTemplate[] {
+  return ALL_MODELS;
+}
+
+function parseArgs(): { format: string; dueOnly: boolean } {
   const args = process.argv.slice(2);
-  let frequency: string | undefined;
   let format = "json";
   let dueOnly = false;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--frequency" && args[i + 1]) frequency = args[++i];
     if (args[i] === "--format" && args[i + 1]) format = args[++i];
     if (args[i] === "--due-only") dueOnly = true;
   }
 
-  return { frequency, format, dueOnly };
+  return { format, dueOnly };
 }
 
 async function filterDueModels(models: ModelTemplate[]): Promise<ModelTemplate[]> {
@@ -55,18 +51,20 @@ async function filterDueModels(models: ModelTemplate[]): Promise<ModelTemplate[]
   });
 }
 
+export async function selectCuratedModels(
+  options: CuratedSelectorOptions = {},
+): Promise<string[]> {
+  const selectedModels = options.dueOnly
+    ? await filterDueModels(getModels())
+    : getModels();
+  return selectedModels.map((model) => model.name);
+}
+
 export async function main(): Promise<void> {
-  const { frequency, format, dueOnly } = parseArgs();
-
-  const freq =
-    frequency && frequency !== "all"
-      ? (frequency as CIRunFrequency)
-      : undefined;
-
-  const selectedModels = dueOnly
-    ? await filterDueModels(getModels(freq))
-    : getModels(freq);
-  const models = selectedModels.map((m) => m.name);
+  const { format, dueOnly } = parseArgs();
+  const models = await selectCuratedModels({
+    dueOnly,
+  });
 
   if (format === "json") {
     console.log(JSON.stringify(models));
