@@ -1,4 +1,5 @@
 import type { ModelTemplate } from "./index.js";
+import { OPENROUTER_BASE_URL } from "./index.js";
 
 const OPENROUTER_MODEL_SEARCH_URL =
   "https://openrouter.ai/api/frontend/models/find";
@@ -22,6 +23,8 @@ interface FrontendModelSearchResponse {
     models?: FrontendModelInfo[];
   };
 }
+
+const OPENROUTER_PREFLIGHT_TIMEOUT_MS = 15_000;
 
 function inferApiKind(
   modelName: string,
@@ -91,4 +94,91 @@ export async function discoverOpenRouterModel(
     },
     provider,
   };
+}
+
+function formatOpenRouterError(
+  status: number,
+  statusText: string,
+  body: string,
+): string {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { message?: string };
+      message?: string;
+    };
+    const message = parsed.error?.message ?? parsed.message;
+    if (typeof message === "string" && message.trim().length > 0) {
+      return `${status} ${statusText}: ${message}`;
+    }
+  } catch {
+    // Body may be non-JSON, fall through to plain text formatting.
+  }
+
+  const trimmed = body.trim();
+  if (trimmed.length === 0) return `${status} ${statusText}`;
+  return `${status} ${statusText}: ${trimmed.slice(0, 300)}`;
+}
+
+export async function preflightOpenRouterEndpoint(
+  model: ModelTemplate,
+  apiKey: string,
+): Promise<void> {
+  const baseUrl = (model.overrideProxy ?? OPENROUTER_BASE_URL).replace(/\/$/, "");
+  const url =
+    model.apiKind === "responses"
+      ? `${baseUrl}/responses`
+      : `${baseUrl}/chat/completions`;
+
+  const body =
+    model.apiKind === "responses"
+      ? {
+          model: model.name,
+          input: "ping",
+          max_output_tokens: 1,
+        }
+      : {
+          model: model.name,
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 1,
+          temperature: 0,
+        };
+
+  const abortController = new AbortController();
+  const timeout = setTimeout(
+    () => abortController.abort(),
+    OPENROUTER_PREFLIGHT_TIMEOUT_MS,
+  );
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: abortController.signal,
+    });
+
+    if (!response.ok) {
+      const responseBody = await response.text();
+      throw new Error(
+        `OpenRouter preflight failed for "${model.name}" at ${url}: ${formatOpenRouterError(
+          response.status,
+          response.statusText,
+          responseBody,
+        )}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `OpenRouter preflight timed out for "${model.name}" after ${OPENROUTER_PREFLIGHT_TIMEOUT_MS}ms`,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }

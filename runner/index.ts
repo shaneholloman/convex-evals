@@ -26,7 +26,10 @@ import {
   OPENROUTER_API_KEY_VAR,
   DEFAULT_MAX_CONCURRENCY,
 } from "./models/index.js";
-import { discoverOpenRouterModel } from "./models/openRouterDiscovery.js";
+import {
+  discoverOpenRouterModel,
+  preflightOpenRouterEndpoint,
+} from "./models/openRouterDiscovery.js";
 import { logInfo } from "./logging.js";
 import { Model } from "./models/modelCodegen.js";
 import { convexScorer, walkAnswer } from "./scorer.js";
@@ -35,6 +38,7 @@ import {
   ensureModelFromSlug,
   startRun,
   completeRun,
+  deleteRun,
   startEval,
   completeEval,
   getOrUploadEvalSource,
@@ -315,6 +319,7 @@ export async function runEvalsForModel(
     }
 
     let modelImpl: Model | null = null;
+    let openRouterApiKey: string | null = null;
     if (executionMode === "generate") {
       const apiKeyVar = OPENROUTER_API_KEY_VAR;
       const apiKey = process.env[apiKeyVar];
@@ -322,7 +327,31 @@ export async function runEvalsForModel(
         console.error(`${apiKeyVar} is not set`);
         process.exit(1);
       }
-      modelImpl = new Model(apiKey, model);
+      openRouterApiKey = apiKey;
+    }
+
+    if (executionMode === "generate" && openRouterApiKey) {
+      logInfo(`[preflight] Checking endpoint availability for ${model.name}...`);
+      try {
+        await preflightOpenRouterEndpoint(model, openRouterApiKey);
+        logInfo(`[preflight] Endpoint is available for ${model.name}`);
+      } catch (error) {
+        const reason = `[infrastructure] [preflight] ${String(error)}`;
+        console.error(
+          `[preflight] Endpoint unavailable for ${model.name}: ${String(error)}`,
+        );
+        if (runId) {
+          await completeRun(runId, {
+            kind: "failed",
+            failureReason: reason,
+            durationMs: Date.now() - runStartTime,
+          });
+          logInfo(`Run failed: ${reason}`);
+          runId = null;
+        }
+        throw new InfrastructureError(String(error));
+      }
+      modelImpl = new Model(openRouterApiKey, model);
     }
 
     const allResults: EvalIndividualResult[] = [];
@@ -387,6 +416,29 @@ export async function runEvalsForModel(
         throw e;
       }
       throw e;
+    }
+
+    // Invalidate the entire run if any eval reports zero total tokens.
+    // This is treated as corrupted telemetry and should not be stored.
+    if (executionMode === "generate" && runId) {
+      const zeroTokenEval = allResults.find((result) =>
+        hasZeroTotalTokens(result.usage),
+      );
+      if (zeroTokenEval) {
+        const evalPath = `${zeroTokenEval.category}/${zeroTokenEval.name}`;
+        const reason = `[infrastructure] [zero_tokens] Zero total token usage detected for ${evalPath}`;
+        console.error(`Run invalid, deleting ${runId}: ${reason}`);
+        const deleted = await deleteRun(runId);
+        if (deleted) {
+          logInfo(`Deleted run ${runId} due to zero-token eval usage`);
+        } else {
+          logInfo(
+            `Failed to delete run ${runId} after zero-token eval usage detected`,
+          );
+        }
+        runId = null;
+        throw new InfrastructureError(reason);
+      }
     }
 
     // Print summary
@@ -644,6 +696,20 @@ function isRateLimitError(errorStr: string): boolean {
     lower.includes("429") ||
     lower.includes("throttl")
   );
+}
+
+function hasZeroTotalTokens(usage: LanguageModelUsage | undefined): boolean {
+  if (!usage) return false;
+  if (usage.totalTokens === 0) return true;
+
+  const input =
+    typeof usage.inputTokens === "number" ? usage.inputTokens : undefined;
+  const output =
+    typeof usage.outputTokens === "number" ? usage.outputTokens : undefined;
+  if (input !== undefined && output !== undefined && input + output === 0) {
+    return true;
+  }
+  return false;
 }
 
 function parseExecutionMode(value: string | undefined): ExecutionMode {

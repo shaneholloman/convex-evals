@@ -148,6 +148,13 @@ export async function completeRun(
   return result !== null;
 }
 
+export async function deleteRun(runId: string): Promise<boolean> {
+  const result = await safeMutate("deleteRun", api.admin.deleteRun, {
+    runId: runId as Id<"runs">,
+  });
+  return result !== null;
+}
+
 // ── Eval lifecycle ────────────────────────────────────────────────────
 
 export async function startEval(
