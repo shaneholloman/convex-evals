@@ -1,17 +1,20 @@
 #!/usr/bin/env bun
 /**
  * Output top OpenRouter models as JSON for use in CI workflows.
- * We fetch OpenRouter's "top weekly" ordering, take the first N model slugs,
- * then keep only models not already curated in runner/models/index.ts.
+ * We fetch OpenRouter's "top weekly" ordering, take the first N unique model
+ * slugs, then keep only the models that have not run within the last 24 hours.
  *
  * Usage:
  *   bun run runner/listTopOpenRouterModels.ts --limit 15 --format json
  */
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../evalScores/convex/_generated/api.js";
 import { ALL_MODELS } from "./models/index.js";
 
 const OPENROUTER_TOP_MODELS_URL =
   "https://openrouter.ai/api/frontend/models/find?order=top-weekly";
 const DEFAULT_LIMIT = 15;
+const DEFAULT_MIN_AGE_HOURS = 24;
 
 interface OpenRouterFrontendModel {
   slug?: string;
@@ -23,10 +26,11 @@ interface OpenRouterFrontendResponse {
   };
 }
 
-function parseArgs(): { limit: number; format: string } {
+function parseArgs(): { limit: number; format: string; minAgeHours: number } {
   const args = process.argv.slice(2);
   let limit = DEFAULT_LIMIT;
   let format = "json";
+  let minAgeHours = DEFAULT_MIN_AGE_HOURS;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--limit" && args[i + 1]) {
@@ -38,9 +42,15 @@ function parseArgs(): { limit: number; format: string } {
     if (args[i] === "--format" && args[i + 1]) {
       format = args[++i];
     }
+    if (args[i] === "--min-age-hours" && args[i + 1]) {
+      const parsed = Number.parseInt(args[++i], 10);
+      if (!Number.isNaN(parsed) && parsed >= 0) {
+        minAgeHours = parsed;
+      }
+    }
   }
 
-  return { limit, format };
+  return { limit, format, minAgeHours };
 }
 
 async function fetchTopWeeklySlugs(): Promise<string[]> {
@@ -81,18 +91,46 @@ function selectTopModels(slugs: string[], limit: number): string[] {
   return selected;
 }
 
+async function filterDueModels(
+  models: string[],
+  minAgeHours: number,
+): Promise<string[]> {
+  const convexUrl = process.env.CONVEX_EVAL_URL;
+  if (!convexUrl) {
+    console.error(
+      "CONVEX_EVAL_URL not set, returning top models without recency filtering",
+    );
+    return models;
+  }
+
+  const client = new ConvexHttpClient(convexUrl);
+  const modelDocs = await Promise.all(
+    models.map((slug) => client.query(api.models.getBySlug, { slug })),
+  );
+  const existingModelIds = modelDocs
+    .filter((modelDoc) => modelDoc !== null)
+    .map((modelDoc) => modelDoc._id);
+  const modelSummaries =
+    existingModelIds.length > 0
+      ? await client.query(api.runs.listModels, { modelIds: existingModelIds })
+      : [];
+  const minAgeMs = minAgeHours * 60 * 60 * 1000;
+  const now = Date.now();
+
+  return models.filter((model) => {
+    const lastRunTime =
+      modelSummaries.find((entry) => entry.slug === model)?.latestRun ?? null;
+    return lastRunTime === null || now - lastRunTime >= minAgeMs;
+  });
+}
+
 async function main(): Promise<void> {
-  const { limit, format } = parseArgs();
+  const { limit, format, minAgeHours } = parseArgs();
   const topSlugs = await fetchTopWeeklySlugs();
   const topModels = selectTopModels(topSlugs, limit);
   const knownModels = new Set(ALL_MODELS.map((model) => model.name));
-  const models = topModels.filter((model) => !knownModels.has(model));
-
-  if (models.length === 0) {
-    throw new Error(
-      `No new models found in OpenRouter top-${limit} list after excluding curated models`,
-    );
-  }
+  const uncategorizedModels = topModels.filter((model) => !knownModels.has(model));
+  const models = await filterDueModels(uncategorizedModels, minAgeHours);
 
   if (format === "json") {
     console.log(JSON.stringify(models));
