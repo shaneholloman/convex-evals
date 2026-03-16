@@ -6,6 +6,8 @@ const OPENROUTER_MODEL_SEARCH_URL =
 
 interface FrontendEndpointInfo {
   adapter_name?: string;
+  model_variant_slug?: string;
+  model_variant_permaslug?: string;
   provider_slug?: string;
   provider_info?: {
     adapterName?: string;
@@ -135,12 +137,14 @@ export async function discoverOpenRouterModel(
   const provider =
     exactMatch.endpoint?.provider_slug ??
     (modelName.includes("/") ? modelName.split("/")[0] : "openrouter");
+  const runnableName = exactMatch.endpoint?.model_variant_slug ?? modelName;
   const createdAtBySlug = await getOpenRouterCreatedAtBySlug();
   const openRouterFirstSeenAt = createdAtBySlug?.get(modelName);
 
   return {
     template: {
       name: modelName,
+      runnableName,
       formattedName,
       apiKind: inferApiKind(modelName, exactMatch.endpoint),
     },
@@ -176,6 +180,7 @@ export async function preflightOpenRouterEndpoint(
   model: ModelTemplate,
   apiKey: string,
 ): Promise<void> {
+  const runnableName = model.runnableName ?? model.name;
   const baseUrl = (model.overrideProxy ?? OPENROUTER_BASE_URL).replace(/\/$/, "");
   const url =
     model.apiKind === "responses"
@@ -185,12 +190,12 @@ export async function preflightOpenRouterEndpoint(
   const body =
     model.apiKind === "responses"
       ? {
-          model: model.name,
+          model: runnableName,
           input: "ping",
           max_output_tokens: 1,
         }
       : {
-          model: model.name,
+          model: runnableName,
           messages: [{ role: "user", content: "ping" }],
           max_tokens: 1,
           temperature: 0,
@@ -217,7 +222,7 @@ export async function preflightOpenRouterEndpoint(
     if (!response.ok) {
       const responseBody = await response.text();
       throw new Error(
-        `OpenRouter preflight failed for "${model.name}" at ${url}: ${formatOpenRouterError(
+        `OpenRouter preflight failed for "${model.name}" using "${runnableName}" at ${url}: ${formatOpenRouterError(
           response.status,
           response.statusText,
           responseBody,
@@ -227,7 +232,7 @@ export async function preflightOpenRouterEndpoint(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(
-        `OpenRouter preflight timed out for "${model.name}" after ${OPENROUTER_PREFLIGHT_TIMEOUT_MS}ms`,
+        `OpenRouter preflight timed out for "${model.name}" using "${runnableName}" after ${OPENROUTER_PREFLIGHT_TIMEOUT_MS}ms`,
       );
     }
     throw error;

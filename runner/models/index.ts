@@ -12,6 +12,7 @@ export const DEFAULT_MAX_CONCURRENCY = parseInt(
 
 export interface ModelTemplate {
   name: string;
+  runnableName?: string;
   formattedName?: string;
   overrideProxy?: string;
   apiKind?: "chat" | "responses";

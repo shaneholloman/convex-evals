@@ -180,6 +180,7 @@ async function main(): Promise<void> {
       resolvedModels.push({
         model: {
           ...knownModel,
+          runnableName: discovered?.template.runnableName ?? knownModel.runnableName,
           formattedName: discovered?.template.formattedName ?? knownModel.name,
           apiKind: discovered?.template.apiKind ?? knownModel.apiKind,
         },

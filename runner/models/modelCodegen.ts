@@ -59,13 +59,14 @@ function createLanguageModel(
   template: ModelTemplate,
   apiKey: string,
 ): LanguageModel {
+  const runnableName = template.runnableName ?? template.name;
   const baseURL = template.overrideProxy ?? OPENROUTER_BASE_URL;
 
   // Models using the Responses API need the OpenAI SDK pointed at
   // OpenRouter's /responses endpoint.
   if (template.apiKind === "responses") {
     const openai = createOpenAI({ apiKey, baseURL });
-    return openai.responses(template.name);
+    return openai.responses(runnableName);
   }
 
   const openrouter = createOpenAICompatible({
@@ -77,7 +78,7 @@ function createLanguageModel(
       reasoning: { effort: "medium" },
     }),
   });
-  return openrouter.chatModel(template.name);
+  return openrouter.chatModel(runnableName);
 }
 
 function asFiniteNumber(value: unknown): number | null {
@@ -351,7 +352,7 @@ export class Model {
     // Normalize provider-specific usage payloads into that canonical field.
     const usage = await enrichUsageWithOpenRouterPricingFallback(
       result.usage,
-      this.template.name,
+      this.template.runnableName ?? this.template.name,
       this.template.overrideProxy ?? OPENROUTER_BASE_URL,
     );
 
