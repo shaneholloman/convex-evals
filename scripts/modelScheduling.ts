@@ -5,7 +5,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_INTERVAL_MS = DAY_MS;
 const MAX_INTERVAL_MS = 30 * DAY_MS;
 const RAMP_WINDOW_MS = 30 * DAY_MS;
-const LIST_MODELS_BATCH_SIZE = 10;
 
 export interface SchedulingDecision {
   isDue: boolean;
@@ -17,14 +16,6 @@ export interface SchedulingDecision {
 export interface SchedulingMetadata {
   decision: SchedulingDecision;
   modelExists: boolean;
-}
-
-function chunk<T>(values: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < values.length; i += size) {
-    chunks.push(values.slice(i, i + size));
-  }
-  return chunks;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -78,26 +69,22 @@ export async function loadSchedulingMetadata(
   const modelDocs = await Promise.all(
     uniqueSlugs.map((slug) => client.query(api.models.getBySlug, { slug })),
   );
-  const existingModelIds = modelDocs
-    .filter((modelDoc) => modelDoc !== null)
-    .map((modelDoc) => modelDoc._id);
-  const modelSummaryBatches = await Promise.all(
-    chunk(existingModelIds, LIST_MODELS_BATCH_SIZE).map((modelIds) =>
-      client.query(api.runs.listModels, { modelIds }),
+  const latestRunTimes = await Promise.all(
+    modelDocs.map((modelDoc) =>
+      modelDoc === null
+        ? Promise.resolve(null)
+        : client.query(api.runs.getLatestRunTime, { modelId: modelDoc._id }),
     ),
   );
-  const modelSummaries = modelSummaryBatches.flat();
 
   return new Map(
     uniqueSlugs.map((slug, index) => {
       const modelDoc = modelDocs[index];
-      const latestRun =
-        modelSummaries.find((entry) => entry.slug === slug)?.latestRun ?? null;
       return [
         slug,
         {
           decision: getSchedulingDecision(
-            latestRun,
+            latestRunTimes[index],
             modelDoc?.openRouterFirstSeenAt ?? null,
             now,
           ),

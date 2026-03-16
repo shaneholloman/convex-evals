@@ -8,6 +8,7 @@
 
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
+import type { PaginationOptions, PaginationResult } from "convex/server";
 import type { Id } from "./types";
 import type { Run, Eval, Step } from "../lib/types";
 
@@ -24,15 +25,22 @@ type ExperimentInfo = {
   completedRuns: number;
 };
 
-// Model stats returned by listModels
-type ModelInfo = {
-  modelId: Id<"models">;
+type ModelDoc = {
+  _id: Id<"models">;
   slug: string;
-  name: string;
+  formattedName: string;
+  provider: string;
+  apiKind: "chat" | "responses";
+  openRouterFirstSeenAt: number;
+  createdAt: number;
+  updatedAt: number;
+  lastSeenAt: number;
+  _creationTime: number;
+};
+
+type ModelSummary = {
   runCount: number;
   experimentCount: number;
-  experiments: string[];
-  latestRun: number;
   totalEvals: number;
   passedEvals: number;
   passRate: number;
@@ -72,9 +80,16 @@ type QueryRef<
  * ```
  */
 export const api = anyApi as unknown as {
+  models: {
+    listModels: QueryRef<
+      { paginationOpts: PaginationOptions },
+      PaginationResult<ModelDoc>
+    >;
+  };
   runs: {
     listExperiments: QueryRef<Record<string, never>, ExperimentInfo[]>;
-    listModels: QueryRef<{ modelIds: Id<"models">[] }, ModelInfo[]>;
+    getModelSummary: QueryRef<{ modelId: Id<"models"> }, ModelSummary>;
+    getLatestRunTime: QueryRef<{ modelId: Id<"models"> }, number | null>;
     listRuns: QueryRef<
       { experiment?: string; modelId?: Id<"models">; model?: string; limit?: number },
       RunWithCounts[]

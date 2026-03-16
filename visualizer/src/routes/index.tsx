@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../convex/api";
+import type { Id } from "../convex/types";
 import { useState } from "react";
 import {
   getRunStatusIcon,
@@ -21,17 +22,12 @@ interface Experiment {
 }
 
 interface Model {
-  modelId: string;
-  slug: string;
-  name: string;
-  runCount: number;
-  experimentCount: number;
-  passRate: number;
-  totalEvals: number;
-  passedEvals: number;
+  _id: Id<"models">;
+  formattedName: string;
 }
 
 type Tab = "experiments" | "models" | "runs";
+const MODELS_PAGE_SIZE = 50;
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -160,46 +156,54 @@ function ExperimentRow({
 /* ---------- Models Tab ---------- */
 
 function ModelsTab() {
-  const experiments = useQuery(api.runs.listExperiments, {});
-  const modelIds = experiments
-    ? [...new Set(experiments.flatMap((e) => e.models))]
-    : [];
-  const models = useQuery(
-    api.runs.listModels,
-    experiments ? { modelIds } : "skip"
-  );
+  const [modelLimit, setModelLimit] = useState(MODELS_PAGE_SIZE);
+  const models = useQuery(api.models.listModels, {
+    paginationOpts: { cursor: null, numItems: modelLimit },
+  });
   const navigate = useNavigate();
 
-  if (experiments === undefined || models === undefined) {
+  if (models === undefined) {
     return <div className="text-slate-400 py-4">Loading models...</div>;
   }
 
   return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          <th>Model</th>
-          <th>Runs</th>
-          <th>Experiments</th>
-          <th>Evals</th>
-          <th>Pass Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        {models.map((model) => (
-          <ModelRow
-            key={model.modelId}
-            model={model}
-            onClick={() =>
-              navigate({
-                to: "/model/$model",
-                params: { model: model.modelId },
-              })
-            }
-          />
-        ))}
-      </tbody>
-    </table>
+    <>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Runs</th>
+            <th>Experiments</th>
+            <th>Evals</th>
+            <th>Pass Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {models.page.map((model) => (
+            <ModelRow
+              key={model._id}
+              model={model}
+              onClick={() =>
+                navigate({
+                  to: "/model/$model",
+                  params: { model: model._id },
+                })
+              }
+            />
+          ))}
+        </tbody>
+      </table>
+      {!models.isDone && (
+        <div className="mt-4 flex justify-center">
+          <button
+            className="rounded-md border border-slate-600 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/50"
+            onClick={() => setModelLimit((current) => current + MODELS_PAGE_SIZE)}
+          >
+            Load more models
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -210,25 +214,28 @@ function ModelRow({
   model: Model;
   onClick: () => void;
 }) {
-  const percentage = (model.passRate * 100).toFixed(1);
+  const summary = useQuery(api.runs.getModelSummary, { modelId: model._id });
+  const percentage = summary ? (summary.passRate * 100).toFixed(1) : null;
 
   return (
     <tr className="cursor-pointer hover:bg-slate-800/50" onClick={onClick}>
-      <td className="text-white font-medium">{model.name}</td>
-      <td className="text-slate-300">{model.runCount}</td>
-      <td className="text-slate-300">{model.experimentCount}</td>
+      <td className="text-white font-medium">{model.formattedName}</td>
+      <td className="text-slate-300">{summary?.runCount ?? "..."}</td>
+      <td className="text-slate-300">{summary?.experimentCount ?? "..."}</td>
       <td className="text-slate-300">
-        <span className="text-green-400">{model.passedEvals}</span>
+        <span className="text-green-400">{summary?.passedEvals ?? "..."}</span>
         {" / "}
-        <span>{model.totalEvals}</span>
+        <span>{summary?.totalEvals ?? "..."}</span>
       </td>
       <td>
         <div className="score-bar-container w-24">
           <div
             className="score-bar"
-            style={{ width: `${percentage}%` }}
+            style={{ width: percentage === null ? "0%" : `${percentage}%` }}
           />
-          <span className="score-text">{percentage}%</span>
+          <span className="score-text">
+            {percentage === null ? "..." : `${percentage}%`}
+          </span>
         </div>
       </td>
     </tr>

@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { useState } from "react";
 import { api } from "../convex/api";
 import type { Id } from "../convex/types";
 import {
@@ -23,6 +24,8 @@ type SidebarLevel =
   | "modelRun"
   | "modelCategory"
   | "modelEval";
+
+const SIDEBAR_MODELS_PAGE_SIZE = 25;
 
 function parsePath(pathname: string): {
   level: SidebarLevel;
@@ -246,14 +249,11 @@ export function AppSidebar() {
 }
 
 function SidebarHome() {
+  const [modelLimit, setModelLimit] = useState(SIDEBAR_MODELS_PAGE_SIZE);
   const experiments = useQuery(api.runs.listExperiments, {});
-  const modelIds = experiments
-    ? [...new Set(experiments.flatMap((e) => e.models))]
-    : [];
-  const models = useQuery(
-    api.runs.listModels,
-    experiments ? { modelIds } : "skip"
-  );
+  const models = useQuery(api.models.listModels, {
+    paginationOpts: { cursor: null, numItems: modelLimit },
+  });
 
   if (experiments === undefined || models === undefined) {
     return (
@@ -292,34 +292,58 @@ function SidebarHome() {
         </nav>
       </div>
       <div className="sidebar-list-section">
-        <p className="sidebar-list-label">By Model <span className="text-slate-600 font-normal">(recent runs)</span></p>
+        <p className="sidebar-list-label">By Model</p>
         <nav className="p-2 flex-1 overflow-auto">
-          {models.map((model) => {
-            const percentage = (model.passRate * 100).toFixed(1);
-            return (
-              <Link
-                key={model.modelId}
-                to="/model/$model"
-                params={{ model: model.modelId }}
-                className="sidebar-item block mb-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-white truncate">
-                    {model.name}
-                  </span>
-                  <span className="text-xs font-bold text-cyan-400">
-                    {percentage}%
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {model.runCount} runs · {model.experimentCount} experiments
-                </div>
-              </Link>
-            );
-          })}
+          {models.page.map((model) => (
+            <SidebarModelLink key={model._id} modelId={model._id} name={model.formattedName} />
+          ))}
+          {!models.isDone && (
+            <button
+              className="mt-2 w-full rounded-md border border-slate-700 px-2 py-1 text-left text-xs text-slate-400 hover:bg-slate-800/50"
+              onClick={() =>
+                setModelLimit((current) => current + SIDEBAR_MODELS_PAGE_SIZE)
+              }
+            >
+              Load more models
+            </button>
+          )}
         </nav>
       </div>
     </>
+  );
+}
+
+function SidebarModelLink({
+  modelId,
+  name,
+}: {
+  modelId: Id<"models">;
+  name: string;
+}) {
+  const summary = useQuery(api.runs.getModelSummary, { modelId });
+  const percentage =
+    summary === undefined ? "..." : (summary.passRate * 100).toFixed(1);
+
+  return (
+    <Link
+      to="/model/$model"
+      params={{ model: modelId }}
+      className="sidebar-item block mb-1"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-white truncate">
+          {name}
+        </span>
+        <span className="text-xs font-bold text-cyan-400">
+          {summary === undefined ? "..." : `${percentage}%`}
+        </span>
+      </div>
+      <div className="text-xs text-slate-500 mt-1">
+        {summary === undefined
+          ? "Loading summary..."
+          : `${summary.runCount} runs · ${summary.experimentCount} experiments`}
+      </div>
+    </Link>
   );
 }
 

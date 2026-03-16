@@ -568,92 +568,69 @@ export const leaderboardModelHistory = query({
 // ── Visualiser queries ───────────────────────────────────────────────
 
 /** Max runs to fetch per model (index-backed, bounded) */
-const LIST_MODELS_RUNS_PER_MODEL = 20;
+const MODEL_SUMMARY_RUNS_PER_MODEL = 20;
 
 /** Max recent runs to use for pass rate calculation per model */
-const LIST_MODELS_EVALS_RUNS = 3;
+const MODEL_SUMMARY_EVALS_RUNS = 3;
 
-// List models with aggregated stats. Uses by_modelId index for bounded queries.
-// Caller passes model IDs (e.g. derived from experiments.models).
-export const listModels = query({
-  args: { modelIds: v.array(v.id("models")) },
+export const getModelSummary = query({
+  args: { modelId: v.id("models") },
   handler: async (ctx, args) => {
-    if (args.modelIds.length === 0) return [];
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_modelId", (q) => q.eq("modelId", args.modelId))
+      .order("desc")
+      .take(MODEL_SUMMARY_RUNS_PER_MODEL);
 
-    const modelStats = new Map<Id<"models">, {
-      runCount: number;
-      experiments: Set<string>;
-      latestRunTime: number;
-      runIds: Id<"runs">[];
-    }>();
-    const models = await ctx.db.query("models").collect();
-    const modelMap = new Map(models.map((m) => [m._id, m] as const));
-
-    for (const modelId of args.modelIds) {
-      const runs = await ctx.db
-        .query("runs")
-        .withIndex("by_modelId", (q) => q.eq("modelId", modelId))
-        .order("desc")
-        .take(LIST_MODELS_RUNS_PER_MODEL);
-
-      if (runs.length === 0) continue;
-
-      const experiments = new Set<string>();
-      const runIds: Id<"runs">[] = [];
-      let latestRunTime = 0;
-
-      for (const run of runs) {
-        experiments.add(run.experiment ?? "default");
-        runIds.push(run._id);
-        if (run._creationTime > latestRunTime) {
-          latestRunTime = run._creationTime;
-        }
-      }
-
-      modelStats.set(modelId, {
-        runCount: runs.length,
-        experiments,
-        latestRunTime,
-        runIds,
-      });
+    if (runs.length === 0) {
+      return {
+        runCount: 0,
+        experimentCount: 0,
+        totalEvals: 0,
+        passedEvals: 0,
+        passRate: 0,
+      };
     }
 
-    // Fetch eval counts for pass rate calculation (most recent 3 runs per model)
-    const result = await Promise.all(
-      Array.from(modelStats.entries()).map(async ([model, stats]) => {
-        let totalEvals = 0;
-        let passedEvals = 0;
+    const experiments = new Set<string>();
+    let totalEvals = 0;
+    let passedEvals = 0;
 
-        const recentRunIds = stats.runIds.slice(0, LIST_MODELS_EVALS_RUNS);
-        for (const runId of recentRunIds) {
-          const evals = await ctx.db
-            .query("evals")
-            .withIndex("by_runId", (q) => q.eq("runId", runId))
-            .collect();
+    for (const run of runs) {
+      experiments.add(run.experiment ?? "default");
+    }
 
-          const scorable = evals.filter((e) => !isRateLimitFailure(e));
-          totalEvals += scorable.length;
-          passedEvals += scorable.filter((e) => e.status.kind === "passed").length;
-        }
+    for (const run of runs.slice(0, MODEL_SUMMARY_EVALS_RUNS)) {
+      const evals = await ctx.db
+        .query("evals")
+        .withIndex("by_runId", (q) => q.eq("runId", run._id))
+        .collect();
 
-        const modelDoc = modelMap.get(model);
-        return {
-          modelId: model,
-          slug: modelDoc?.slug ?? "unknown-model",
-          name: modelDoc?.formattedName ?? "Unknown model",
-          runCount: stats.runCount,
-          experimentCount: stats.experiments.size,
-          experiments: Array.from(stats.experiments),
-          latestRun: stats.latestRunTime,
-          totalEvals,
-          passedEvals,
-          passRate: totalEvals > 0 ? passedEvals / totalEvals : 0,
-        };
-      })
-    );
+      const scorable = evals.filter((e) => !isRateLimitFailure(e));
+      totalEvals += scorable.length;
+      passedEvals += scorable.filter((e) => e.status.kind === "passed").length;
+    }
 
-    result.sort((a, b) => b.latestRun - a.latestRun);
-    return result;
+    return {
+      runCount: runs.length,
+      experimentCount: experiments.size,
+      totalEvals,
+      passedEvals,
+      passRate: totalEvals > 0 ? passedEvals / totalEvals : 0,
+    };
+  },
+});
+
+export const getLatestRunTime = query({
+  args: { modelId: v.id("models") },
+  handler: async (ctx, args) => {
+    const latestRun = await ctx.db
+      .query("runs")
+      .withIndex("by_modelId", (q) => q.eq("modelId", args.modelId))
+      .order("desc")
+      .first();
+
+    return latestRun?._creationTime ?? null;
   },
 });
 
