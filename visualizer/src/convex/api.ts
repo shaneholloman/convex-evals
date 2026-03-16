@@ -91,12 +91,10 @@ export const api = anyApi as unknown as {
     getModelSummary: QueryRef<{ modelId: Id<"models"> }, ModelSummary>;
     getLatestRunTime: QueryRef<{ modelId: Id<"models"> }, number | null>;
     listRuns: QueryRef<
-      { experiment?: string; modelId?: Id<"models">; model?: string; limit?: number },
+      { experiment?: string; modelId?: Id<"models">; limit?: number },
       RunWithCounts[]
     >;
     getRunDetails: QueryRef<{ runId: Id<"runs"> }, RunDetails | null>;
     getOutputUrl: QueryRef<{ storageId: Id<"_storage"> }, string | null>;
   };
 };
-
-export const internal = anyApi;

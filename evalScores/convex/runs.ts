@@ -1,12 +1,10 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { experimentLiteral, languageModelUsage, runStatus, evalStatus } from "./schema.js";
+import { experimentLiteral, languageModelUsage, evalStatus } from "./schema.js";
 import { internal } from "./_generated/api.js";
 import {
-  LEADERBOARD_HISTORY_SIZE,
   LEADERBOARD_MAX_AGE_MS,
-  computeMeanAndStdDev,
   isFullyCompletedRun,
   isRateLimitFailure,
   computeRunScores,
@@ -100,20 +98,6 @@ export const createRun = internalMutation({
     }
     
     return id;
-  },
-});
-
-export const updateRunStatus = internalMutation({
-  args: {
-    runId: v.id("runs"),
-    status: runStatus,
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.runId, {
-      status: args.status,
-    });
-    return null;
   },
 });
 
@@ -330,7 +314,6 @@ export const listRuns = query({
   args: {
     experiment: v.optional(experimentLiteral),
     modelId: v.optional(v.id("models")),
-    model: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -348,17 +331,6 @@ export const listRuns = query({
         .query("runs")
         .withIndex("by_modelId", (q) => q.eq("modelId", modelId))
         .order("desc");
-    } else if (args.model) {
-      const modelDoc = await ctx.db
-        .query("models")
-        .withIndex("by_slug", (q) => q.eq("slug", args.model!))
-        .unique();
-      if (modelDoc) {
-        runsQuery = ctx.db
-          .query("runs")
-          .withIndex("by_modelId", (q) => q.eq("modelId", modelDoc._id))
-          .order("desc");
-      }
     }
     
     // This query also loads eval documents per returned run to compute counts.

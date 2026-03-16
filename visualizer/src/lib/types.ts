@@ -76,17 +76,6 @@ export function getScoreStatus(
   return "poor";
 }
 
-export function getScoreIcon(score: number): string {
-  if (score >= 0.9) return "🟢";
-  if (score >= 0.7) return "🟡";
-  if (score >= 0.5) return "🟠";
-  return "🔴";
-}
-
-export function getPassFailIcon(passed: boolean): string {
-  return passed ? "✅" : "❌";
-}
-
 export function getRunStatusIcon(status: RunStatus): string {
   if (status.kind === "pending") return "⏳";
   if (status.kind === "running") return "🔄";
