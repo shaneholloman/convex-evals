@@ -63,7 +63,9 @@ When making schema or data changes to the Convex backend that require migrations
    ```
 6. **If the migration enables further schema tightening** (e.g. making optional fields required, removing deprecated tables), make those changes in a **second commit** and push again to deploy the tightened schema.
 
-The general pattern is: deploy code first (with loose/compatible schema), run data migrations, then deploy tightened schema.
+There are currently no historical backfills left in `migrations:runAll`, but we keep the scaffold in place for future schema/data migrations.
+
+The general pattern is: deploy code first (with loose/compatible schema), run data migrations if needed, then deploy tightened schema.
 
 ## Deleting a Run
 
