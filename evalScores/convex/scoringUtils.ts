@@ -1,6 +1,6 @@
 /**
- * Shared scoring helpers used by both runs.ts (leaderboardModelHistory,
- * getSchedulingStats) and modelScores.ts (recomputeModelScores).
+ * Shared scoring helpers used by both runs.ts (leaderboardModelHistory)
+ * and modelScores.ts (recomputeModelScores).
  */
 import type { Doc } from "./_generated/dataModel";
 
