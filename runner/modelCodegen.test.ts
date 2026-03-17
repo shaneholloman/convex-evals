@@ -224,6 +224,7 @@ describe("renderPrompt", () => {
     const prompt = renderPrompt("");
     expect(prompt.length).toBeGreaterThan(100);
   });
+
 });
 
 describe("normalizeUsageForScoring", () => {

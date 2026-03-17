@@ -9,18 +9,13 @@ import { generateText, type LanguageModel, type LanguageModelUsage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
-import { readFileSync, readdirSync, statSync, existsSync } from "fs";
-import { join, relative } from "path";
+import { readFileSync, existsSync } from "fs";
 import {
   type ModelTemplate,
   OPENROUTER_BASE_URL,
   SYSTEM_PROMPT,
 } from "./index.js";
-import {
-  CONVEX_GUIDELINES,
-  renderCompactGuidelines,
-  renderGuidelines,
-} from "./guidelines.js";
+import { CONVEX_GUIDELINES, renderGuidelines } from "./guidelines.js";
 import {
   webSearchTool,
   WEB_SEARCH_SYSTEM_SUPPLEMENT,
@@ -45,7 +40,6 @@ function getGuidelinesContent(): string {
   }
   const exp = process.env.EVALS_EXPERIMENT;
   if (exp === "no_guidelines" || exp === "web_search_no_guidelines") return "";
-  if (exp === "agents_md") return renderCompactGuidelines();
   return renderGuidelines(CONVEX_GUIDELINES);
 }
 
@@ -423,8 +417,6 @@ For example, correct output looks like
 ${FILE_FORMAT_EXAMPLE}`,
   );
 
-  sections.push(renderExamples());
-
   sections.push(`# General Coding Standards
 - Use 2 spaces for code indentation.
 - Ensure your code is clear, efficient, concise, and innovative.
@@ -450,72 +442,7 @@ ${FILE_FORMAT_EXAMPLE}`,
   return sections.join("\n\n") + "\n";
 }
 
-function renderExamples(): string {
-  const examplesDir = "examples";
-  if (!existsSync(examplesDir)) return "";
-
-  const parts: string[] = ["# Examples:"];
-
-  for (const example of readdirSync(examplesDir)) {
-    const examplePath = join(examplesDir, example);
-    if (!statSync(examplePath).isDirectory()) continue;
-
-    const taskDescription = readFileSync(join(examplePath, "TASK.txt"), "utf-8");
-    const analysis = readFileSync(join(examplePath, "ANALYSIS.txt"), "utf-8");
-    const filePaths = collectExampleFiles(examplePath);
-
-    parts.push(`## Example: ${example}\n`);
-    parts.push(`### Task\n\`\`\`\n${taskDescription}\n\`\`\`\n`);
-    parts.push(`### Analysis\n${analysis}\n`);
-    parts.push("### Implementation\n");
-
-    for (const filePath of filePaths) {
-      const relPath = relative(examplePath, filePath).replace(/\\/g, "/");
-      const content = readFileSync(filePath, "utf-8").trim();
-      parts.push(`#### ${relPath}\n\`\`\`typescript\n${content}\n\`\`\`\n`);
-    }
-  }
-
-  return parts.join("\n");
-}
-
-/** Collect relevant source files from an example directory, sorted by depth then name. */
-function collectExampleFiles(examplePath: string): string[] {
-  const filePaths: string[] = [];
-  walkDir(examplePath, (filePath) => {
-    if (filePath.includes("node_modules") || filePath.includes("_generated")) {
-      return;
-    }
-    const name = filePath.split(/[/\\]/).pop()!;
-    if (
-      name === "package.json" ||
-      name === "tsconfig.json" ||
-      name.endsWith(".ts") ||
-      name.endsWith(".tsx")
-    ) {
-      filePaths.push(filePath);
-    }
-  });
-
-  return filePaths.sort((a, b) => {
-    const depthA = a.split(/[/\\]/).length;
-    const depthB = b.split(/[/\\]/).length;
-    return depthA !== depthB ? depthA - depthB : a.localeCompare(b);
-  });
-}
-
-function walkDir(dir: string, callback: (path: string) => void): void {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walkDir(fullPath, callback);
-    } else {
-      callback(fullPath);
-    }
-  }
-}
-
-/** Render guidelines + examples for release builds. */
+/** Render guidelines for release builds. */
 export function buildReleaseRules(): string {
-  return renderGuidelines(CONVEX_GUIDELINES) + renderExamples();
+  return renderGuidelines(CONVEX_GUIDELINES);
 }
