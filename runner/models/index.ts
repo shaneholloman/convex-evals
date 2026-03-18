@@ -32,6 +32,8 @@ export const ALL_MODELS: ModelTemplate[] = [
   { name: "openai/gpt-5.1" },
   { name: "openai/gpt-5.2" },
   { name: "openai/gpt-5.4" },
+  { name: "openai/gpt-5.4-mini", apiKind: "responses" },
+  { name: "openai/gpt-5.4-nano", apiKind: "responses" },
   {
     name: "openai/gpt-5.3-codex",
     apiKind: "responses",

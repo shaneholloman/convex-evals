@@ -192,7 +192,7 @@ export async function preflightOpenRouterEndpoint(
       ? {
           model: runnableName,
           input: "ping",
-          max_output_tokens: 1,
+          max_output_tokens: 16,
         }
       : {
           model: runnableName,
