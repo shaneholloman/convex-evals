@@ -11,7 +11,7 @@
 import { ConvexHttpClient } from "convex/browser";
 import { ALL_MODELS } from "../runner/models/index.js";
 import {
-  discoverOpenRouterModel,
+  resolveModel,
   preflightOpenRouterEndpoint,
 } from "../runner/models/openRouterDiscovery.js";
 import { loadSchedulingDecisions } from "./modelScheduling.js";
@@ -137,12 +137,12 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
   const settled = await Promise.all(
     models.map(async (modelName) => {
       try {
-        const discovered = await discoverOpenRouterModel(modelName);
-        if (!discovered) {
+        const resolved = await resolveModel(modelName);
+        if (!resolved.discovered) {
           console.error(`Skipping ${modelName}: not discoverable on OpenRouter`);
           return null;
         }
-        await preflightOpenRouterEndpoint(discovered.template, openRouterApiKey);
+        await preflightOpenRouterEndpoint(resolved.model, openRouterApiKey);
         return modelName;
       } catch (error) {
         if (shouldSkipForMissingEndpoint(error)) {
@@ -173,7 +173,7 @@ export async function selectTopOpenRouterModels(
   const runnableOnly = options.runnableOnly ?? true;
   const topSlugs = await fetchTopDailySlugs();
   const topModels = selectTopModels(topSlugs, limit);
-  const knownModels = new Set(ALL_MODELS.map((model) => model.name));
+  const knownModels = new Set(ALL_MODELS);
   const candidateModels = excludeKnownModels
     ? topModels.filter((model) => !knownModels.has(model))
     : topModels;

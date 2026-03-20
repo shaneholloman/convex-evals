@@ -14,7 +14,8 @@ import { tmpdir } from "os";
 import { Command } from "commander";
 import { config } from "dotenv";
 
-import { MODELS_BY_NAME, OPENROUTER_API_KEY_VAR } from "../runner/models/index.js";
+import { MODEL_NAMES, OPENROUTER_API_KEY_VAR } from "../runner/models/index.js";
+import { resolveModel } from "../runner/models/openRouterDiscovery.js";
 import {
   runEvalsForModel,
   type RunConfig,
@@ -80,8 +81,8 @@ function parseArgs(): {
   }
 
   for (const m of models) {
-    if (!MODELS_BY_NAME[m]) {
-      console.error(`Model "${m}" not found. Available: ${Object.keys(MODELS_BY_NAME).sort().join(", ")}`);
+    if (!MODEL_NAMES.has(m)) {
+      console.error(`Model "${m}" not found. Available: ${[...MODEL_NAMES].sort().join(", ")}`);
       process.exit(1);
     }
   }
@@ -182,12 +183,14 @@ async function main(): Promise<void> {
       continue;
     }
 
+    const { model: resolvedModel } = await resolveModel(modelName);
+
     console.log("\n" + "━".repeat(60));
     console.log(`Model: ${modelName} — BEFORE (current guidelines)`);
     console.log("━".repeat(60));
 
     const beforeConfig: RunConfig = {
-      model: MODELS_BY_NAME[modelName],
+      model: resolvedModel,
       tempdir: join(tempBase, modelName.replace(/\//g, "_"), "before"),
       testFilter,
       customGuidelinesPath: before,
@@ -202,7 +205,7 @@ async function main(): Promise<void> {
     console.log("━".repeat(60));
 
     const afterConfig: RunConfig = {
-      model: MODELS_BY_NAME[modelName],
+      model: resolvedModel,
       tempdir: join(tempBase, modelName.replace(/\//g, "_"), "after"),
       testFilter,
       customGuidelinesPath: after,

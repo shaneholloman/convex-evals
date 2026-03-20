@@ -20,7 +20,8 @@ import { tmpdir } from "os";
 import { config } from "dotenv";
 import { encode } from "gpt-tokenizer/encoding/cl100k_base";
 
-import { MODELS_BY_NAME } from "../runner/models/index.js";
+import { MODEL_NAMES } from "../runner/models/index.js";
+import { resolveModel } from "../runner/models/openRouterDiscovery.js";
 import {
   runEvalsForModel,
   type RunConfig,
@@ -56,9 +57,9 @@ function parseArgs(): { model: string; section: string | null } {
     process.exit(1);
   }
 
-  if (!MODELS_BY_NAME[model]) {
+  if (!MODEL_NAMES.has(model)) {
     console.error(`Model "${model}" not found. Available models:`);
-    console.error(Object.keys(MODELS_BY_NAME).sort().join("\n"));
+    console.error([...MODEL_NAMES].sort().join("\n"));
     process.exit(1);
   }
 
@@ -178,7 +179,7 @@ async function main(): Promise<void> {
     `\nStep 2: Found ${ablationFiles.length} ablation variants + baseline (${modeLabel})\n`,
   );
 
-  const modelTemplate = MODELS_BY_NAME[modelName];
+  const { model: resolvedModel } = await resolveModel(modelName);
   const tempBase =
     process.env.OUTPUT_TEMPDIR ??
     join(tmpdir(), `convex-ablation-${Date.now()}`);
@@ -189,7 +190,7 @@ async function main(): Promise<void> {
   console.log("━".repeat(60));
 
   const baselineConfig: RunConfig = {
-    model: modelTemplate,
+    model: resolvedModel,
     tempdir: join(tempBase, "baseline"),
     customGuidelinesPath: join(ablationDir, baselineFile),
   };
@@ -219,7 +220,7 @@ async function main(): Promise<void> {
 
     const safeDirName = sectionName.replace(/\//g, "_");
     const variantConfig: RunConfig = {
-      model: modelTemplate,
+      model: resolvedModel,
       tempdir: join(tempBase, `without_${safeDirName}`),
       customGuidelinesPath: join(ablationDir, file),
     };

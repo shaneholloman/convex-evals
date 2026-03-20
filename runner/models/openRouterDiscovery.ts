@@ -1,5 +1,5 @@
-import type { ModelTemplate } from "./index.js";
-import { OPENROUTER_BASE_URL } from "./index.js";
+import type { ResolvedModel } from "./index.js";
+import { OPENROUTER_BASE_URL, resolveModelDefaults } from "./index.js";
 
 const OPENROUTER_MODEL_SEARCH_URL =
   "https://openrouter.ai/api/frontend/models/find";
@@ -97,7 +97,7 @@ async function getOpenRouterCatalog(): Promise<OpenRouterCatalogData | null> {
 function inferApiKind(
   modelName: string,
   endpoint: FrontendEndpointInfo | undefined,
-): ModelTemplate["apiKind"] | undefined {
+): ResolvedModel["apiKind"] | undefined {
   const adapterName =
     endpoint?.adapter_name ?? endpoint?.provider_info?.adapterName;
   if (typeof adapterName === "string" && adapterName.includes("Responses")) {
@@ -112,14 +112,18 @@ function inferApiKind(
   return undefined;
 }
 
-export async function discoverOpenRouterModel(
-  modelName: string,
-): Promise<{
-  template: ModelTemplate;
+export interface DiscoveredModelInfo {
+  runnableName?: string;
+  formattedName?: string;
+  apiKind?: ResolvedModel["apiKind"];
   provider: string;
   openRouterFirstSeenAt?: number;
   outputModalities?: string[];
-} | null> {
+}
+
+export async function discoverOpenRouterModel(
+  modelName: string,
+): Promise<DiscoveredModelInfo | null> {
   const url = `${OPENROUTER_MODEL_SEARCH_URL}?q=${encodeURIComponent(modelName)}`;
   const response = await fetch(url, {
     headers: {
@@ -148,26 +152,51 @@ export async function discoverOpenRouterModel(
   const formattedName =
     typeof exactMatch.name === "string" && exactMatch.name.trim().length > 0
       ? exactMatch.name.trim()
-      : modelName;
+      : undefined;
 
   const provider =
     exactMatch.endpoint?.provider_slug ??
     (modelName.includes("/") ? modelName.split("/")[0] : "openrouter");
-  const runnableName = exactMatch.endpoint?.model_variant_slug ?? modelName;
+  const runnableName = exactMatch.endpoint?.model_variant_slug ?? undefined;
   const catalog = await getOpenRouterCatalog();
   const openRouterFirstSeenAt = catalog?.createdAtBySlug.get(modelName);
   const outputModalities = catalog?.outputModalitiesBySlug.get(modelName);
 
   return {
-    template: {
-      name: modelName,
-      runnableName,
-      formattedName,
-      apiKind: inferApiKind(modelName, exactMatch.endpoint),
-    },
+    runnableName,
+    formattedName,
+    apiKind: inferApiKind(modelName, exactMatch.endpoint),
     provider,
     openRouterFirstSeenAt,
     outputModalities,
+  };
+}
+
+/**
+ * Resolve a model name into a fully populated ResolvedModel by merging
+ * OpenRouter discovery data with defaults. If discovery fails, returns
+ * defaults only with `discovered: false`.
+ */
+export async function resolveModel(modelName: string): Promise<{
+  model: ResolvedModel;
+  discovered: boolean;
+  provider: string;
+  openRouterFirstSeenAt?: number;
+  outputModalities?: string[];
+}> {
+  const info = await discoverOpenRouterModel(modelName).catch(() => null);
+  const defaults = resolveModelDefaults(modelName);
+  return {
+    model: {
+      ...defaults,
+      ...(info?.runnableName ? { runnableName: info.runnableName } : {}),
+      ...(info?.formattedName ? { formattedName: info.formattedName } : {}),
+      ...(info?.apiKind ? { apiKind: info.apiKind } : {}),
+    },
+    discovered: info !== null,
+    provider: info?.provider ?? "openrouter",
+    openRouterFirstSeenAt: info?.openRouterFirstSeenAt,
+    outputModalities: info?.outputModalities,
   };
 }
 
@@ -195,11 +224,10 @@ function formatOpenRouterError(
 }
 
 export async function preflightOpenRouterEndpoint(
-  model: ModelTemplate,
+  model: ResolvedModel,
   apiKey: string,
 ): Promise<void> {
-  const runnableName = model.runnableName ?? model.name;
-  const baseUrl = (model.overrideProxy ?? OPENROUTER_BASE_URL).replace(/\/$/, "");
+  const baseUrl = model.baseURL.replace(/\/$/, "");
   const url =
     model.apiKind === "responses"
       ? `${baseUrl}/responses`
@@ -208,12 +236,12 @@ export async function preflightOpenRouterEndpoint(
   const body =
     model.apiKind === "responses"
       ? {
-          model: runnableName,
+          model: model.runnableName,
           input: "ping",
           max_output_tokens: 16,
         }
       : {
-          model: runnableName,
+          model: model.runnableName,
           messages: [{ role: "user", content: "ping" }],
           max_tokens: 1,
           temperature: 0,
@@ -240,7 +268,7 @@ export async function preflightOpenRouterEndpoint(
     if (!response.ok) {
       const responseBody = await response.text();
       throw new Error(
-        `OpenRouter preflight failed for "${model.name}" using "${runnableName}" at ${url}: ${formatOpenRouterError(
+        `OpenRouter preflight failed for "${model.name}" using "${model.runnableName}" at ${url}: ${formatOpenRouterError(
           response.status,
           response.statusText,
           responseBody,
@@ -250,7 +278,7 @@ export async function preflightOpenRouterEndpoint(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(
-        `OpenRouter preflight timed out for "${model.name}" using "${runnableName}" after ${OPENROUTER_PREFLIGHT_TIMEOUT_MS}ms`,
+        `OpenRouter preflight timed out for "${model.name}" using "${model.runnableName}" after ${OPENROUTER_PREFLIGHT_TIMEOUT_MS}ms`,
       );
     }
     throw error;

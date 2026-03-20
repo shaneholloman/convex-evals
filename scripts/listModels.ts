@@ -7,15 +7,11 @@
  *   bun run scripts/listModels.ts --format json
  */
 import { ConvexHttpClient } from "convex/browser";
-import { ALL_MODELS, type ModelTemplate } from "../runner/models/index.js";
+import { ALL_MODELS } from "../runner/models/index.js";
 import { loadSchedulingDecisions } from "./modelScheduling.js";
 
 export interface CuratedSelectorOptions {
   dueOnly?: boolean;
-}
-
-function getModels(): ModelTemplate[] {
-  return ALL_MODELS;
 }
 
 function parseArgs(): { format: string; dueOnly: boolean } {
@@ -31,7 +27,7 @@ function parseArgs(): { format: string; dueOnly: boolean } {
   return { format, dueOnly };
 }
 
-async function filterDueModels(models: ModelTemplate[]): Promise<ModelTemplate[]> {
+async function filterDueModels(models: string[]): Promise<string[]> {
   const convexUrl = process.env.CONVEX_EVAL_URL;
   if (!convexUrl) {
     console.error(
@@ -41,23 +37,19 @@ async function filterDueModels(models: ModelTemplate[]): Promise<ModelTemplate[]
   }
 
   const client = new ConvexHttpClient(convexUrl);
-  const schedulingDecisions = await loadSchedulingDecisions(
-    client,
-    models.map((model) => model.name),
-  );
+  const schedulingDecisions = await loadSchedulingDecisions(client, models);
 
   return models.filter((model) => {
-    return schedulingDecisions.get(model.name)?.isDue ?? true;
+    return schedulingDecisions.get(model)?.isDue ?? true;
   });
 }
 
 export async function selectCuratedModels(
   options: CuratedSelectorOptions = {},
 ): Promise<string[]> {
-  const selectedModels = options.dueOnly
-    ? await filterDueModels(getModels())
-    : getModels();
-  return selectedModels.map((model) => model.name);
+  return options.dueOnly
+    ? await filterDueModels([...ALL_MODELS])
+    : [...ALL_MODELS];
 }
 
 export async function main(): Promise<void> {

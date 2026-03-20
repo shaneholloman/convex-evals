@@ -48,9 +48,9 @@ interface ModelChoice {
  * Discover available models directly from TypeScript model definitions.
  */
 function discoverModels(): ModelChoice[] {
-  return ALL_MODELS.map((m) => ({
-    name: m.name,
-    value: m.name,
+  return ALL_MODELS.map((name) => ({
+    name,
+    value: name,
   }));
 }
 

@@ -11,7 +11,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
 import { readFileSync, existsSync } from "fs";
 import {
-  type ModelTemplate,
+  type ResolvedModel,
   OPENROUTER_BASE_URL,
   SYSTEM_PROMPT,
 } from "./index.js";
@@ -45,34 +45,25 @@ function getGuidelinesContent(): string {
 
 // ── AI SDK model construction ────────────────────────────────────────
 
-/**
- * Create an AI SDK LanguageModel from our ModelTemplate + API key.
- * All models are accessed via OpenRouter.
- */
 function createLanguageModel(
-  template: ModelTemplate,
+  model: ResolvedModel,
   apiKey: string,
 ): LanguageModel {
-  const runnableName = template.runnableName ?? template.name;
-  const baseURL = template.overrideProxy ?? OPENROUTER_BASE_URL;
-
-  // Models using the Responses API need the OpenAI SDK pointed at
-  // OpenRouter's /responses endpoint.
-  if (template.apiKind === "responses") {
-    const openai = createOpenAI({ apiKey, baseURL });
-    return openai.responses(runnableName);
+  if (model.apiKind === "responses") {
+    const openai = createOpenAI({ apiKey, baseURL: model.baseURL });
+    return openai.responses(model.runnableName);
   }
 
   const openrouter = createOpenAICompatible({
     name: "openrouter",
-    baseURL,
+    baseURL: model.baseURL,
     apiKey,
     transformRequestBody: (body: Record<string, unknown>) => ({
       ...body,
       reasoning: { effort: "medium" },
     }),
   });
-  return openrouter.chatModel(runnableName);
+  return openrouter.chatModel(model.runnableName);
 }
 
 function asFiniteNumber(value: unknown): number | null {
@@ -273,10 +264,9 @@ async function enrichUsageWithOpenRouterPricingFallback(
 // coupling directly to the ai package.
 export type { LanguageModelUsage };
 
-function getMaxOutputTokens(template: ModelTemplate): number {
-  // Former Together models (DeepSeek) had 4096 limit
-  if (template.name.startsWith("deepseek/")) return 4096;
-  if (template.name === "anthropic/claude-3.5-sonnet") return 8192;
+function getMaxOutputTokens(model: ResolvedModel): number {
+  if (model.name.startsWith("deepseek/")) return 4096;
+  if (model.name === "anthropic/claude-3.5-sonnet") return 8192;
   return 16384;
 }
 
@@ -284,10 +274,10 @@ function getMaxOutputTokens(template: ModelTemplate): number {
 
 export class Model {
   private languageModel: LanguageModel;
-  private template: ModelTemplate;
+  private resolved: ResolvedModel;
 
-  constructor(apiKey: string, model: ModelTemplate) {
-    this.template = model;
+  constructor(apiKey: string, model: ResolvedModel) {
+    this.resolved = model;
     this.languageModel = createLanguageModel(model, apiKey);
   }
 
@@ -299,9 +289,8 @@ export class Model {
       ? `${SYSTEM_PROMPT}\n\n${WEB_SEARCH_SYSTEM_SUPPLEMENT}`
       : SYSTEM_PROMPT;
 
-    const maxTokens = getMaxOutputTokens(this.template);
+    const maxTokens = getMaxOutputTokens(this.resolved);
 
-    // Build the base options shared across both prompt styles
     const baseOptions = {
       model: this.languageModel,
       maxOutputTokens: maxTokens,
@@ -318,16 +307,12 @@ export class Model {
       ...promptOptions,
     };
 
-    // For responses API models, pass reasoning effort via providerOptions.
-    // Chat models handle this via transformRequestBody on the provider.
-    if (this.template.apiKind === "responses") {
+    if (this.resolved.apiKind === "responses") {
       options.providerOptions = {
         openai: { reasoningEffort: "medium" },
       };
     }
 
-    // When the web search experiment is active, provide the tool and
-    // allow multiple steps so the model can search then generate.
     if (useWebSearch) {
       options.tools = { web_search: webSearchTool };
       options.stopWhen = stepCountIs(MAX_TOOL_STEPS);
@@ -342,12 +327,10 @@ export class Model {
 
     const result = await generateText(options);
     
-    // The leaderboard scorer expects cost at usage.raw.cost.
-    // Normalize provider-specific usage payloads into that canonical field.
     const usage = await enrichUsageWithOpenRouterPricingFallback(
       result.usage,
-      this.template.runnableName ?? this.template.name,
-      this.template.overrideProxy ?? OPENROUTER_BASE_URL,
+      this.resolved.runnableName,
+      this.resolved.baseURL,
     );
 
     return {

@@ -11,7 +11,7 @@
  */
 import { ConvexHttpClient } from "convex/browser";
 import {
-  discoverOpenRouterModel,
+  resolveModel,
   preflightOpenRouterEndpoint,
 } from "../runner/models/openRouterDiscovery.js";
 import {
@@ -151,12 +151,12 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
   const settled = await Promise.all(
     models.map(async (modelName) => {
       try {
-        const discovered = await discoverOpenRouterModel(modelName);
-        if (!discovered) {
+        const resolved = await resolveModel(modelName);
+        if (!resolved.discovered) {
           console.error(`Skipping ${modelName}: not discoverable on OpenRouter`);
           return null;
         }
-        await preflightOpenRouterEndpoint(discovered.template, openRouterApiKey);
+        await preflightOpenRouterEndpoint(resolved.model, openRouterApiKey);
         return modelName;
       } catch (error) {
         if (shouldSkipForMissingEndpoint(error)) {

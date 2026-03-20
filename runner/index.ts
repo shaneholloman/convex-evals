@@ -21,13 +21,14 @@ import { tmpdir } from "os";
 import { config } from "dotenv";
 
 import {
-  MODELS_BY_NAME,
-  type ModelTemplate,
+  MODEL_NAMES,
+  type ResolvedModel,
+  resolveModelDefaults,
   OPENROUTER_API_KEY_VAR,
   DEFAULT_MAX_CONCURRENCY,
 } from "./models/index.js";
 import {
-  discoverOpenRouterModel,
+  resolveModel,
   preflightOpenRouterEndpoint,
 } from "./models/openRouterDiscovery.js";
 import { logInfo } from "./logging.js";
@@ -58,7 +59,7 @@ config(); // Load .env
  * the ablation runner.
  */
 export interface RunConfig {
-  model: ModelTemplate;
+  model: ResolvedModel;
   provider?: string;
   tempdir: string;
   testFilter?: RegExp;
@@ -71,8 +72,8 @@ export interface RunConfig {
 
 type ExecutionMode = "generate" | "answer";
 
-const ANSWER_VALIDATION_MODEL: ModelTemplate = {
-  name: "answer-validation",
+const ANSWER_VALIDATION_MODEL: ResolvedModel = {
+  ...resolveModelDefaults("answer-validation"),
   formattedName: "Answer Validation",
 };
 
@@ -162,51 +163,26 @@ async function main(): Promise<void> {
     : DEFAULT_MODEL_NAMES;
 
   const resolvedModels: Array<{
-    model: ModelTemplate;
+    model: ResolvedModel;
     provider: string;
     openRouterFirstSeenAt?: number;
   }> = [];
   for (const modelName of modelNames) {
-    const knownModel = MODELS_BY_NAME[modelName];
-    const discovered = await discoverOpenRouterModel(modelName).catch((error) => {
-      logInfo(
-        `OpenRouter metadata lookup failed for ${modelName}: ${String(error)}`,
-      );
-      return null;
-    });
+    const isKnown = MODEL_NAMES.has(modelName);
+    const resolved = await resolveModel(modelName);
 
-    if (knownModel) {
-      const provider = discovered?.provider ?? "openrouter";
-      resolvedModels.push({
-        model: {
-          ...knownModel,
-          runnableName: discovered?.template.runnableName ?? knownModel.runnableName,
-          formattedName: discovered?.template.formattedName ?? knownModel.name,
-          apiKind: discovered?.template.apiKind ?? knownModel.apiKind,
-        },
-        provider,
-        openRouterFirstSeenAt: discovered?.openRouterFirstSeenAt,
-      });
-      continue;
-    }
-
-    if (!discovered) {
+    if (!isKnown && !resolved.discovered) {
       console.error(`Model ${modelName} not supported and not found on OpenRouter`);
       process.exit(1);
     }
 
-    logInfo(
-      `Discovered dynamic model ${discovered.template.name} (${discovered.template.formattedName})`,
-    );
-    resolvedModels.push({
-      model: {
-        ...discovered.template,
-        formattedName:
-          discovered.template.formattedName ?? discovered.template.name,
-      },
-      provider: discovered.provider,
-      openRouterFirstSeenAt: discovered.openRouterFirstSeenAt,
-    });
+    if (!isKnown) {
+      logInfo(
+        `Discovered dynamic model ${modelName} (${resolved.model.formattedName})`,
+      );
+    }
+
+    resolvedModels.push(resolved);
   }
 
   const td =
@@ -264,7 +240,7 @@ export async function runEvalsForModel(
     convexAuthToken,
   } =
     config;
-  const modelDisplayName = model.formattedName ?? model.name;
+  const modelDisplayName = model.formattedName;
 
   // Set CUSTOM_GUIDELINES_PATH so getGuidelinesContent() in modelCodegen
   // picks it up. We restore it afterwards to avoid cross-run leakage.
@@ -307,7 +283,7 @@ export async function runEvalsForModel(
         model.name,
         modelDisplayName,
         provider,
-        model.apiKind ?? "chat",
+        model.apiKind,
         metadata?.openRouterFirstSeenAt,
       );
       if (!modelId) {
@@ -529,7 +505,7 @@ const RATE_LIMIT_RETRY_BASE_MS = 30_000; // 30s, then 60s
 
 /** Process a single eval. Returns `true` if the failure was a rate-limit error. */
 async function processOneEval(
-  model: ModelTemplate,
+  model: ResolvedModel,
   modelImpl: Model | null,
   executionMode: ExecutionMode,
   evalInfo: EvalInfo,

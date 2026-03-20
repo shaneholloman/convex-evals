@@ -14,9 +14,10 @@ import { ConvexHttpClient } from "convex/browser";
 import { writeFile } from "node:fs/promises";
 import { ALL_MODELS } from "../runner/models/index.js";
 import {
-  discoverOpenRouterModel,
+  resolveModel,
   preflightOpenRouterEndpoint,
 } from "../runner/models/openRouterDiscovery.js";
+import type { ResolvedModel } from "../runner/models/index.js";
 import {
   fetchAgenticBenchmarkRows,
   selectTopModels as selectTopBenchmarkModels,
@@ -121,7 +122,7 @@ function shouldRetryPreflightFailure(error: unknown): boolean {
 }
 
 async function collectCuratedModels(): Promise<string[]> {
-  const models = ALL_MODELS.map((model) => model.name);
+  const models = [...ALL_MODELS];
   logInfo(`[periodic] curated source produced ${models.length} models`);
   return models;
 }
@@ -130,7 +131,7 @@ async function collectTopDayModels(): Promise<string[]> {
   logInfo(
     `[periodic] fetching top-day OpenRouter models, target ${TOP_DAY_LIMIT}`,
   );
-  const knownModels = new Set(ALL_MODELS.map((model) => model.name));
+  const knownModels = new Set(ALL_MODELS);
   const topSlugs = await fetchTopDailySlugs();
   const selected: string[] = [];
 
@@ -273,23 +274,22 @@ function getRecordedModelSlugs(
 }
 
 async function preflightWithRetries(
-  discovered: NonNullable<Awaited<ReturnType<typeof discoverOpenRouterModel>>>,
+  model: ResolvedModel,
   apiKey: string,
 ): Promise<{
   success: boolean;
   error?: unknown;
   attempts: number;
 }> {
-  const modelName = discovered.template.name;
   let lastError: unknown;
   let attempts = 0;
   for (let attempt = 1; attempt <= PREFLIGHT_MAX_ATTEMPTS; attempt++) {
     attempts = attempt;
     logInfo(
-      `[periodic] [preflight] attempt ${attempt}/${PREFLIGHT_MAX_ATTEMPTS} for ${modelName}`,
+      `[periodic] [preflight] attempt ${attempt}/${PREFLIGHT_MAX_ATTEMPTS} for ${model.name}`,
     );
     try {
-      await preflightOpenRouterEndpoint(discovered.template, apiKey);
+      await preflightOpenRouterEndpoint(model, apiKey);
       return { success: true, attempts: attempt };
     } catch (error) {
       lastError = error;
@@ -302,7 +302,7 @@ async function preflightWithRetries(
 
       const delayMs = PREFLIGHT_RETRY_DELAYS_MS[attempt - 1] ?? 2_000;
       logError(
-        `[periodic] [preflight] retrying ${modelName} after attempt ${attempt} failed: ${String(error)}`,
+        `[periodic] [preflight] retrying ${model.name} after attempt ${attempt} failed: ${String(error)}`,
       );
       await sleep(delayMs);
     }
@@ -348,22 +348,22 @@ async function filterRunnableModelsSequentially(
       continue;
     }
 
-    const discovered = await discoverOpenRouterModel(model);
-    if (!discovered) {
+    const resolved = await resolveModel(model);
+    if (!resolved.discovered) {
       logError(
         `[periodic] [preflight] skipping ${model}: not discoverable on OpenRouter`,
       );
       continue;
     }
 
-    if (discovered.outputModalities && !discovered.outputModalities.includes("text")) {
+    if (resolved.outputModalities && !resolved.outputModalities.includes("text")) {
       logError(
-        `[periodic] [preflight] skipping ${model}: output modalities [${discovered.outputModalities.join(", ")}] do not include text`,
+        `[periodic] [preflight] skipping ${model}: output modalities [${resolved.outputModalities.join(", ")}] do not include text`,
       );
       continue;
     }
 
-    const result = await preflightWithRetries(discovered, openRouterApiKey);
+    const result = await preflightWithRetries(resolved.model, openRouterApiKey);
     if (result.success) {
       logSuccess(
         `[periodic] [preflight] keeping ${model}: passed after ${result.attempts} attempt${result.attempts === 1 ? "" : "s"}`,

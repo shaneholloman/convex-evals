@@ -1,11 +1,12 @@
 import { describe, it, expect } from "bun:test";
 import {
   ALL_MODELS,
-  MODELS_BY_NAME,
+  MODEL_NAMES,
   SYSTEM_PROMPT,
   OPENROUTER_API_KEY_VAR,
   OPENROUTER_BASE_URL,
   DEFAULT_MAX_CONCURRENCY,
+  resolveModelDefaults,
 } from "./models/index.js";
 
 describe("ALL_MODELS", () => {
@@ -13,44 +14,47 @@ describe("ALL_MODELS", () => {
     expect(ALL_MODELS.length).toBeGreaterThan(0);
   });
 
-  it("every model has required fields", () => {
+  it("every entry is a non-empty string", () => {
     for (const model of ALL_MODELS) {
-      expect(model.name).toBeTruthy();
-      expect(
-        model.apiKind === undefined ||
-          model.apiKind === "chat" ||
-          model.apiKind === "responses",
-      ).toBe(true);
+      expect(typeof model).toBe("string");
+      expect(model.length).toBeGreaterThan(0);
     }
   });
 
-  it("has no duplicate model names", () => {
-    const names = ALL_MODELS.map((m) => m.name);
-    expect(new Set(names).size).toBe(names.length);
+  it("has no duplicates", () => {
+    expect(new Set(ALL_MODELS).size).toBe(ALL_MODELS.length);
   });
 
   it("contains known models", () => {
-    const names = ALL_MODELS.map((m) => m.name);
-    expect(names).toContain("openai/gpt-5.2-codex");
-    expect(names).toContain("openai/gpt-5");
-    expect(names).toContain("anthropic/claude-opus-4.6");
-    expect(names).toContain("google/gemini-2.5-flash");
+    expect(ALL_MODELS).toContain("openai/gpt-5.2-codex");
+    expect(ALL_MODELS).toContain("openai/gpt-5");
+    expect(ALL_MODELS).toContain("anthropic/claude-opus-4.6");
+    expect(ALL_MODELS).toContain("google/gemini-2.5-flash");
   });
 });
 
-describe("MODELS_BY_NAME", () => {
+describe("MODEL_NAMES", () => {
   it("has the same number of entries as ALL_MODELS", () => {
-    expect(Object.keys(MODELS_BY_NAME).length).toBe(ALL_MODELS.length);
+    expect(MODEL_NAMES.size).toBe(ALL_MODELS.length);
   });
 
-  it("looks up a model by name", () => {
-    const model = MODELS_BY_NAME["openai/gpt-5"];
-    expect(model).toBeDefined();
-    expect(model.name).toBe("openai/gpt-5");
+  it("contains a known model", () => {
+    expect(MODEL_NAMES.has("openai/gpt-5")).toBe(true);
   });
 
-  it("returns undefined for non-existent model", () => {
-    expect(MODELS_BY_NAME["non-existent-model"]).toBeUndefined();
+  it("returns false for non-existent model", () => {
+    expect(MODEL_NAMES.has("non-existent-model")).toBe(false);
+  });
+});
+
+describe("resolveModelDefaults", () => {
+  it("returns all required fields", () => {
+    const resolved = resolveModelDefaults("test/model");
+    expect(resolved.name).toBe("test/model");
+    expect(resolved.runnableName).toBe("test/model");
+    expect(resolved.formattedName).toBe("test/model");
+    expect(resolved.baseURL).toBe(OPENROUTER_BASE_URL);
+    expect(resolved.apiKind).toBe("chat");
   });
 });
 
@@ -77,15 +81,5 @@ describe("OpenRouter constants", () => {
   it("default max concurrency is a positive integer", () => {
     expect(DEFAULT_MAX_CONCURRENCY).toBeGreaterThan(0);
     expect(Number.isInteger(DEFAULT_MAX_CONCURRENCY)).toBe(true);
-  });
-});
-
-describe("model overrideProxy values", () => {
-  it("overrideProxy when present starts with https://", () => {
-    for (const model of ALL_MODELS) {
-      if (model.overrideProxy) {
-        expect(model.overrideProxy).toMatch(/^https:\/\//);
-      }
-    }
   });
 });
