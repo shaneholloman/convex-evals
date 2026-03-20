@@ -273,22 +273,14 @@ function getRecordedModelSlugs(
 }
 
 async function preflightWithRetries(
-  modelName: string,
+  discovered: NonNullable<Awaited<ReturnType<typeof discoverOpenRouterModel>>>,
   apiKey: string,
 ): Promise<{
   success: boolean;
   error?: unknown;
   attempts: number;
 }> {
-  const discovered = await discoverOpenRouterModel(modelName);
-  if (!discovered) {
-    return {
-      success: false,
-      error: new Error(`Model ${modelName} is not discoverable on OpenRouter`),
-      attempts: 1,
-    };
-  }
-
+  const modelName = discovered.template.name;
   let lastError: unknown;
   let attempts = 0;
   for (let attempt = 1; attempt <= PREFLIGHT_MAX_ATTEMPTS; attempt++) {
@@ -356,7 +348,22 @@ async function filterRunnableModelsSequentially(
       continue;
     }
 
-    const result = await preflightWithRetries(model, openRouterApiKey);
+    const discovered = await discoverOpenRouterModel(model);
+    if (!discovered) {
+      logError(
+        `[periodic] [preflight] skipping ${model}: not discoverable on OpenRouter`,
+      );
+      continue;
+    }
+
+    if (discovered.outputModalities && !discovered.outputModalities.includes("text")) {
+      logError(
+        `[periodic] [preflight] skipping ${model}: output modalities [${discovered.outputModalities.join(", ")}] do not include text`,
+      );
+      continue;
+    }
+
+    const result = await preflightWithRetries(discovered, openRouterApiKey);
     if (result.success) {
       logSuccess(
         `[periodic] [preflight] keeping ${model}: passed after ${result.attempts} attempt${result.attempts === 1 ? "" : "s"}`,

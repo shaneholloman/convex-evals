@@ -30,28 +30,35 @@ interface OpenRouterModelCatalogEntry {
   id?: string;
   canonical_slug?: string;
   created?: number;
+  architecture?: {
+    output_modalities?: string[];
+  };
 }
 
 interface OpenRouterModelCatalogResponse {
   data?: OpenRouterModelCatalogEntry[];
 }
 
+interface OpenRouterCatalogData {
+  createdAtBySlug: Map<string, number>;
+  outputModalitiesBySlug: Map<string, string[]>;
+}
+
 const OPENROUTER_PREFLIGHT_TIMEOUT_MS = 15_000;
 const OPENROUTER_MODELS_URL = `${OPENROUTER_BASE_URL}/models`;
-let openRouterCreatedAtBySlugPromise: Promise<Map<string, number> | null> | null =
-  null;
+let openRouterCatalogPromise: Promise<OpenRouterCatalogData | null> | null = null;
 
 function toUnixMs(timestamp: number): number {
   // OpenRouter currently returns Unix seconds. Keep ms in our DB.
   return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
 }
 
-async function getOpenRouterCreatedAtBySlug(): Promise<Map<string, number> | null> {
-  if (openRouterCreatedAtBySlugPromise) {
-    return openRouterCreatedAtBySlugPromise;
+async function getOpenRouterCatalog(): Promise<OpenRouterCatalogData | null> {
+  if (openRouterCatalogPromise) {
+    return openRouterCatalogPromise;
   }
 
-  openRouterCreatedAtBySlugPromise = (async () => {
+  openRouterCatalogPromise = (async () => {
     const response = await fetch(OPENROUTER_MODELS_URL, {
       headers: {
         Accept: "application/json",
@@ -63,20 +70,28 @@ async function getOpenRouterCreatedAtBySlug(): Promise<Map<string, number> | nul
     if (!Array.isArray(payload.data)) return null;
 
     const createdAtBySlug = new Map<string, number>();
+    const outputModalitiesBySlug = new Map<string, string[]>();
+
     for (const entry of payload.data) {
-      if (typeof entry.created !== "number") continue;
-      const createdMs = toUnixMs(entry.created);
-      if (typeof entry.id === "string") {
-        createdAtBySlug.set(entry.id, createdMs);
+      const slugs: string[] = [];
+      if (typeof entry.id === "string") slugs.push(entry.id);
+      if (typeof entry.canonical_slug === "string") slugs.push(entry.canonical_slug);
+
+      if (typeof entry.created === "number") {
+        const createdMs = toUnixMs(entry.created);
+        for (const slug of slugs) createdAtBySlug.set(slug, createdMs);
       }
-      if (typeof entry.canonical_slug === "string") {
-        createdAtBySlug.set(entry.canonical_slug, createdMs);
+
+      const modalities = entry.architecture?.output_modalities;
+      if (Array.isArray(modalities)) {
+        for (const slug of slugs) outputModalitiesBySlug.set(slug, modalities);
       }
     }
-    return createdAtBySlug;
+
+    return { createdAtBySlug, outputModalitiesBySlug };
   })();
 
-  return openRouterCreatedAtBySlugPromise;
+  return openRouterCatalogPromise;
 }
 
 function inferApiKind(
@@ -103,6 +118,7 @@ export async function discoverOpenRouterModel(
   template: ModelTemplate;
   provider: string;
   openRouterFirstSeenAt?: number;
+  outputModalities?: string[];
 } | null> {
   const url = `${OPENROUTER_MODEL_SEARCH_URL}?q=${encodeURIComponent(modelName)}`;
   const response = await fetch(url, {
@@ -138,8 +154,9 @@ export async function discoverOpenRouterModel(
     exactMatch.endpoint?.provider_slug ??
     (modelName.includes("/") ? modelName.split("/")[0] : "openrouter");
   const runnableName = exactMatch.endpoint?.model_variant_slug ?? modelName;
-  const createdAtBySlug = await getOpenRouterCreatedAtBySlug();
-  const openRouterFirstSeenAt = createdAtBySlug?.get(modelName);
+  const catalog = await getOpenRouterCatalog();
+  const openRouterFirstSeenAt = catalog?.createdAtBySlug.get(modelName);
+  const outputModalities = catalog?.outputModalitiesBySlug.get(modelName);
 
   return {
     template: {
@@ -150,6 +167,7 @@ export async function discoverOpenRouterModel(
     },
     provider,
     openRouterFirstSeenAt,
+    outputModalities,
   };
 }
 
