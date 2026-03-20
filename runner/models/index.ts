@@ -64,6 +64,7 @@ export const ALL_MODELS: ModelTemplate[] = [
   { name: "minimax/minimax-m2.5" },
   { name: "x-ai/grok-4" },
   { name: "x-ai/grok-3-mini-beta" },
+  { name: "xiaomi/mimo-v2-pro" },
 ];
 
 export const MODELS_BY_NAME: Record<string, ModelTemplate> = Object.fromEntries(
