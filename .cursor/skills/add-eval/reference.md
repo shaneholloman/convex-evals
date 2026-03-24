@@ -214,6 +214,37 @@ Can the concept be verified by calling the function and checking the return valu
             d. Accept that this concept isn't well-suited for automated eval
 ```
 
+## Grading the Model's Own Tests
+
+Some evals ask the model to write its own test suite (e.g. `convex-test` evals). The grader can execute the model's tests using `MODEL_OUTPUT_DIR`, an environment variable set by the scorer that points to the model's generated project directory.
+
+```typescript
+import { execSync } from "child_process";
+import { existsSync } from "fs";
+import { join } from "path";
+
+test("model's test suite passes", () => {
+  const outputDir = process.env.MODEL_OUTPUT_DIR;
+  if (!outputDir) throw new Error("MODEL_OUTPUT_DIR not set");
+
+  expect(existsSync(join(outputDir, "convex/tasks.test.ts"))).toBe(true);
+
+  const vitestBin = join(outputDir, "node_modules", ".bin", "vitest");
+  const stdout = execSync(
+    `"${vitestBin}" run --reporter=json --no-color 2>&1`,
+    {
+      cwd: outputDir,
+      encoding: "utf-8",
+      timeout: 60000,
+      shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+    },
+  );
+  // parse JSON output and assert
+});
+```
+
+**Important:** Always use the explicit binary path (`node_modules/.bin/vitest`) instead of `bunx vitest`. The grader runs inside the scorer's vitest process, and `bunx` can resolve to the wrong binary in nested vitest contexts. Also avoid being too prescriptive about test structure (e.g. minimum test count). Models validly write single integration tests or many small unit tests.
+
 ## TASK.txt Conventions
 
 ### What to include

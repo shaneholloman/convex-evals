@@ -120,6 +120,8 @@ Summarize the guideline context before implementation:
 - Whether failures on this eval would likely indicate a model gap, an eval/task problem, or a missing/weak guideline
 - Any existing guideline that might need to be revised if calibration shows an unexpected result
 
+If a new guideline is likely needed, design it **minimal-first**. Every token in the guidelines is sent with every prompt, so bloat costs real money. Start with the smallest guideline that teaches the critical pattern (usually one code example), test it, and only expand if models still fail. Avoid pinning specific dependency versions in guidelines as they age quickly. Prefer "always install the latest version" instead.
+
 ### Push Back
 
 Before presenting the design, critically evaluate it. Warn the user if:
@@ -208,6 +210,14 @@ If those results are too noisy or too uniform, expand to a broader sweep across 
 
 Monitor the background processes by reading their terminal output files. Each process runs one eval so they should complete in a few minutes.
 
+### Run-to-run variance
+
+Run each model **at least twice** (ideally three times) to distinguish systematic failures from flaky ones. Model output is non-deterministic, so a single pass or fail doesn't tell the whole story. Common variance sources:
+
+- **Hallucinated dependency versions** that sometimes resolve and sometimes don't
+- **Different code styles** across runs (e.g. one integration test vs many unit tests)
+- **Different library version choices** from training data, where some versions have bugs
+
 ## Step 6: Review Results and Calibrate
 
 Collect pass/fail from all model runs and present a summary table:
@@ -233,6 +243,17 @@ Then explicitly ask: is this primarily an **eval/task gap**, a **model gap**, or
 - **Eval/task gap** - The task is ambiguous, over-specified, under-specified, or the grader is not testing the right thing. Fix the eval first.
 - **Model gap** - The task is sound, the grading is sound, and failures are what we would expect. Keep the eval.
 - **Guideline gap** - The failures suggest there should be a guideline that helps here, or an existing guideline is weak/confusing/contradictory. Recommend following up with the `validate-guidelines` skill after the eval is settled.
+
+### Debugging failures
+
+Model output is preserved in the temp directory printed at the start of each run (`Using tempdir: ...`). These directories are NOT cleaned up automatically. For each model, look at:
+
+- `<tempdir>/output/<provider>/<model>/<category>/<eval>/` for the generated source files
+- `run.log` in that directory for step-by-step output (install, deploy, tsc, eslint, vitest)
+- `node_modules/` for the actual resolved dependency versions
+- `package.json` for what the model requested vs what was installed
+
+This is essential for distinguishing "model wrote bad code" from "model's code is fine but the grader is too strict" from "dependency version bug".
 
 **Push back** with specific recommendations if calibration looks off. Suggest concrete changes to the task, answer, or tests.
 
