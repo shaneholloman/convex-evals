@@ -1,0 +1,29 @@
+Build a backend for tracking user online status. Users send periodic heartbeat pings while they are active, and clients query which users are currently online.
+
+The users table is already defined:
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+  }).index("by_email", ["email"]),
+});
+```
+
+You may add fields, tables, and indexes as needed. Do not remove or rename the existing users table fields or its by_email index.
+
+Create these functions in `convex/index.ts`:
+- A mutation `recordHeartbeat` that takes `{ userId: Id<"users">, nowMs: number }` and records that the user is active at time `nowMs`.
+- A query `listOnlineUsers` that takes `{ activeWithinMs: number, nowMs: number }` and returns all users whose last heartbeat is within `nowMs - activeWithinMs`. Return shape: array of objects with `{ userId, name, email, lastHeartbeatMs }`.
+
+Requirements:
+- Return an empty array from `listOnlineUsers` when no users are online.
+- Calling `recordHeartbeat` multiple times for the same user must not create duplicate records.
+
+Generate only:
+- `package.json`
+- `convex/schema.ts`
+- `convex/index.ts`

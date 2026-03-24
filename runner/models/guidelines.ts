@@ -201,6 +201,9 @@ Note: \`paginationOpts\` is an object with the following properties:
     guideline(
       "Do not store unbounded lists as an array field inside a document (e.g. `v.array(v.object({...}))`). As the array grows it will hit the 1MB document size limit, and every update rewrites the entire document. Instead, create a separate table for the child items with a foreign key back to the parent.",
     ),
+    guideline(
+      "Separate high-churn operational data (e.g. heartbeats, online status, typing indicators) from stable profile data. Storing frequently updated fields on a shared document forces every write to contend with reads of the entire document. Instead, create a dedicated table for the high-churn data with a foreign key back to the parent record.",
+    ),
   ]),
   section("authentication_guidelines", [
     guideline(
