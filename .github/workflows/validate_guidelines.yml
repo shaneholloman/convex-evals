@@ -48,21 +48,13 @@ jobs:
 
       - name: Generate "after" guidelines (from this branch)
         run: |
-          bun -e "
-            import { renderGuidelines, CONVEX_GUIDELINES } from './runner/models/guidelines.js';
-            require('fs').writeFileSync('/tmp/after-guidelines.md', renderGuidelines(CONVEX_GUIDELINES));
-          "
+          cp runner/models/guidelines.md /tmp/after-guidelines.md
           echo "=== After guidelines ($(wc -l < /tmp/after-guidelines.md) lines) ==="
 
       - name: Generate "before" guidelines (from base branch)
         run: |
-          git checkout origin/${{ inputs.base_ref }} -- runner/models/guidelines.ts
-          bun -e "
-            import { renderGuidelines, CONVEX_GUIDELINES } from './runner/models/guidelines.js';
-            require('fs').writeFileSync('/tmp/before-guidelines.md', renderGuidelines(CONVEX_GUIDELINES));
-          "
+          git show origin/${{ inputs.base_ref }}:runner/models/guidelines.md > /tmp/before-guidelines.md
           echo "=== Before guidelines ($(wc -l < /tmp/before-guidelines.md) lines) ==="
-          git checkout HEAD -- runner/models/guidelines.ts
 
       - name: Show guidelines diff
         run: diff /tmp/before-guidelines.md /tmp/after-guidelines.md || true

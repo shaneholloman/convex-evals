@@ -2,24 +2,22 @@
 /**
  * Generate ablation markdown files for guideline section analysis.
  *
+ * Parses the guidelines markdown by headings and generates variants
+ * with individual sections removed.
+ *
  * Top-level ablation (default):
- *   ablation/full.md                        — full rendered guidelines
- *   ablation/without_<section>.md (x10)     — one per top-level section removed
+ *   ablation/full.md                        - full guidelines
+ *   ablation/without_<section>.md (xN)      - one per top-level section removed
  *
  * Subsection ablation (--section <name>):
- *   ablation/full.md                        — full rendered guidelines
- *   ablation/without_<parent>/<subsection>.md — one per child of the named section
+ *   ablation/full.md                        - full guidelines
+ *   ablation/without_<parent>/<subsection>.md - one per child of the named section
  *
  * Each file is the rendered markdown that CUSTOM_GUIDELINES_PATH would point to.
  */
 import { mkdirSync, writeFileSync } from "fs";
 import { encode } from "gpt-tokenizer/encoding/cl100k_base";
-import {
-  CONVEX_GUIDELINES,
-  renderGuidelines,
-  type GuidelineSection,
-  type Guideline,
-} from "../runner/models/guidelines.js";
+import { getGuidelines } from "../runner/models/guidelines.js";
 
 const ABLATION_DIR = "ablation";
 
@@ -34,41 +32,62 @@ interface VariantInfo {
   tokens: number;
 }
 
-/** Find a top-level section by name. */
-function findSection(name: string): GuidelineSection | null {
-  for (const child of CONVEX_GUIDELINES.children) {
-    if (child.kind === "section" && child.name === name) {
-      return child;
-    }
-  }
-  return null;
+interface Section {
+  heading: string;
+  slug: string;
+  level: number;
+  startLine: number;
+  endLine: number;
+}
+
+function slugify(heading: string): string {
+  return heading
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
 }
 
 /**
- * Build a copy of the full guidelines tree with one subsection of a
- * given parent section removed.
+ * Parse the guidelines markdown into sections based on headings.
+ * Each section spans from its heading line to just before the next
+ * heading of the same or higher level (or end of file).
  */
-function removeSubsection(
-  parentName: string,
-  subsectionToRemove: GuidelineSection | Guideline,
-): GuidelineSection {
-  return {
-    kind: "section",
-    name: CONVEX_GUIDELINES.name,
-    children: CONVEX_GUIDELINES.children.map((topLevel) => {
-      if (topLevel.kind !== "section" || topLevel.name !== parentName) {
-        return topLevel;
-      }
-      return {
-        ...topLevel,
-        children: topLevel.children.filter((c) => c !== subsectionToRemove),
-      };
-    }),
-  };
+function parseSections(md: string, targetLevel: number): Section[] {
+  const lines = md.split("\n");
+  const sections: Section[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(/^(#{1,6})\s+(.+)$/);
+    if (match && match[1].length === targetLevel) {
+      sections.push({
+        heading: match[2],
+        slug: slugify(match[2]),
+        level: targetLevel,
+        startLine: i,
+        endLine: lines.length,
+      });
+    }
+  }
+
+  for (let i = 0; i < sections.length - 1; i++) {
+    sections[i].endLine = sections[i + 1].startLine;
+  }
+
+  return sections;
+}
+
+function removeSectionFromMarkdown(
+  md: string,
+  section: Section,
+): string {
+  const lines = md.split("\n");
+  const before = lines.slice(0, section.startLine);
+  const after = lines.slice(section.endLine);
+  return [...before, ...after].join("\n");
 }
 
 function generateTopLevelAblation(): VariantInfo[] {
-  const fullMd = renderGuidelines(CONVEX_GUIDELINES);
+  const fullMd = getGuidelines();
   writeFileSync(`${ABLATION_DIR}/full.md`, fullMd);
 
   const variants: VariantInfo[] = [
@@ -80,26 +99,15 @@ function generateTopLevelAblation(): VariantInfo[] {
     },
   ];
 
-  const topLevelSections = CONVEX_GUIDELINES.children.filter(
-    (c): c is GuidelineSection => c.kind === "section",
-  );
+  const sections = parseSections(fullMd, 2);
 
-  for (const sectionToRemove of topLevelSections) {
-    const filteredChildren = CONVEX_GUIDELINES.children.filter(
-      (c) => c !== sectionToRemove,
-    );
-    const filteredRoot: GuidelineSection = {
-      kind: "section",
-      name: CONVEX_GUIDELINES.name,
-      children: filteredChildren,
-    };
-
-    const md = renderGuidelines(filteredRoot);
-    const filename = `${ABLATION_DIR}/without_${sectionToRemove.name}.md`;
+  for (const section of sections) {
+    const md = removeSectionFromMarkdown(fullMd, section);
+    const filename = `${ABLATION_DIR}/without_${section.slug}.md`;
     writeFileSync(filename, md);
 
     variants.push({
-      name: `without_${sectionToRemove.name}`,
+      name: `without_${section.slug}`,
       file: filename,
       chars: md.length,
       tokens: countTokens(md),
@@ -109,24 +117,22 @@ function generateTopLevelAblation(): VariantInfo[] {
   return variants;
 }
 
-function generateSubsectionAblation(parentName: string): VariantInfo[] {
-  const parent = findSection(parentName);
+function generateSubsectionAblation(parentSlug: string): VariantInfo[] {
+  const fullMd = getGuidelines();
+  const topLevel = parseSections(fullMd, 2);
+  const parent = topLevel.find((s) => s.slug === parentSlug);
+
   if (!parent) {
     console.error(
-      `Section "${parentName}" not found. Available top-level sections:`,
+      `Section "${parentSlug}" not found. Available top-level sections:`,
     );
-    const names = CONVEX_GUIDELINES.children
-      .filter((c): c is GuidelineSection => c.kind === "section")
-      .map((c) => c.name);
-    console.error(names.join(", "));
+    console.error(topLevel.map((s) => s.slug).join(", "));
     process.exit(1);
   }
 
-  const subDir = `${ABLATION_DIR}/without_${parentName}`;
+  const subDir = `${ABLATION_DIR}/without_${parentSlug}`;
   mkdirSync(subDir, { recursive: true });
 
-  // Full guidelines as baseline
-  const fullMd = renderGuidelines(CONVEX_GUIDELINES);
   writeFileSync(`${ABLATION_DIR}/full.md`, fullMd);
 
   const variants: VariantInfo[] = [
@@ -138,25 +144,31 @@ function generateSubsectionAblation(parentName: string): VariantInfo[] {
     },
   ];
 
-  const subsections = parent.children.filter(
-    (c): c is GuidelineSection => c.kind === "section",
-  );
+  const parentContent = fullMd
+    .split("\n")
+    .slice(parent.startLine, parent.endLine)
+    .join("\n");
+  const subsections = parseSections(parentContent, 3);
 
   if (subsections.length === 0) {
     console.error(
-      `Section "${parentName}" has no subsections to ablate (only individual guidelines).`,
+      `Section "${parentSlug}" has no subsections to ablate (only individual guidelines).`,
     );
     process.exit(1);
   }
 
   for (const sub of subsections) {
-    const modified = removeSubsection(parentName, sub);
-    const md = renderGuidelines(modified);
-    const filename = `${subDir}/${sub.name}.md`;
+    const absoluteSub: Section = {
+      ...sub,
+      startLine: sub.startLine + parent.startLine,
+      endLine: sub.endLine + parent.startLine,
+    };
+    const md = removeSectionFromMarkdown(fullMd, absoluteSub);
+    const filename = `${subDir}/${sub.slug}.md`;
     writeFileSync(filename, md);
 
     variants.push({
-      name: `without_${parentName}/${sub.name}`,
+      name: `without_${parentSlug}/${sub.slug}`,
       file: filename,
       chars: md.length,
       tokens: countTokens(md),
@@ -196,7 +208,6 @@ function printSummary(variants: VariantInfo[]): void {
 function main(): void {
   mkdirSync(ABLATION_DIR, { recursive: true });
 
-  // Parse --section flag
   const args = process.argv.slice(2);
   let sectionName: string | null = null;
   for (let i = 0; i < args.length; i++) {
