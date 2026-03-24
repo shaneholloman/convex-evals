@@ -15,7 +15,7 @@ import {
   OPENROUTER_BASE_URL,
   SYSTEM_PROMPT,
 } from "./index.js";
-import { CONVEX_GUIDELINES, renderGuidelines } from "./guidelines.js";
+import { getGuidelines } from "./guidelines.js";
 import {
   webSearchTool,
   WEB_SEARCH_SYSTEM_SUPPLEMENT,
@@ -40,7 +40,7 @@ function getGuidelinesContent(): string {
   }
   const exp = process.env.EVALS_EXPERIMENT;
   if (exp === "no_guidelines" || exp === "web_search_no_guidelines") return "";
-  return renderGuidelines(CONVEX_GUIDELINES);
+  return getGuidelines();
 }
 
 // ── AI SDK model construction ────────────────────────────────────────
@@ -427,5 +427,5 @@ ${FILE_FORMAT_EXAMPLE}`,
 
 /** Render guidelines for release builds. */
 export function buildReleaseRules(): string {
-  return renderGuidelines(CONVEX_GUIDELINES);
+  return getGuidelines();
 }
