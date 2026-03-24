@@ -389,6 +389,28 @@ export default crons;
       ),
     ]),
   ]),
+  section("testing_guidelines", [
+    guideline(`Use \`convex-test\` with \`vitest\` and \`@edge-runtime/vm\` to test Convex functions. Always install the latest versions of these packages. Configure vitest with \`environment: "edge-runtime"\` in \`vitest.config.ts\`.
+
+Test files go inside the \`convex/\` directory. You must pass a module map from \`import.meta.glob\` to \`convexTest\`:
+\`\`\`typescript
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+
+test("some behavior", async () => {
+  const t = convexTest(schema, modules);
+  await t.mutation(api.messages.send, { body: "Hi!", author: "Sarah" });
+  const messages = await t.query(api.messages.list);
+  expect(messages).toMatchObject([{ body: "Hi!", author: "Sarah" }]);
+});
+\`\`\`
+The \`modules\` argument is required so convex-test can discover and load function files. The \`/// <reference types="vite/client" />\` directive is needed for TypeScript to recognize \`import.meta.glob\`.`),
+  ]),
   section("file_storage_guidelines", [
     guideline(
       "The `ctx.storage.getUrl()` method returns a signed URL for a given file. It returns `null` if the file doesn't exist.",
