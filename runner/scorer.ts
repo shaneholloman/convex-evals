@@ -367,6 +367,7 @@ async function runTestsStep(
         outputBackend,
         answerBackend,
         testFile,
+        ctx.outputProjectDir,
       );
       testsRatio = testResult.ratio;
       vitestStdout = testResult.stdout;
@@ -645,12 +646,14 @@ async function runTests(
   backend: ConvexBackend,
   answerBackend: ConvexBackend,
   testFile: string,
+  outputProjectDir: string,
 ): Promise<{ ratio: number; stdout: string; cmd: string }> {
   const env: Record<string, string> = {
     ...(process.env as Record<string, string>),
     CONVEX_PORT: String(backend.port),
     CONVEX_SITE_PORT: String(backend.siteProxyPort),
     CONVEX_ANSWER_PORT: String(answerBackend.port),
+    MODEL_OUTPUT_DIR: outputProjectDir,
   };
 
   const tmpJsonPath = join(

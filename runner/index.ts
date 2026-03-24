@@ -286,22 +286,25 @@ export async function runEvalsForModel(
         model.apiKind,
         metadata?.openRouterFirstSeenAt,
       );
-      if (!modelId) {
-        throw new Error(`Failed to upsert model metadata for ${model.name}`);
-      }
-      runId = await startRun(
-        modelId,
-        plannedEvals,
-        provider,
-        config.experiment,
-      );
-      if (runId) {
-        logInfo(
-          `Started run ${runId} for model ${model.name} with ${plannedEvals.length} evals`,
+      if (modelId) {
+        runId = await startRun(
+          modelId,
+          plannedEvals,
+          provider,
+          config.experiment,
         );
+        if (runId) {
+          logInfo(
+            `Started run ${runId} for model ${model.name} with ${plannedEvals.length} evals`,
+          );
+        } else {
+          logInfo(
+            "Failed to start run in Convex (endpoint may not be configured)",
+          );
+        }
       } else {
         logInfo(
-          "Failed to start run in Convex (endpoint may not be configured)",
+          `Skipping Convex reporting for ${model.name} (reporting disabled or endpoint unavailable)`,
         );
       }
     }
