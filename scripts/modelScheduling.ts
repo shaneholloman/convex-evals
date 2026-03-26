@@ -3,8 +3,11 @@ import { api } from "../evalScores/convex/_generated/api.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_INTERVAL_MS = DAY_MS;
-const MAX_INTERVAL_MS = 30 * DAY_MS;
-const RAMP_WINDOW_MS = 30 * DAY_MS;
+const MAX_INTERVAL_MS = 60 * DAY_MS;
+// Age at which the interval reaches halfway between min and max.
+// f(age) = MIN + (MAX - MIN) * age / (age + HALF_SATURATION)
+// → f(365d) ≈ 30d, f(180d) ≈ 20d, f(30d) ≈ 5.5d, f(∞) → 60d
+const HALF_SATURATION_MS = 365 * DAY_MS;
 
 export interface SchedulingDecision {
   isDue: boolean;
@@ -18,21 +21,13 @@ export interface SchedulingMetadata {
   modelExists: boolean;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 export function computeTargetIntervalMs(
   openRouterFirstSeenAt: number | null,
   now = Date.now(),
 ): number {
-  if (openRouterFirstSeenAt === null) {
-    return MIN_INTERVAL_MS;
-  }
-
-  const ageMs = clamp(now - openRouterFirstSeenAt, 0, RAMP_WINDOW_MS);
-  const ageRatio = ageMs / RAMP_WINDOW_MS;
-  return MIN_INTERVAL_MS + ageRatio * (MAX_INTERVAL_MS - MIN_INTERVAL_MS);
+  if (openRouterFirstSeenAt === null) return MIN_INTERVAL_MS;
+  const ageMs = Math.max(0, now - openRouterFirstSeenAt);
+  return MIN_INTERVAL_MS + (MAX_INTERVAL_MS - MIN_INTERVAL_MS) * ageMs / (ageMs + HALF_SATURATION_MS);
 }
 
 export function getSchedulingDecision(

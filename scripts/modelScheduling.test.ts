@@ -6,6 +6,8 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const HALF_SATURATION_DAYS = 365;
+
 describe("computeTargetIntervalMs", () => {
   it("returns the minimum interval when first-seen is missing", () => {
     expect(computeTargetIntervalMs(null, 1_000_000)).toBe(DAY_MS);
@@ -16,15 +18,37 @@ describe("computeTargetIntervalMs", () => {
     expect(computeTargetIntervalMs(now, now)).toBe(DAY_MS);
   });
 
-  it("linearly interpolates interval for a mid-age model", () => {
-    const now = 30 * DAY_MS;
-    const firstSeen = 15 * DAY_MS;
-    expect(computeTargetIntervalMs(firstSeen, now)).toBe(15.5 * DAY_MS);
+  it("returns ~30d at the half-saturation point (365 days old)", () => {
+    const now = 1000 * DAY_MS;
+    const firstSeen = now - HALF_SATURATION_DAYS * DAY_MS;
+    const result = computeTargetIntervalMs(firstSeen, now);
+    // At half-saturation: MIN + (MAX - MIN) * 0.5 = 1 + 59 * 0.5 = 30.5 days
+    expect(result).toBeCloseTo(30.5 * DAY_MS, -6);
   });
 
-  it("caps the interval at thirty days for older models", () => {
-    const now = 100 * DAY_MS;
-    expect(computeTargetIntervalMs(0, now)).toBe(30 * DAY_MS);
+  it("returns ~20d for a 180-day-old model", () => {
+    const now = 1000 * DAY_MS;
+    const firstSeen = now - 180 * DAY_MS;
+    const result = computeTargetIntervalMs(firstSeen, now);
+    // 1 + 59 * 180 / (180 + 365) ≈ 20.5 days
+    expect(result).toBeGreaterThan(19 * DAY_MS);
+    expect(result).toBeLessThan(22 * DAY_MS);
+  });
+
+  it("returns ~5.5d for a 30-day-old model", () => {
+    const now = 1000 * DAY_MS;
+    const firstSeen = now - 30 * DAY_MS;
+    const result = computeTargetIntervalMs(firstSeen, now);
+    // 1 + 59 * 30 / (30 + 365) ≈ 5.5 days
+    expect(result).toBeGreaterThan(4 * DAY_MS);
+    expect(result).toBeLessThan(7 * DAY_MS);
+  });
+
+  it("approaches but never reaches 60 days for very old models", () => {
+    const now = 10_000 * DAY_MS;
+    const result = computeTargetIntervalMs(0, now);
+    expect(result).toBeGreaterThan(55 * DAY_MS);
+    expect(result).toBeLessThan(60 * DAY_MS);
   });
 });
 
@@ -35,18 +59,18 @@ describe("getSchedulingDecision", () => {
   });
 
   it("marks a model due when the elapsed time meets the target interval", () => {
-    const now = 30 * DAY_MS;
-    const firstSeen = 15 * DAY_MS;
-    const targetIntervalMs = 15.5 * DAY_MS;
+    const now = 1000 * DAY_MS;
+    const firstSeen = now - 180 * DAY_MS;
+    const targetIntervalMs = computeTargetIntervalMs(firstSeen, now);
     const decision = getSchedulingDecision(now - targetIntervalMs, firstSeen, now);
     expect(decision.targetIntervalMs).toBe(targetIntervalMs);
     expect(decision.isDue).toBe(true);
   });
 
   it("marks a model not due when the elapsed time is below the target interval", () => {
-    const now = 30 * DAY_MS;
-    const firstSeen = 15 * DAY_MS;
-    const targetIntervalMs = 15.5 * DAY_MS;
+    const now = 1000 * DAY_MS;
+    const firstSeen = now - 180 * DAY_MS;
+    const targetIntervalMs = computeTargetIntervalMs(firstSeen, now);
     const decision = getSchedulingDecision(now - targetIntervalMs + 1, firstSeen, now);
     expect(decision.isDue).toBe(false);
   });
