@@ -102,7 +102,7 @@ const DEFAULT_MODEL_NAMES = [
   "o3-mini",
   "gemini-2.0-flash-lite",
   "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-  "gemini-3-pro-preview",
+  "gemini-3.1-pro-preview",
   "grok-3-mini-beta",
 ];
 

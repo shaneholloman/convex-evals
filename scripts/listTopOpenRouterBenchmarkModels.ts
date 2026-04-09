@@ -15,7 +15,7 @@ import {
   preflightOpenRouterEndpoint,
 } from "../runner/models/openRouterDiscovery.js";
 import {
-  shouldKeepDespitePreflightFailure,
+  shouldSkipForProviderError,
   shouldSkipForMissingEndpoint,
 } from "./listTopOpenRouterModels.js";
 import { loadSchedulingDecisions } from "./modelScheduling.js";
@@ -159,15 +159,12 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
         await preflightOpenRouterEndpoint(resolved.model, openRouterApiKey);
         return modelName;
       } catch (error) {
-        if (shouldSkipForMissingEndpoint(error)) {
+        if (
+          shouldSkipForMissingEndpoint(error) ||
+          shouldSkipForProviderError(error)
+        ) {
           console.error(`Skipping ${modelName}: ${String(error)}`);
           return null;
-        }
-        if (shouldKeepDespitePreflightFailure(error)) {
-          console.error(
-            `Keeping ${modelName} despite preflight provider error: ${String(error)}`,
-          );
-          return modelName;
         }
         console.error(`Skipping ${modelName}: ${String(error)}`);
         return null;

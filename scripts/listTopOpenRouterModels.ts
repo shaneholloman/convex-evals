@@ -37,7 +37,7 @@ interface OpenRouterFrontendResponse {
   };
 }
 
-export function shouldKeepDespitePreflightFailure(error: unknown): boolean {
+export function shouldSkipForProviderError(error: unknown): boolean {
   const message = String(error);
   return message.includes("400 Bad Request: Provider returned error");
 }
@@ -145,15 +145,12 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
         await preflightOpenRouterEndpoint(resolved.model, openRouterApiKey);
         return modelName;
       } catch (error) {
-        if (shouldSkipForMissingEndpoint(error)) {
+        if (
+          shouldSkipForMissingEndpoint(error) ||
+          shouldSkipForProviderError(error)
+        ) {
           console.error(`Skipping ${modelName}: ${String(error)}`);
           return null;
-        }
-        if (shouldKeepDespitePreflightFailure(error)) {
-          console.error(
-            `Keeping ${modelName} despite preflight provider error: ${String(error)}`,
-          );
-          return modelName;
         }
         console.error(`Skipping ${modelName}: ${String(error)}`);
         return null;

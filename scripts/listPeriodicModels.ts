@@ -24,7 +24,7 @@ import {
 } from "./listTopOpenRouterBenchmarkModels.js";
 import {
   fetchTopDailySlugs,
-  shouldKeepDespitePreflightFailure,
+  shouldSkipForProviderError,
   shouldSkipForMissingEndpoint,
 } from "./listTopOpenRouterModels.js";
 import {
@@ -112,13 +112,9 @@ function describeDecision(decision: SchedulingDecision, now: number): string {
     : `last run ${formatDuration(elapsedMs)} ago, target interval ${formatDuration(decision.targetIntervalMs)}, due in ${formatDuration(remainingMs)}`;
 }
 
-function requiresSelectorPreflight(sources: ModelSourceName[]): boolean {
-  return sources.some((source) => source !== "curated");
-}
-
 function shouldRetryPreflightFailure(error: unknown): boolean {
   return !shouldSkipForMissingEndpoint(error) &&
-    !shouldKeepDespitePreflightFailure(error);
+    !shouldSkipForProviderError(error);
 }
 
 async function collectCuratedModels(): Promise<string[]> {
@@ -261,18 +257,6 @@ function filterDueModelsSequentially(
   return dueModels;
 }
 
-function getRecordedModelSlugs(
-  models: string[],
-  schedulingMetadata: Map<string, SchedulingMetadata> | null,
-): Set<string> {
-  return new Set(
-    models.filter((model) => {
-      const metadata = schedulingMetadata?.get(model);
-      return metadata?.modelExists === true;
-    }),
-  );
-}
-
 async function preflightWithRetries(
   model: ResolvedModel,
   apiKey: string,
@@ -318,7 +302,6 @@ async function preflightWithRetries(
 async function filterRunnableModelsSequentially(
   models: string[],
   modelSources: Record<string, ModelSourceName[]>,
-  schedulingMetadata: Map<string, SchedulingMetadata> | null,
 ): Promise<string[]> {
   const openRouterApiKey = process.env.OPENROUTER_API_KEY;
   if (!openRouterApiKey) {
@@ -328,26 +311,9 @@ async function filterRunnableModelsSequentially(
     return models;
   }
 
-  const existingModelSlugs = getRecordedModelSlugs(models, schedulingMetadata);
   const runnableModels: string[] = [];
   for (const model of models) {
     const sources = modelSources[model] ?? [];
-    if (!requiresSelectorPreflight(sources)) {
-      logInfo(
-        `[periodic] [preflight] keeping ${model} without selector preflight: curated-only model`,
-      );
-      runnableModels.push(model);
-      continue;
-    }
-
-    if (existingModelSlugs.has(model)) {
-      logInfo(
-        `[periodic] [preflight] keeping ${model} without selector preflight: already recorded in Convex`,
-      );
-      runnableModels.push(model);
-      continue;
-    }
-
     const resolved = await resolveModel(model);
     if (!resolved.discovered) {
       logError(
@@ -366,21 +332,13 @@ async function filterRunnableModelsSequentially(
     const result = await preflightWithRetries(resolved.model, openRouterApiKey);
     if (result.success) {
       logSuccess(
-        `[periodic] [preflight] keeping ${model}: passed after ${result.attempts} attempt${result.attempts === 1 ? "" : "s"}`,
+        `[periodic] [preflight] keeping ${model}: passed after ${result.attempts} attempt${result.attempts === 1 ? "" : "s"} (${sources.join(", ") || "unknown source"})`,
       );
       runnableModels.push(model);
       continue;
     }
 
     const errorMessage = String(result.error);
-    if (shouldKeepDespitePreflightFailure(result.error)) {
-      logError(
-        `[periodic] [preflight] keeping ${model} despite provider error after ${result.attempts} attempt${result.attempts === 1 ? "" : "s"}: ${errorMessage}`,
-      );
-      runnableModels.push(model);
-      continue;
-    }
-
     logError(
       `[periodic] [preflight] skipping ${model} after ${result.attempts} attempt${result.attempts === 1 ? "" : "s"}: ${errorMessage}`,
     );
@@ -423,7 +381,6 @@ export async function selectPeriodicModels(): Promise<string[]> {
   const runnableModels = await filterRunnableModelsSequentially(
     dueModels,
     merged.modelSources,
-    schedulingMetadata,
   );
 
   logSummary(

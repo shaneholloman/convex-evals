@@ -29,7 +29,6 @@ export function resolveModelDefaults(name: string): ResolvedModel {
 }
 
 export const ALL_MODELS: string[] = [
-  "anthropic/claude-3.5-sonnet",
   "anthropic/claude-3.7-sonnet",
   "anthropic/claude-sonnet-4",
   "anthropic/claude-sonnet-4.5",
@@ -63,7 +62,6 @@ export const ALL_MODELS: string[] = [
   "google/gemini-3-flash-preview",
   "google/gemini-3.1-flash-lite-preview",
   "google/gemini-2.5-pro",
-  "google/gemini-3-pro-preview",
   "google/gemini-3.1-pro-preview",
   "minimax/minimax-m2.5",
   "x-ai/grok-4",

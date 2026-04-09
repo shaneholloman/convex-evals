@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   selectTopModels as selectTopOpenRouterModels,
-  shouldKeepDespitePreflightFailure,
+  shouldSkipForProviderError,
   shouldSkipForMissingEndpoint,
 } from "./listTopOpenRouterModels.js";
 import {
@@ -17,9 +17,9 @@ describe("top OpenRouter selector helpers", () => {
     ).toEqual(["a", "b", "c"]);
   });
 
-  it("keeps provider 400 preflight failures", () => {
+  it("skips provider 400 preflight failures", () => {
     expect(
-      shouldKeepDespitePreflightFailure(
+      shouldSkipForProviderError(
         new Error("400 Bad Request: Provider returned error"),
       ),
     ).toBe(true);
@@ -35,7 +35,7 @@ describe("top OpenRouter selector helpers", () => {
 
   it("does not treat unrelated errors as keepable or skippable", () => {
     const error = new Error("500 Internal Server Error");
-    expect(shouldKeepDespitePreflightFailure(error)).toBe(false);
+    expect(shouldSkipForProviderError(error)).toBe(false);
     expect(shouldSkipForMissingEndpoint(error)).toBe(false);
   });
 });
