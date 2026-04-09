@@ -233,7 +233,7 @@ bun run scripts/listModels.ts --due-only --format json
 
 The repo has one scheduled periodic eval workflow:
 
-- `periodic_evals.yml` runs every 2 hours
+- `periodic_evals.yml` runs every 4 hours
 - each run unions candidates from curated models, top-day non-curated OpenRouter models, and top OpenRouter benchmark models
 - the combined candidate list is deduped before the workflow matrix expands
 
@@ -241,8 +241,8 @@ The periodic workflow uses the same scheduling policy before it actually queues 
 
 - if we have never run a model before, it is due immediately
 - otherwise we look at the model's stored OpenRouter first-seen timestamp
-- the target interval ramps linearly from `24h` for a brand new model to `30d` for a model that is at least 30 days old
-- a model only runs when its most recent recorded run is older than that computed interval
+- the target interval starts at `24h`, grows with model age, hits about `30d` at one year old, and approaches `60d` for very old models
+- the due check uses the latest completed default-experiment leaderboard run, so failed runs and `no_guidelines` runs do not delay the next periodic default run
 
 The OpenRouter-derived selectors also do a lightweight preflight check so obviously dead models are skipped before entering the matrix.
 
