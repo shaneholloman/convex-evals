@@ -68,7 +68,7 @@ export async function loadSchedulingMetadata(
     modelDocs.map((modelDoc) =>
       modelDoc === null
         ? Promise.resolve(null)
-        : client.query(api.runs.getLatestRunTime, { modelId: modelDoc._id }),
+        : client.query(api.modelScores.getLatestRunTime, { modelId: modelDoc._id }),
     ),
   );
 

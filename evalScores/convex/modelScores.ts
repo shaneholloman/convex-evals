@@ -9,7 +9,7 @@
  * The leaderboardScores query in runs.ts reads directly from this table
  * rather than recomputing on every request.
  */
-import { internalMutation } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api.js";
@@ -58,6 +58,24 @@ export const backfillAllModelScores = internalMutation({
     }
 
     return { queued: pairs.length };
+  },
+});
+
+export const getLatestRunTime = query({
+  args: {
+    modelId: v.id("models"),
+    experiment: v.optional(experimentLiteral),
+  },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("modelScores")
+      .withIndex("by_modelId_experiment", (q) =>
+        q.eq("modelId", args.modelId).eq("experiment", args.experiment),
+      )
+      .unique();
+
+    return row?.latestRunTime ?? null;
   },
 });
 

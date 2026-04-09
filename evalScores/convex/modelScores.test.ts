@@ -297,6 +297,42 @@ describe("recomputeModelScores", () => {
     expect(expRows[0].totalScore).toBe(0.0);
   });
 
+  it("returns latest run time for the requested experiment only", async () => {
+    const t = convexTest(schema, modules);
+
+    vi.setSystemTime(new Date("2026-04-01T00:00:00Z"));
+    await createCompletedRun(t, {
+      model: "model-a",
+      evals: [{ category: "cat1", name: "eval1", passed: true }],
+    });
+
+    const defaultRows = await t.query(api.runs.leaderboardScores, {});
+    const modelId = defaultRows[0].modelId;
+    const defaultLatestRunTime = defaultRows[0].latestRunTime;
+
+    vi.setSystemTime(new Date("2026-04-02T00:00:00Z"));
+    await createCompletedRun(t, {
+      model: "model-a",
+      experiment: "no_guidelines",
+      evals: [{ category: "cat1", name: "eval1", passed: false }],
+    });
+
+    const latestDefaultRunTime = await t.query(api.modelScores.getLatestRunTime, {
+      modelId,
+    });
+    expect(latestDefaultRunTime).toBe(defaultLatestRunTime);
+
+    const latestNoGuidelinesRunTime = await t.query(
+      api.modelScores.getLatestRunTime,
+      {
+        modelId,
+        experiment: "no_guidelines",
+      },
+    );
+    expect(latestNoGuidelinesRunTime).not.toBeNull();
+    expect(latestNoGuidelinesRunTime).toBeGreaterThan(defaultLatestRunTime);
+  });
+
   it("keeps separate rows per model", async () => {
     const t = convexTest(schema, modules);
 
