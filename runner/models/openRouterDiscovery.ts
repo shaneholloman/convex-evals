@@ -17,6 +17,9 @@ interface FrontendEndpointInfo {
 interface FrontendModelInfo {
   slug?: string;
   name?: string;
+  input_modalities?: string[];
+  output_modalities?: string[];
+  has_text_output?: boolean;
   endpoint?: FrontendEndpointInfo;
 }
 
@@ -118,7 +121,38 @@ export interface DiscoveredModelInfo {
   apiKind?: ResolvedModel["apiKind"];
   provider: string;
   openRouterFirstSeenAt?: number;
+  inputModalities?: string[];
   outputModalities?: string[];
+  hasTextOutput?: boolean;
+}
+
+export interface OpenRouterEvalCapabilities {
+  inputModalities?: string[];
+  outputModalities?: string[];
+  hasTextOutput?: boolean;
+}
+
+export function getTextOutputEvalIncompatibilityReason(
+  capabilities: OpenRouterEvalCapabilities,
+): string | null {
+  const { inputModalities, outputModalities, hasTextOutput } = capabilities;
+
+  if (inputModalities && !inputModalities.includes("text")) {
+    return `input modalities [${inputModalities.join(", ")}] do not include text`;
+  }
+
+  if (outputModalities) {
+    const isTextOnlyOutput =
+      outputModalities.length === 1 && outputModalities[0] === "text";
+    if (!isTextOnlyOutput) {
+      return `output modalities [${outputModalities.join(", ")}] are not text-only`;
+    }
+    return null;
+  }
+
+  if (hasTextOutput === false) return "model does not have text output";
+
+  return null;
 }
 
 export async function discoverOpenRouterModel(
@@ -160,7 +194,17 @@ export async function discoverOpenRouterModel(
   const runnableName = exactMatch.endpoint?.model_variant_slug ?? undefined;
   const catalog = await getOpenRouterCatalog();
   const openRouterFirstSeenAt = catalog?.createdAtBySlug.get(modelName);
-  const outputModalities = catalog?.outputModalitiesBySlug.get(modelName);
+  const inputModalities = Array.isArray(exactMatch.input_modalities)
+    ? exactMatch.input_modalities
+    : undefined;
+  const outputModalities =
+    Array.isArray(exactMatch.output_modalities)
+      ? exactMatch.output_modalities
+      : catalog?.outputModalitiesBySlug.get(modelName);
+  const hasTextOutput =
+    typeof exactMatch.has_text_output === "boolean"
+      ? exactMatch.has_text_output
+      : undefined;
 
   return {
     runnableName,
@@ -168,7 +212,9 @@ export async function discoverOpenRouterModel(
     apiKind: inferApiKind(modelName, exactMatch.endpoint),
     provider,
     openRouterFirstSeenAt,
+    inputModalities,
     outputModalities,
+    hasTextOutput,
   };
 }
 
@@ -182,7 +228,9 @@ export async function resolveModel(modelName: string): Promise<{
   discovered: boolean;
   provider: string;
   openRouterFirstSeenAt?: number;
+  inputModalities?: string[];
   outputModalities?: string[];
+  hasTextOutput?: boolean;
 }> {
   const info = await discoverOpenRouterModel(modelName).catch(() => null);
   const defaults = resolveModelDefaults(modelName);
@@ -196,7 +244,9 @@ export async function resolveModel(modelName: string): Promise<{
     discovered: info !== null,
     provider: info?.provider ?? "openrouter",
     openRouterFirstSeenAt: info?.openRouterFirstSeenAt,
+    inputModalities: info?.inputModalities,
     outputModalities: info?.outputModalities,
+    hasTextOutput: info?.hasTextOutput,
   };
 }
 

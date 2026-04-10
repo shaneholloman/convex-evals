@@ -14,6 +14,7 @@ import { ConvexHttpClient } from "convex/browser";
 import { writeFile } from "node:fs/promises";
 import { ALL_MODELS } from "../runner/models/index.js";
 import {
+  getTextOutputEvalIncompatibilityReason,
   resolveModel,
   preflightOpenRouterEndpoint,
 } from "../runner/models/openRouterDiscovery.js";
@@ -322,9 +323,10 @@ async function filterRunnableModelsSequentially(
       continue;
     }
 
-    if (resolved.outputModalities && !resolved.outputModalities.includes("text")) {
+    const incompatibilityReason = getTextOutputEvalIncompatibilityReason(resolved);
+    if (incompatibilityReason) {
       logError(
-        `[periodic] [preflight] skipping ${model}: output modalities [${resolved.outputModalities.join(", ")}] do not include text`,
+        `[periodic] [preflight] skipping ${model}: ${incompatibilityReason}`,
       );
       continue;
     }

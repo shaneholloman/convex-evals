@@ -11,6 +11,7 @@
  */
 import { ConvexHttpClient } from "convex/browser";
 import {
+  getTextOutputEvalIncompatibilityReason,
   resolveModel,
   preflightOpenRouterEndpoint,
 } from "../runner/models/openRouterDiscovery.js";
@@ -154,6 +155,12 @@ async function filterRunnableModels(models: string[]): Promise<string[]> {
         const resolved = await resolveModel(modelName);
         if (!resolved.discovered) {
           console.error(`Skipping ${modelName}: not discoverable on OpenRouter`);
+          return null;
+        }
+        const incompatibilityReason =
+          getTextOutputEvalIncompatibilityReason(resolved);
+        if (incompatibilityReason) {
+          console.error(`Skipping ${modelName}: ${incompatibilityReason}`);
           return null;
         }
         await preflightOpenRouterEndpoint(resolved.model, openRouterApiKey);

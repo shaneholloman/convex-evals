@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getTextOutputEvalIncompatibilityReason } from "../runner/models/openRouterDiscovery.js";
 import {
   selectTopModels as selectTopOpenRouterModels,
   shouldSkipForProviderError,
@@ -37,6 +38,52 @@ describe("top OpenRouter selector helpers", () => {
     const error = new Error("500 Internal Server Error");
     expect(shouldSkipForProviderError(error)).toBe(false);
     expect(shouldSkipForMissingEndpoint(error)).toBe(false);
+  });
+});
+
+describe("OpenRouter capability helpers", () => {
+  it("allows multimodal input when output is text-only", () => {
+    expect(
+      getTextOutputEvalIncompatibilityReason({
+        inputModalities: ["text", "image", "file"],
+        outputModalities: ["text"],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects mixed output modalities", () => {
+    expect(
+      getTextOutputEvalIncompatibilityReason({
+        inputModalities: ["text", "image"],
+        outputModalities: ["text", "audio"],
+      }),
+    ).toBe("output modalities [text, audio] are not text-only");
+  });
+
+  it("rejects non-text output modalities", () => {
+    expect(
+      getTextOutputEvalIncompatibilityReason({
+        inputModalities: ["text"],
+        outputModalities: ["rerank"],
+      }),
+    ).toBe("output modalities [rerank] are not text-only");
+  });
+
+  it("rejects models whose input does not include text", () => {
+    expect(
+      getTextOutputEvalIncompatibilityReason({
+        inputModalities: ["image", "audio"],
+        outputModalities: ["text"],
+      }),
+    ).toBe("input modalities [image, audio] do not include text");
+  });
+
+  it("falls back to hasTextOutput when output modalities are missing", () => {
+    expect(
+      getTextOutputEvalIncompatibilityReason({
+        hasTextOutput: false,
+      }),
+    ).toBe("model does not have text output");
   });
 });
 
