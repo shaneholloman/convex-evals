@@ -45,6 +45,8 @@
   },
   "scripts": {
     "dev": "bun run scripts/dev.ts",
+    "format:guidelines": "prettier -w runner/models/guidelines.md",
+    "format-check:guidelines": "prettier -c runner/models/guidelines.md",
     "typecheck": "tsc --noEmit && cd evalScores && bunx tsc -p convex/tsconfig.json && cd ../visualizer && bunx tsc",
     "lint": "eslint runner/ evalScores/convex/",
     "test": "bun test runner scripts && cd evalScores && bun run test:once",
