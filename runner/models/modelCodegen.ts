@@ -1,11 +1,11 @@
 /**
  * LLM code generation: builds prompts, calls provider APIs, parses responses.
  *
- * Uses the Vercel AI SDK (generateText) as a unified interface across all
+ * Uses the Vercel AI SDK as a unified interface across all
  * providers. When the "web_search" experiment is active, a Tavily-powered
  * search tool is made available to every model.
  */
-import { generateText, type LanguageModel, type LanguageModelUsage } from "ai";
+import { stepCountIs, streamText, type LanguageModel, type LanguageModelUsage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
@@ -22,7 +22,6 @@ import {
   MAX_TOOL_STEPS,
 } from "./webSearch.js";
 import { logInfo } from "../logging.js";
-import { stepCountIs } from "ai";
 
 // ── Experiment helpers ────────────────────────────────────────────────
 
@@ -228,6 +227,42 @@ export function normalizeUsageForScoring(
   };
 }
 
+export function attachTimeToFirstTokenUsage({
+  usage,
+  timeToFirstTokenMs,
+}: {
+  usage: LanguageModelUsage | undefined;
+  timeToFirstTokenMs: number | undefined;
+}): LanguageModelUsage | undefined {
+  if (timeToFirstTokenMs === undefined) return usage;
+
+  const raw =
+    usage?.raw && typeof usage.raw === "object"
+      ? (usage.raw as Record<string, unknown>)
+      : {};
+
+  return {
+    inputTokens: usage?.inputTokens,
+    inputTokenDetails: usage?.inputTokenDetails ?? {
+      noCacheTokens: undefined,
+      cacheReadTokens: undefined,
+      cacheWriteTokens: undefined,
+    },
+    outputTokens: usage?.outputTokens,
+    outputTokenDetails: usage?.outputTokenDetails ?? {
+      textTokens: undefined,
+      reasoningTokens: undefined,
+    },
+    totalTokens: usage?.totalTokens,
+    reasoningTokens: usage?.reasoningTokens,
+    cachedInputTokens: usage?.cachedInputTokens,
+    raw: {
+      ...raw,
+      timeToFirstTokenMs,
+    },
+  };
+}
+
 async function enrichUsageWithOpenRouterPricingFallback(
   usage: LanguageModelUsage | undefined,
   modelName: string,
@@ -302,9 +337,18 @@ export class Model {
       prompt: userPrompt,
     };
 
-    const options: Parameters<typeof generateText>[0] = {
+    const requestStartedAt = Date.now();
+    let timeToFirstTokenMs: number | undefined;
+
+    const options: Parameters<typeof streamText>[0] = {
       ...baseOptions,
       ...promptOptions,
+      onChunk: ({ chunk }) => {
+        if (timeToFirstTokenMs !== undefined) return;
+        if (chunk.type !== "text-delta") return;
+        if (chunk.text.length === 0) return;
+        timeToFirstTokenMs = Date.now() - requestStartedAt;
+      },
     };
 
     if (this.resolved.apiKind === "responses") {
@@ -325,17 +369,27 @@ export class Model {
       };
     }
 
-    const result = await generateText(options);
-    
-    const usage = await enrichUsageWithOpenRouterPricingFallback(
+    const result = streamText(options);
+
+    const [text, usage] = await Promise.all([
+      result.text,
       result.usage,
+    ]);
+
+    const usageWithTiming = attachTimeToFirstTokenUsage({
+      usage,
+      timeToFirstTokenMs,
+    });
+
+    const enrichedUsage = await enrichUsageWithOpenRouterPricingFallback(
+      usageWithTiming,
       this.resolved.runnableName,
       this.resolved.baseURL,
     );
 
     return {
-      files: parseMarkdownResponse(result.text),
-      usage,
+      files: parseMarkdownResponse(text),
+      usage: enrichedUsage,
     };
   }
 }

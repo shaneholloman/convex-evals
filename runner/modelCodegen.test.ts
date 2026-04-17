@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import type { LanguageModelUsage } from "ai";
 import {
+  attachTimeToFirstTokenUsage,
   computeCostFromUsageAndPricing,
   normalizeUsageForScoring,
   parseMarkdownResponse,
@@ -289,6 +290,77 @@ describe("normalizeUsageForScoring", () => {
     const normalized = normalizeUsageForScoring(usage);
     expect(normalized).toEqual(usage);
     expect((normalized?.raw as Record<string, unknown>).cost).toBeUndefined();
+  });
+});
+
+describe("attachTimeToFirstTokenUsage", () => {
+  const makeUsage = (
+    raw: NonNullable<LanguageModelUsage["raw"]>,
+  ): LanguageModelUsage => ({
+    inputTokens: 10,
+    inputTokenDetails: {
+      noCacheTokens: undefined,
+      cacheReadTokens: undefined,
+      cacheWriteTokens: undefined,
+    },
+    outputTokens: 20,
+    outputTokenDetails: {
+      textTokens: undefined,
+      reasoningTokens: undefined,
+    },
+    totalTokens: 30,
+    raw,
+  });
+
+  it("returns the original usage when ttft is missing", () => {
+    const usage = makeUsage({ cost: 0.1234 });
+    const updated = attachTimeToFirstTokenUsage({
+      usage,
+      timeToFirstTokenMs: undefined,
+    });
+    expect(updated).toEqual(usage);
+  });
+
+  it("adds ttft to existing raw usage", () => {
+    const usage = makeUsage({ cost: 0.1234, provider: "openrouter" });
+    const updated = attachTimeToFirstTokenUsage({
+      usage,
+      timeToFirstTokenMs: 456,
+    });
+    expect(updated).toEqual({
+      ...usage,
+      raw: {
+        cost: 0.1234,
+        provider: "openrouter",
+        timeToFirstTokenMs: 456,
+      },
+    });
+  });
+
+  it("creates usage when only ttft is available", () => {
+    const updated = attachTimeToFirstTokenUsage({
+      usage: undefined,
+      timeToFirstTokenMs: 789,
+    });
+    expect(updated).toEqual({
+      inputTokens: undefined,
+      inputTokenDetails: {
+        noCacheTokens: undefined,
+        cacheReadTokens: undefined,
+        cacheWriteTokens: undefined,
+      },
+      outputTokens: undefined,
+      outputTokenDetails: {
+        textTokens: undefined,
+        reasoningTokens: undefined,
+      },
+      totalTokens: undefined,
+      reasoningTokens: undefined,
+      cachedInputTokens: undefined,
+      raw: {
+        timeToFirstTokenMs: 789,
+      },
+    });
   });
 });
 

@@ -39,7 +39,8 @@ export const languageModelUsage = v.object({
   // Deprecated SDK fields, kept for backward compat with stored data
   reasoningTokens: v.optional(v.number()),
   cachedInputTokens: v.optional(v.number()),
-  // Unmodified provider response - shape varies by provider
+  // Unmodified provider response plus runner-collected metadata such as TTFT.
+  // Shape varies by provider and may include extra observability fields.
   raw: v.optional(v.any()),
 });
 
