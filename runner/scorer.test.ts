@@ -327,6 +327,24 @@ describe("infrastructure step classification", () => {
     ).toBe(false);
   });
 
+  it("does not treat 429 line numbers as rate limits", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "deploy",
+        "Error: Failed to deploy:\nconvex/schema.ts:429: unexpected token",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats tsc timeouts as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "tsc",
+        "Error: tsc (/tmp/project/tsconfig.json) timed out after 60s",
+      ),
+    ).toBe(true);
+  });
+
   it("does not treat TS5057 tsconfig failures as infrastructure failures", () => {
     expect(
       isInfrastructureStepFailure(

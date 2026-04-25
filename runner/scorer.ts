@@ -86,6 +86,9 @@ export function isInfrastructureStepFailure(
   if (stepName === "deploy") {
     return isEnvironmentFailure(lower) || lower.includes("convex dev timed out");
   }
+  if (stepName === "tsc") {
+    return isEnvironmentFailure(lower);
+  }
   return false;
 }
 
@@ -98,8 +101,10 @@ function isEnvironmentFailure(lowerError: string): boolean {
     lowerError.includes("enotfound") ||
     lowerError.includes("eai_again") ||
     lowerError.includes("too many requests") ||
+    lowerError.includes("rate limit") ||
+    lowerError.includes("rate_limit") ||
     lowerError.includes("status code 429") ||
-    /\b429\b/.test(lowerError)
+    lowerError.includes("http 429")
   );
 }
 
