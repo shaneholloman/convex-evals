@@ -11,7 +11,7 @@ import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { rmSync } from "fs";
 import {
-  getTypecheckTarget,
+  getTypecheckTargets,
   isInfrastructureStepFailure,
   walkAnswer,
 } from "./scorer.js";
@@ -229,9 +229,24 @@ describe("typecheck target selection", () => {
     mkdirSync(join(projectDir, "convex"), { recursive: true });
     writeFileSync(join(projectDir, "tsconfig.json"), '{"compilerOptions":{}}');
 
-    expect(getTypecheckTarget(projectDir)).toBe(
+    expect(getTypecheckTargets(projectDir)).toEqual([
       resolve(join(projectDir, "tsconfig.json")),
+    ]);
+  });
+
+  it("checks both root and convex tsconfigs when both are present", () => {
+    const projectDir = join(tempDir, "project");
+    mkdirSync(join(projectDir, "convex"), { recursive: true });
+    writeFileSync(join(projectDir, "tsconfig.json"), '{"compilerOptions":{}}');
+    writeFileSync(
+      join(projectDir, "convex", "tsconfig.json"),
+      '{"compilerOptions":{}}',
     );
+
+    expect(getTypecheckTargets(projectDir)).toEqual([
+      resolve(join(projectDir, "tsconfig.json")),
+      resolve(join(projectDir, "convex", "tsconfig.json")),
+    ]);
   });
 
   it("falls back to convex/tsconfig.json when root tsconfig is absent", () => {
@@ -242,18 +257,18 @@ describe("typecheck target selection", () => {
       '{"compilerOptions":{}}',
     );
 
-    expect(getTypecheckTarget(projectDir)).toBe(
+    expect(getTypecheckTargets(projectDir)).toEqual([
       resolve(join(projectDir, "convex", "tsconfig.json")),
-    );
+    ]);
   });
 
   it("falls back to the convex directory when no tsconfig exists", () => {
     const projectDir = join(tempDir, "project");
     mkdirSync(join(projectDir, "convex"), { recursive: true });
 
-    expect(getTypecheckTarget(projectDir)).toBe(
+    expect(getTypecheckTargets(projectDir)).toEqual([
       resolve(join(projectDir, "convex")),
-    );
+    ]);
   });
 });
 
@@ -303,13 +318,22 @@ describe("infrastructure step classification", () => {
     ).toBe(true);
   });
 
-  it("treats TS5057 tsconfig failures as infrastructure failures", () => {
+  it("does not treat 429 substrings in port numbers as rate limits", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "deploy",
+        "Error: Failed to deploy:\nconvex dev --url http://localhost:54290\nTable definition is invalid",
+      ),
+    ).toBe(false);
+  });
+
+  it("does not treat TS5057 tsconfig failures as infrastructure failures", () => {
     expect(
       isInfrastructureStepFailure(
         "tsc",
         "Error: Failed to typecheck code:\nerror TS5057: Cannot find a tsconfig.json file at the specified directory",
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("does not treat ordinary tsc errors as infrastructure failures", () => {

@@ -86,12 +86,6 @@ export function isInfrastructureStepFailure(
   if (stepName === "deploy") {
     return isEnvironmentFailure(lower) || lower.includes("convex dev timed out");
   }
-  if (stepName === "tsc") {
-    return (
-      lower.includes("ts5057") ||
-      lower.includes("cannot find a tsconfig.json file at the specified directory")
-    );
-  }
   return false;
 }
 
@@ -104,19 +98,22 @@ function isEnvironmentFailure(lowerError: string): boolean {
     lowerError.includes("enotfound") ||
     lowerError.includes("eai_again") ||
     lowerError.includes("too many requests") ||
-    lowerError.includes("429")
+    lowerError.includes("status code 429") ||
+    /\b429\b/.test(lowerError)
   );
 }
 
-export function getTypecheckTarget(projectDir: string): string {
+export function getTypecheckTargets(projectDir: string): string[] {
   const convexDir = resolve(join(projectDir, "convex"));
   const rootTsconfig = resolve(join(projectDir, "tsconfig.json"));
-  if (existsSync(rootTsconfig)) return rootTsconfig;
-
   const convexTsconfig = resolve(join(convexDir, "tsconfig.json"));
-  if (existsSync(convexTsconfig)) return convexTsconfig;
 
-  return convexDir;
+  if (existsSync(rootTsconfig) && existsSync(convexTsconfig)) {
+    return [rootTsconfig, convexTsconfig];
+  }
+  if (existsSync(rootTsconfig)) return [rootTsconfig];
+  if (existsSync(convexTsconfig)) return [convexTsconfig];
+  return [convexDir];
 }
 
 // ── Scoring context ───────────────────────────────────────────────────
@@ -601,20 +598,22 @@ async function typecheckCode(
   projectDir: string,
 ): Promise<Array<{ cmd: string; stdout: string }>> {
   const results: Array<{ cmd: string; stdout: string }> = [];
-  const typecheckTarget = getTypecheckTarget(projectDir);
+  const typecheckTargets = getTypecheckTargets(projectDir);
 
-  const tscConvex = await withTimeout(
-    $`bunx tsc -noEmit -p ${typecheckTarget}`.cwd(projectDir).nothrow().quiet(),
-    TIMEOUTS.tsc,
-    "tsc (convex)",
-  );
-  if (tscConvex.exitCode !== 0) {
-    throw new Error(`Failed to typecheck code:\n${combinedOutput(tscConvex)}`);
+  for (const typecheckTarget of typecheckTargets) {
+    const result = await withTimeout(
+      $`bunx tsc -noEmit -p ${typecheckTarget}`.cwd(projectDir).nothrow().quiet(),
+      TIMEOUTS.tsc,
+      `tsc (${typecheckTarget})`,
+    );
+    if (result.exitCode !== 0) {
+      throw new Error(`Failed to typecheck code:\n${combinedOutput(result)}`);
+    }
+    results.push({
+      cmd: `bunx tsc -noEmit -p ${typecheckTarget}`,
+      stdout: combinedOutput(result),
+    });
   }
-  results.push({
-    cmd: `bunx tsc -noEmit -p ${typecheckTarget}`,
-    stdout: combinedOutput(tscConvex),
-  });
 
   return results;
 }
