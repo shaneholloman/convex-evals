@@ -10,7 +10,11 @@ import {
 import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { rmSync } from "fs";
-import { walkAnswer } from "./scorer.js";
+import {
+  getTypecheckTarget,
+  isInfrastructureStepFailure,
+  walkAnswer,
+} from "./scorer.js";
 
 describe("writeFilesystem pattern", () => {
   let tempDir: string;
@@ -206,6 +210,115 @@ describe("walkAnswer", () => {
     const files = [...walkAnswer(answerDir)];
     expect(files).toHaveLength(2);
     expect(files.some((f) => f.includes("login.ts"))).toBe(true);
+  });
+});
+
+describe("typecheck target selection", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "typecheck-target-test-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("prefers the root tsconfig when present", () => {
+    const projectDir = join(tempDir, "project");
+    mkdirSync(join(projectDir, "convex"), { recursive: true });
+    writeFileSync(join(projectDir, "tsconfig.json"), '{"compilerOptions":{}}');
+
+    expect(getTypecheckTarget(projectDir)).toBe(
+      resolve(join(projectDir, "tsconfig.json")),
+    );
+  });
+
+  it("falls back to convex/tsconfig.json when root tsconfig is absent", () => {
+    const projectDir = join(tempDir, "project");
+    mkdirSync(join(projectDir, "convex"), { recursive: true });
+    writeFileSync(
+      join(projectDir, "convex", "tsconfig.json"),
+      '{"compilerOptions":{}}',
+    );
+
+    expect(getTypecheckTarget(projectDir)).toBe(
+      resolve(join(projectDir, "convex", "tsconfig.json")),
+    );
+  });
+
+  it("falls back to the convex directory when no tsconfig exists", () => {
+    const projectDir = join(tempDir, "project");
+    mkdirSync(join(projectDir, "convex"), { recursive: true });
+
+    expect(getTypecheckTarget(projectDir)).toBe(
+      resolve(join(projectDir, "convex")),
+    );
+  });
+});
+
+describe("infrastructure step classification", () => {
+  it("treats install timeouts as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "install",
+        "Error: bun install timed out after 60s",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat package resolution errors as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "install",
+        "Error: Failed to install dependencies:\nerror: package \"not-a-real-package\" not found",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats deploy connection failures as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "deploy",
+        "Error: Failed to deploy:\nECONNREFUSED localhost:3210",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat Convex code deploy errors as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "deploy",
+        "Error: Failed to deploy:\nFailed to push deployment config:\nconvex/schema.ts: Table definition is invalid",
+      ),
+    ).toBe(false);
+  });
+
+  it("treats rate limits as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "install",
+        "Error: request failed with 429 Too Many Requests",
+      ),
+    ).toBe(true);
+  });
+
+  it("treats TS5057 tsconfig failures as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "tsc",
+        "Error: Failed to typecheck code:\nerror TS5057: Cannot find a tsconfig.json file at the specified directory",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat ordinary tsc errors as infrastructure failures", () => {
+    expect(
+      isInfrastructureStepFailure(
+        "tsc",
+        "Error: Failed to typecheck code:\nconvex/schema.ts(4,1): error TS1005: ',' expected.",
+      ),
+    ).toBe(false);
   });
 });
 

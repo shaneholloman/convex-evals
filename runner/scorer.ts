@@ -15,6 +15,7 @@ import { $ } from "bun";
 import {
   withConvexBackend,
   ADMIN_KEY,
+  InfrastructureError,
   type ConvexBackend,
 } from "./convexBackend.js";
 import {
@@ -71,6 +72,52 @@ type StepName =
   | "tsc"
   | "eslint"
   | "tests";
+
+export function isInfrastructureStepFailure(
+  stepName: StepName,
+  error: string | undefined,
+): boolean {
+  if (!error) return false;
+
+  const lower = error.toLowerCase();
+  if (stepName === "install") {
+    return isEnvironmentFailure(lower);
+  }
+  if (stepName === "deploy") {
+    return isEnvironmentFailure(lower) || lower.includes("convex dev timed out");
+  }
+  if (stepName === "tsc") {
+    return (
+      lower.includes("ts5057") ||
+      lower.includes("cannot find a tsconfig.json file at the specified directory")
+    );
+  }
+  return false;
+}
+
+function isEnvironmentFailure(lowerError: string): boolean {
+  return (
+    lowerError.includes("timed out after") ||
+    lowerError.includes("econnrefused") ||
+    lowerError.includes("econnreset") ||
+    lowerError.includes("etimedout") ||
+    lowerError.includes("enotfound") ||
+    lowerError.includes("eai_again") ||
+    lowerError.includes("too many requests") ||
+    lowerError.includes("429")
+  );
+}
+
+export function getTypecheckTarget(projectDir: string): string {
+  const convexDir = resolve(join(projectDir, "convex"));
+  const rootTsconfig = resolve(join(projectDir, "tsconfig.json"));
+  if (existsSync(rootTsconfig)) return rootTsconfig;
+
+  const convexTsconfig = resolve(join(convexDir, "tsconfig.json"));
+  if (existsSync(convexTsconfig)) return convexTsconfig;
+
+  return convexDir;
+}
 
 // ── Scoring context ───────────────────────────────────────────────────
 
@@ -192,10 +239,10 @@ class ScoringContext {
     handler: () => Promise<Array<{ cmd: string; stdout: string }>>,
     logLabel: string,
     cmdPrefix = "",
-  ): Promise<boolean> {
+  ): Promise<{ passed: boolean; error?: string }> {
     logInfo(`[${this.evalPrefix}] ${logLabel}`);
     const stepStart = Date.now();
-    const passed = await runCommandStep(
+    const result = await runCommandStep(
       this.runLogPath,
       handler,
       stepName,
@@ -205,11 +252,11 @@ class ScoringContext {
     this.recordStepResult(
       stepName,
       scoreName,
-      passed,
+      result.passed,
       stepStart,
-      passed ? undefined : `${stepName} failed`,
+      result.passed ? undefined : result.error ?? `${stepName} failed`,
     );
-    return passed;
+    return result;
   }
 }
 
@@ -256,15 +303,20 @@ export async function convexScorer(
   }
 
   // ── Step 2: Install dependencies ──
-  const installPassed = await ctx.runStep(
+  const installResult = await ctx.runStep(
     "install",
     "`bun install` succeeds",
     () => installDependencies(outputProjectDir),
     "Installing dependencies (bun install)",
   );
-  if (!installPassed) {
+  if (!installResult.passed) {
     await ctx.reportEarlyExit("install fail");
-    return ctx.scores;
+    if (!isInfrastructureStepFailure("install", installResult.error)) {
+      return ctx.scores;
+    }
+    throw new InfrastructureError(
+      `[install] ${installResult.error ?? "bun install failed"}`,
+    );
   }
 
   // ── Steps 3-6: Deploy, typecheck, lint, test (inside backend context) ──
@@ -280,24 +332,38 @@ export async function convexScorer(
 
   await withConvexBackend(outputBackendDir, async (outputBackend) => {
     // Deploy
-    const deployPassed = await ctx.runStep(
+    const deployResult = await ctx.runStep(
       "deploy",
       "`convex dev` succeeds",
       () => deploy(outputBackend, outputProjectDir),
       `Deploying generated backend on port ${outputBackend.port}`,
     );
-    if (!deployPassed) {
+    if (!deployResult.passed) {
       await ctx.reportEarlyExit("convex dev fail");
-      return;
+      if (!isInfrastructureStepFailure("deploy", deployResult.error)) {
+        return;
+      }
+      throw new InfrastructureError(
+        `[deploy] ${deployResult.error ?? "convex dev failed"}`,
+      );
     }
 
     // Typecheck
-    await ctx.runStep(
+    const tscResult = await ctx.runStep(
       "tsc",
       "Passes tsc",
       () => typecheckCode(outputProjectDir),
       "Typechecking (tsc)",
     );
+    if (
+      !tscResult.passed &&
+      isInfrastructureStepFailure("tsc", tscResult.error)
+    ) {
+      await ctx.reportEarlyExit("tsc fail");
+      throw new InfrastructureError(
+        `[tsc] ${tscResult.error ?? "tsc failed"}`,
+      );
+    }
 
     // Lint
     await ctx.runStep(
@@ -535,10 +601,10 @@ async function typecheckCode(
   projectDir: string,
 ): Promise<Array<{ cmd: string; stdout: string }>> {
   const results: Array<{ cmd: string; stdout: string }> = [];
-  const convexDir = resolve(join(projectDir, "convex"));
+  const typecheckTarget = getTypecheckTarget(projectDir);
 
   const tscConvex = await withTimeout(
-    $`bunx tsc -noEmit -p ${convexDir}`.cwd(projectDir).nothrow().quiet(),
+    $`bunx tsc -noEmit -p ${typecheckTarget}`.cwd(projectDir).nothrow().quiet(),
     TIMEOUTS.tsc,
     "tsc (convex)",
   );
@@ -546,22 +612,10 @@ async function typecheckCode(
     throw new Error(`Failed to typecheck code:\n${combinedOutput(tscConvex)}`);
   }
   results.push({
-    cmd: `bunx tsc -noEmit -p ${convexDir}`,
+    cmd: `bunx tsc -noEmit -p ${typecheckTarget}`,
     stdout: combinedOutput(tscConvex),
   });
 
-  const srcDir = resolve(join(projectDir, "src"));
-  if (existsSync(srcDir)) {
-    const tscSrc = await withTimeout(
-      $`bunx tsc -noEmit -p .`.cwd(projectDir).nothrow().quiet(),
-      TIMEOUTS.tsc,
-      "tsc (src)",
-    );
-    if (tscSrc.exitCode !== 0) {
-      throw new Error(`Failed to typecheck code:\n${combinedOutput(tscSrc)}`);
-    }
-    results.push({ cmd: "bunx tsc -noEmit -p .", stdout: combinedOutput(tscSrc) });
-  }
   return results;
 }
 

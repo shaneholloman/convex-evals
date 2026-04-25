@@ -201,7 +201,7 @@ describe("runCommandStep", () => {
       "step",
       "cmd failed",
     );
-    expect(result).toBe(true);
+    expect(result).toEqual({ passed: true });
     expect(readFileSync(logPath, "utf-8")).toContain("ok");
   });
 
@@ -214,7 +214,7 @@ describe("runCommandStep", () => {
       "step",
       "cmd failed",
     );
-    expect(result).toBe(false);
+    expect(result).toEqual({ passed: false, error: "Error: boom" });
     expect(readFileSync(logPath, "utf-8")).toContain("boom");
   });
 });

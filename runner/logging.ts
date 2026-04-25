@@ -72,7 +72,7 @@ export function logVitestResults(
 
 /**
  * Execute a handler that returns command results; log results or error.
- * Returns true on success, false on exception.
+ * Returns the success flag and captured error string on failure.
  */
 export async function runCommandStep(
   logPath: string,
@@ -80,13 +80,14 @@ export async function runCommandStep(
   prefix: string,
   errorLabel: string,
   cmdPrefix = "",
-): Promise<boolean> {
+): Promise<{ passed: boolean; error?: string }> {
   try {
     const results = await handler();
     logCmdResults(logPath, results, prefix, cmdPrefix);
-    return true;
+    return { passed: true };
   } catch (e) {
-    appendLog(logPath, `[error] ${errorLabel}: ${String(e)}`);
-    return false;
+    const error = String(e);
+    appendLog(logPath, `[error] ${errorLabel}: ${error}`);
+    return { passed: false, error };
   }
 }
