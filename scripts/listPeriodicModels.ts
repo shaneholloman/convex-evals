@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
  * Output periodic workflow models as JSON for use in CI workflows.
- * We gather raw candidates from curated, top-day OpenRouter, and benchmark
- * sources, dedupe once, then apply due and selector preflight filters with
- * detailed logging so it is obvious why each model was kept or skipped.
+ * We gather raw candidates from curated and top-day OpenRouter sources,
+ * dedupe once, then apply due and selector preflight filters with detailed
+ * logging so it is obvious why each model was kept or skipped.
  *
  * Usage:
  *   bun run scripts/listPeriodicModels.ts --format json [--output-file <path>]
@@ -20,10 +20,6 @@ import {
 } from "../runner/models/openRouterDiscovery.js";
 import type { ResolvedModel } from "../runner/models/index.js";
 import {
-  fetchAgenticBenchmarkRows,
-  selectTopModels as selectTopBenchmarkModels,
-} from "./listTopOpenRouterBenchmarkModels.js";
-import {
   fetchTopDailySlugs,
   shouldSkipForProviderError,
   shouldSkipForMissingEndpoint,
@@ -36,11 +32,10 @@ import {
 
 const DEFAULT_FORMAT = "json";
 const TOP_DAY_LIMIT = 15;
-const BENCHMARK_LIMIT = 10;
 const PREFLIGHT_MAX_ATTEMPTS = 3;
 const PREFLIGHT_RETRY_DELAYS_MS = [1_000, 2_000];
 
-type ModelSourceName = "curated" | "top-day" | "benchmark";
+type ModelSourceName = "curated" | "top-day";
 
 export interface MergeModelsResult {
   models: string[];
@@ -159,16 +154,6 @@ async function collectTopDayModels(): Promise<string[]> {
 
   logInfo(`[periodic] top-day source produced ${selected.length} models`);
   return selected;
-}
-
-async function collectBenchmarkModels(): Promise<string[]> {
-  logInfo(
-    `[periodic] fetching benchmark OpenRouter models, target ${BENCHMARK_LIMIT}`,
-  );
-  const rows = await fetchAgenticBenchmarkRows();
-  const models = selectTopBenchmarkModels(rows, BENCHMARK_LIMIT);
-  logInfo(`[periodic] benchmark source produced ${models.length} models`);
-  return models;
 }
 
 export function mergeModelSources(
@@ -360,12 +345,10 @@ async function filterRunnableModelsSequentially(
 export async function selectPeriodicModels(): Promise<string[]> {
   const curatedModels = await collectCuratedModels();
   const topOpenRouterModels = await collectTopDayModels();
-  const benchmarkModels = await collectBenchmarkModels();
 
   const sourceEntries: Array<[ModelSourceName, string[]]> = [
     ["curated", curatedModels],
     ["top-day", topOpenRouterModels],
-    ["benchmark", benchmarkModels],
   ];
   const merged = mergeModelSources(sourceEntries);
 

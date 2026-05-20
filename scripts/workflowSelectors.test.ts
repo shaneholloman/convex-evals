@@ -5,10 +5,6 @@ import {
   shouldSkipForProviderError,
   shouldSkipForMissingEndpoint,
 } from "./listTopOpenRouterModels.js";
-import {
-  extractEscapedJsonArray,
-  selectTopModels as selectTopBenchmarkModels,
-} from "./listTopOpenRouterBenchmarkModels.js";
 import { mergeModelSources } from "./listPeriodicModels.js";
 
 describe("top OpenRouter selector helpers", () => {
@@ -87,54 +83,19 @@ describe("OpenRouter capability helpers", () => {
   });
 });
 
-describe("benchmark selector helpers", () => {
-  it("extracts the escaped benchmark array from rankings HTML", () => {
-    const html =
-      'prefix \\"agentic\\":[{\\"openrouter_slug\\":\\"foo/bar\\",\\"score\\":10}],\\"coding\\":[1] suffix';
-    expect(extractEscapedJsonArray(html, "agentic")).toBe(
-      '[{\\"openrouter_slug\\":\\"foo/bar\\",\\"score\\":10}]',
-    );
-  });
-
-  it("selects top benchmark models by score", () => {
-    const rows = [
-      { openrouter_slug: "foo/bar", score: 10 },
-      { openrouter_slug: "baz/qux", score: 30 },
-      { heuristic_openrouter_slug: "fallback/model", score: 20 },
-    ];
-    expect(selectTopBenchmarkModels(rows, 3)).toEqual([
-      "baz/qux",
-      "fallback/model",
-      "foo/bar",
-    ]);
-  });
-
-  it("deduplicates and skips rows with no usable slug", () => {
-    const rows = [
-      { openrouter_slug: "foo/bar", score: 30 },
-      { openrouter_slug: "foo/bar", score: 25 },
-      { heuristic_openrouter_slug: "baz/qux", score: 20 },
-      { score: 15 },
-    ];
-    expect(selectTopBenchmarkModels(rows, 3)).toEqual(["foo/bar", "baz/qux"]);
-  });
-});
-
 describe("periodic selector helpers", () => {
   it("merges sources and deduplicates in source order", () => {
     expect(
       mergeModelSources([
         ["curated", ["a", "b"]],
-        ["top-day", ["b", "c"]],
-        ["benchmark", ["c", "d", "a"]],
+        ["top-day", ["b", "c", "a"]],
       ]),
     ).toEqual({
-      models: ["a", "b", "c", "d"],
+      models: ["a", "b", "c"],
       modelSources: {
-        a: ["curated", "benchmark"],
+        a: ["curated", "top-day"],
         b: ["curated", "top-day"],
-        c: ["top-day", "benchmark"],
-        d: ["benchmark"],
+        c: ["top-day"],
       },
     });
   });
