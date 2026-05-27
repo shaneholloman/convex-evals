@@ -193,6 +193,8 @@ dist/
 ablation/*.md
 ablation/without_*/
 
+reports/local-cursor-composer-2.5/
+
 CLAUDE.md
 
 # Visualizer (TanStack Start / Nitro)

@@ -9,6 +9,8 @@ import { stepCountIs, streamText, type LanguageModel, type LanguageModelUsage } 
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import MarkdownIt from "markdown-it";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "fs";
 import {
   type ResolvedModel,
@@ -48,6 +50,10 @@ function createLanguageModel(
   model: ResolvedModel,
   apiKey: string,
 ): LanguageModel {
+  if (model.apiKind === "cursor-sdk") {
+    throw new Error("Cursor SDK models are invoked directly, not via AI SDK");
+  }
+
   if (model.apiKind === "responses") {
     const openai = createOpenAI({ apiKey, baseURL: model.baseURL });
     return openai.responses(model.runnableName);
@@ -308,12 +314,15 @@ function getMaxOutputTokens(model: ResolvedModel): number {
 // ── Model class ───────────────────────────────────────────────────────
 
 export class Model {
-  private languageModel: LanguageModel;
+  private languageModel: LanguageModel | null;
   private resolved: ResolvedModel;
+  private apiKey: string;
 
   constructor(apiKey: string, model: ResolvedModel) {
     this.resolved = model;
-    this.languageModel = createLanguageModel(model, apiKey);
+    this.apiKey = apiKey;
+    this.languageModel =
+      model.apiKind === "cursor-sdk" ? null : createLanguageModel(model, apiKey);
   }
 
   async generate(prompt: string): Promise<{
@@ -328,10 +337,18 @@ export class Model {
       ? `${SYSTEM_PROMPT}\n\n${WEB_SEARCH_SYSTEM_SUPPLEMENT}`
       : SYSTEM_PROMPT;
 
+    if (this.resolved.apiKind === "cursor-sdk") {
+      return this.generateWithCursorSdk(systemContent, userPrompt);
+    }
+
     const maxTokens = getMaxOutputTokens(this.resolved);
+    const languageModel = this.languageModel;
+    if (languageModel === null) {
+      throw new Error("Language model missing");
+    }
 
     const baseOptions = {
-      model: this.languageModel,
+      model: languageModel,
       maxOutputTokens: maxTokens,
       maxRetries: 5,
     };
@@ -395,6 +412,65 @@ export class Model {
       files: parseMarkdownResponse(text),
       usage: enrichedUsage,
       rawResponse: text,
+    };
+  }
+
+  private async generateWithCursorSdk(
+    systemContent: string,
+    userPrompt: string,
+  ): Promise<{
+    files: Record<string, string>;
+    usage?: LanguageModelUsage;
+    rawResponse: string;
+  }> {
+    const helperPath = fileURLToPath(
+      new URL("./cursorSdkGenerate.mjs", import.meta.url),
+    );
+    const raw = execFileSync(
+      "node",
+      [helperPath],
+      {
+        input: JSON.stringify({
+          runnableName: this.resolved.runnableName,
+          formattedName: this.resolved.formattedName,
+          systemContent,
+          userPrompt,
+        }),
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          CURSOR_API_KEY: this.apiKey,
+        },
+        maxBuffer: 50 * 1024 * 1024,
+      },
+    );
+
+    const result = JSON.parse(raw) as {
+      text: string;
+      sawToolCall: boolean;
+      advertisedTools?: string[];
+      timeToFirstTokenMs?: number;
+    };
+
+    if (result.advertisedTools && result.advertisedTools.length > 0) {
+      throw new Error(
+        `Cursor SDK run advertised tools (${result.advertisedTools.join(", ")}); refusing to score it as a raw model output`,
+      );
+    }
+
+    if (result.sawToolCall) {
+      throw new Error(
+        "Cursor SDK run attempted to use a tool; refusing to score it as a one-shot model output",
+      );
+    }
+
+    return {
+      files: parseMarkdownResponse(result.text),
+      usage: attachTimeToFirstTokenUsage({
+        usage: undefined,
+        timeToFirstTokenMs: result.timeToFirstTokenMs,
+      }),
+      rawResponse: result.text,
     };
   }
 }
