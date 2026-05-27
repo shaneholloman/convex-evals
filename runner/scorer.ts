@@ -33,7 +33,7 @@ const RAW_MODEL_RESPONSE_DEBUG_FILE = "raw_model_response.md";
 const EMPTY_PARSED_OUTPUT_ERROR = "Empty parsed model output";
 
 const TIMEOUTS = {
-  bunInstall: 60_000,
+  bunInstall: 120_000,
   codegen: 60_000,
   tsc: 60_000,
   eslint: 60_000,
