@@ -35,8 +35,8 @@ const EMPTY_PARSED_OUTPUT_ERROR = "Empty parsed model output";
 const TIMEOUTS = {
   bunInstall: 120_000,
   codegen: 60_000,
-  tsc: 60_000,
-  eslint: 60_000,
+  tsc: 120_000,
+  eslint: 120_000,
   deploy: 90_000,
   vitest: 120_000,
 } as const;
