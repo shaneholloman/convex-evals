@@ -6,7 +6,7 @@
 export const OPENROUTER_API_KEY_VAR = "OPENROUTER_API_KEY";
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_MAX_CONCURRENCY = parseInt(
-  process.env.OPENROUTER_CONCURRENCY ?? "8",
+  process.env.OPENROUTER_CONCURRENCY ?? "4",
   10,
 );
 

@@ -125,7 +125,7 @@ export async function withConvexBackend<T>(
 
 // ── Health check ─────────────────────────────────────────────────────
 
-const HEALTH_CHECK_TIMEOUT_MS = 10_000;
+const HEALTH_CHECK_TIMEOUT_MS = 30_000;
 
 async function healthCheck(port: number): Promise<void> {
   const deadline = Date.now() + HEALTH_CHECK_TIMEOUT_MS;
