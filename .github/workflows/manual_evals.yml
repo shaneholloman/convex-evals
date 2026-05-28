@@ -6,7 +6,7 @@ on:
       models:
         description: "Comma-separated model names to evaluate"
         required: false
-        default: "xiaomi/mimo-v2-pro"
+        default: "anthropic/claude-opus-4.8"
       test_filter:
         description: "Regex to filter evals (e.g. '000-fundamentals', '000-fundamentals/000')"
         required: false
