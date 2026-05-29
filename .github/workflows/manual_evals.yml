@@ -29,7 +29,6 @@ jobs:
       ENVIRONMENT: ci
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -44,15 +43,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install
-
-      - name: Install Claude Code CLI and Convex plugin
-        if: contains(inputs.models, 'claude-code-convex')
-        run: |
-          npm install -g @anthropic-ai/claude-code
-          claude --version
-          claude plugin marketplace add anthropics/claude-plugins-official
-          claude plugin install convex@claude-plugins-official
-          ls -la "$HOME/.claude/plugins" || true
 
       - name: Create temp directory
         run: mkdir -p /tmp/convex-evals
@@ -71,7 +61,6 @@ jobs:
       - name: Run evaluations
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals
-          OPENROUTER_CONCURRENCY: ${{ contains(inputs.models, 'claude-code') && '2' || '4' }}
         run: bun run runner/index.ts
 
       - name: Run evaluations (no_guidelines experiment)
@@ -79,16 +68,4 @@ jobs:
         env:
           OUTPUT_TEMPDIR: /tmp/convex-evals-no-guidelines
           EVALS_EXPERIMENT: no_guidelines
-          OPENROUTER_CONCURRENCY: ${{ contains(inputs.models, 'claude-code') && '2' || '4' }}
         run: bun run runner/index.ts
-
-      - name: Upload eval outputs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eval-outputs-${{ github.run_id }}
-          path: |
-            /tmp/convex-evals
-            /tmp/convex-evals-no-guidelines
-          if-no-files-found: ignore
-          retention-days: 14
