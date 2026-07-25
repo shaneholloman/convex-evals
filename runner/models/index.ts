@@ -31,6 +31,7 @@ export function resolveModelDefaults(name: string): ResolvedModel {
 export const ALL_MODELS: string[] = [
   "cursor/composer-2.5",
   "anthropic/claude-sonnet-5",
+  "anthropic/claude-opus-5",
   "anthropic/claude-opus-4.8",
   "anthropic/claude-fable-5",
   "openai/gpt-5.5",

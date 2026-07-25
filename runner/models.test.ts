@@ -28,6 +28,7 @@ describe("ALL_MODELS", () => {
   it("contains the current curated models", () => {
     expect(ALL_MODELS).toContain("cursor/composer-2.5");
     expect(ALL_MODELS).toContain("anthropic/claude-sonnet-5");
+    expect(ALL_MODELS).toContain("anthropic/claude-opus-5");
     expect(ALL_MODELS).toContain("anthropic/claude-opus-4.8");
     expect(ALL_MODELS).toContain("anthropic/claude-fable-5");
     expect(ALL_MODELS).toContain("openai/gpt-5.5");
