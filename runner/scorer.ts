@@ -10,7 +10,7 @@ import {
   readFileSync,
 } from "fs";
 import { join, resolve, relative } from "path";
-import { tmpdir } from "os";
+import { platform, tmpdir } from "os";
 import { $ } from "bun";
 import {
   withConvexBackend,
@@ -83,6 +83,78 @@ async function withTimeout<T>(
   });
   try {
     return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+export async function retryInfrastructureOperation<T>(
+  operation: () => Promise<T>,
+  sleep: (ms: number) => Promise<unknown> = Bun.sleep,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isEnvironmentFailure(String(error).toLowerCase())) throw error;
+    logInfo(`[infrastructure] ${String(error)}; retrying once in 1s`);
+    await sleep(1_000);
+    return await operation();
+  }
+}
+
+export async function runCommandWithTimeout(
+  command: string[],
+  cwd: string,
+  timeoutMs: number,
+  label: string,
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  const proc = Bun.spawn(command, {
+    cwd,
+    detached: true,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const stdoutPromise = new Response(proc.stdout).text();
+  const stderrPromise = new Response(proc.stderr).text();
+
+  let timer: ReturnType<typeof setTimeout>;
+  try {
+    const exitCode = await Promise.race([
+      proc.exited,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs / 1000}s`));
+        }, timeoutMs);
+      }),
+    ]);
+    const [stdout, stderr] = await Promise.all([
+      stdoutPromise,
+      stderrPromise,
+    ]);
+    return { exitCode, stdout, stderr };
+  } catch (error) {
+    if (proc.exitCode === null) {
+      try {
+        if (platform() === "win32") {
+          proc.kill("SIGKILL");
+        } else {
+          // detached starts a new POSIX process group. Kill the whole group so
+          // lifecycle children cannot keep mutating the project during retry.
+          process.kill(-proc.pid, "SIGKILL");
+        }
+      } catch {
+        try {
+          proc.kill("SIGKILL");
+        } catch {
+          // The process exited between the status check and the signal.
+        }
+      }
+      await proc.exited;
+    }
+    // A lifecycle descendant may still hold an inherited pipe on platforms
+    // without process-group signals. Never let stream draining mask the timeout.
+    void Promise.all([stdoutPromise, stderrPromise]).catch(() => {});
+    throw error;
   } finally {
     clearTimeout(timer!);
   }
@@ -968,17 +1040,19 @@ export function formatDeployFailure(
 async function installDependencies(
   projectDir: string,
 ): Promise<Array<{ cmd: string; stdout: string }>> {
-  const result = await withTimeout(
-    $`bun install`.cwd(projectDir).nothrow().quiet(),
-    TIMEOUTS.bunInstall,
-    "bun install",
-  );
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `Failed to install dependencies:\n${combinedOutput(result)}`,
+  return retryInfrastructureOperation(async () => {
+    const result = await runCommandWithTimeout(
+      ["bun", "install"],
+      projectDir,
+      TIMEOUTS.bunInstall,
+      "bun install",
     );
-  }
-  return [{ cmd: "bun install", stdout: combinedOutput(result) }];
+    const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
+    if (result.exitCode !== 0) {
+      throw new Error(`Failed to install dependencies:\n${output}`);
+    }
+    return [{ cmd: "bun install", stdout: output }];
+  });
 }
 
 async function deploy(
