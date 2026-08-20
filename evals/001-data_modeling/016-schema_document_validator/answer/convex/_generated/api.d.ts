@@ -8,8 +8,7 @@
  * @module
  */
 
-import type * as index from "../index.js";
-import type * as validators from "../validators.js";
+import type * as profiles from "../profiles.js";
 
 import type {
   ApiFromModules,
@@ -18,8 +17,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  index: typeof index;
-  validators: typeof validators;
+  profiles: typeof profiles;
 }>;
 
 /**

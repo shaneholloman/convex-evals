@@ -1,0 +1,30 @@
+Build a backend that restores a user profile from a previously saved snapshot.
+
+Use this schema in `convex/schema.ts`:
+
+```ts
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  profiles: defineTable({
+    displayName: v.string(),
+    bio: v.string(),
+  }),
+});
+```
+
+Create `convex/profiles.ts` with a mutation `restoreProfile` that:
+
+- Takes `{ snapshot }`, where `snapshot` is a complete `profiles` document as
+  returned by the database, including its `_id` and `_creationTime` system
+  fields
+- Throws an error if the profile with `snapshot._id` no longer exists
+- Otherwise replaces that profile's `displayName` and `bio` with the values
+  from the snapshot, keeping the same `_id`
+- Returns `null`
+
+The `snapshot` argument must be validated as a complete stored `profiles`
+document. Define the profile fields' validators only once, in the schema, and
+derive the snapshot validator from that schema. Do not re-declare
+`displayName`, `bio`, `_id`, or `_creationTime` validators elsewhere.
