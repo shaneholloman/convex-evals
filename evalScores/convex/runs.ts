@@ -631,19 +631,20 @@ export const leaderboardScores = query({
 
     if (args.benchmarkVersion === ALL_BENCHMARK_VERSIONS) {
       const publicBenchmarks = (
-        await ctx.db.query("benchmarkVersions").take(1_000)
+        await ctx.db.query("benchmarkVersions").collect()
       ).filter((benchmark) => benchmark.provenance !== "unminted");
       const publicIds = new Set(
         publicBenchmarks.map((benchmark) => benchmark._id),
       );
+      // This aggregate must include every public partition. A fixed take()
+      // would silently change historical scores once the table grows past it.
       const scoreRows = (
         await ctx.db
           .query("modelScores")
           .withIndex("by_experiment", (q) =>
             q.eq("experiment", args.experiment),
           )
-          .order("desc")
-          .take(1_000)
+          .collect()
       ).filter((row) => publicIds.has(row.benchmarkVersion));
 
       const byModel = new Map<Id<"models">, Doc<"modelScores">[]>();
@@ -681,7 +682,7 @@ export const leaderboardScores = query({
             .eq("experiment", args.experiment)
             .eq("benchmarkVersion", benchmark._id),
         )
-        .take(1_000);
+        .collect();
       returnedVersion = benchmark.version;
       for (const row of rows) {
         scoreBenchmarkByModel.set(row.modelId, {
@@ -705,13 +706,15 @@ export const leaderboardScores = query({
           publicBenchmarks.map((candidate) => [candidate._id, candidate]),
         );
         const cutoff = Date.now() - PREVIOUS_BENCHMARK_MAX_AGE_MS;
+        // modelScores rows are patched in place, so document creation order is
+        // not score recency. Read the complete experiment before comparing
+        // latestRunTime or a recently updated fallback could be omitted.
         const previousRows = await ctx.db
           .query("modelScores")
           .withIndex("by_experiment", (q) =>
             q.eq("experiment", args.experiment),
           )
-          .order("desc")
-          .take(1_000);
+          .collect();
         const latestPreviousByModel = new Map<
           Id<"models">,
           Doc<"modelScores">
