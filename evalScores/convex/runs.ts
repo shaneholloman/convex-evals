@@ -13,6 +13,9 @@ import {
 } from "./scoringUtils.js";
 
 const ALL_BENCHMARK_VERSIONS = "all";
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PREVIOUS_BENCHMARK_MAX_AGE_MS = 183 * DAY_MS;
+const MAX_LEADERBOARD_ROWS = 100;
 
 type ScoreSummary = {
   mean: number;
@@ -35,6 +38,41 @@ type LeaderboardScoreRow = Pick<
   | "latestRunId"
   | "latestRunTime"
 >;
+
+const leaderboardScoreValidator = v.object({
+  modelId: v.id("models"),
+  model: v.string(),
+  formattedName: v.string(),
+  openRouterFirstSeenAt: v.number(),
+  benchmarkVersion: v.string(),
+  scoreBenchmarkVersion: v.string(),
+  scoreBenchmarkEvalCount: v.number(),
+  scoreBenchmarkMintedAt: v.number(),
+  matchesSelectedBenchmark: v.boolean(),
+  totalScore: v.number(),
+  totalScoreErrorBar: v.number(),
+  averageRunDurationMs: v.number(),
+  averageRunDurationMsErrorBar: v.number(),
+  averageRunCostUsd: v.union(v.number(), v.null()),
+  averageRunCostUsdErrorBar: v.union(v.number(), v.null()),
+  scores: v.record(v.string(), v.number()),
+  scoreErrorBars: v.record(v.string(), v.number()),
+  runCount: v.number(),
+  latestRunId: v.id("runs"),
+  latestRunTime: v.number(),
+});
+
+type ScoreBenchmarkMetadata = {
+  version: string;
+  evalCount: number;
+  mintedAt: number;
+  matchesSelectedBenchmark: boolean;
+};
+
+function clampLeaderboardLimit(limit: number | undefined): number {
+  if (limit === undefined) return MAX_LEADERBOARD_ROWS;
+  return Math.max(1, Math.min(MAX_LEADERBOARD_ROWS, Math.floor(limit)));
+}
 
 /**
  * Combine population means and standard deviations without loading raw runs.
@@ -141,7 +179,7 @@ async function getCurrentBenchmark(
     .query("benchmarkVersions")
     .withIndex("by_effectiveAt")
     .order("desc")
-    .collect();
+    .take(1_000);
   return (
     publicVersions.find((version) => version.provenance !== "unminted") ?? null
   );
@@ -579,14 +617,21 @@ export const leaderboardScores = query({
   args: {
     experiment: v.optional(experimentLiteral),
     benchmarkVersion: v.optional(v.string()),
+    includeRecentPreviousBenchmarks: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
   },
+  returns: v.array(leaderboardScoreValidator),
   handler: async (ctx, args) => {
     let rows: LeaderboardScoreRow[];
     let returnedVersion: string;
+    const scoreBenchmarkByModel = new Map<
+      Id<"models">,
+      ScoreBenchmarkMetadata
+    >();
 
     if (args.benchmarkVersion === ALL_BENCHMARK_VERSIONS) {
       const publicBenchmarks = (
-        await ctx.db.query("benchmarkVersions").collect()
+        await ctx.db.query("benchmarkVersions").take(1_000)
       ).filter((benchmark) => benchmark.provenance !== "unminted");
       const publicIds = new Set(
         publicBenchmarks.map((benchmark) => benchmark._id),
@@ -597,7 +642,8 @@ export const leaderboardScores = query({
           .withIndex("by_experiment", (q) =>
             q.eq("experiment", args.experiment),
           )
-          .collect()
+          .order("desc")
+          .take(1_000)
       ).filter((row) => publicIds.has(row.benchmarkVersion));
 
       const byModel = new Map<Id<"models">, Doc<"modelScores">[]>();
@@ -608,7 +654,16 @@ export const leaderboardScores = query({
       }
       rows = [...byModel.values()].map(combineModelScoreRows);
       returnedVersion = ALL_BENCHMARK_VERSIONS;
+      for (const row of rows) {
+        scoreBenchmarkByModel.set(row.modelId, {
+          version: ALL_BENCHMARK_VERSIONS,
+          evalCount: 0,
+          mintedAt: 0,
+          matchesSelectedBenchmark: true,
+        });
+      }
     } else {
+      const currentBenchmark = await getCurrentBenchmark(ctx);
       const benchmark = args.benchmarkVersion
         ? await ctx.db
             .query("benchmarkVersions")
@@ -616,7 +671,7 @@ export const leaderboardScores = query({
               q.eq("version", args.benchmarkVersion!),
             )
             .unique()
-        : await getCurrentBenchmark(ctx);
+        : currentBenchmark;
       if (!benchmark) return [];
 
       rows = await ctx.db
@@ -626,26 +681,118 @@ export const leaderboardScores = query({
             .eq("experiment", args.experiment)
             .eq("benchmarkVersion", benchmark._id),
         )
-        .collect();
+        .take(1_000);
       returnedVersion = benchmark.version;
-    }
-    const models = await ctx.db.query("models").collect();
-    const modelMap = new Map(models.map((m) => [m._id, m] as const));
+      for (const row of rows) {
+        scoreBenchmarkByModel.set(row.modelId, {
+          version: benchmark.version,
+          evalCount: benchmark.evalCount,
+          mintedAt: benchmark.effectiveAt,
+          matchesSelectedBenchmark: true,
+        });
+      }
 
-    // Sort by total score descending (highest first), then by model name for ties
+      const isCurrentSelection = currentBenchmark?._id === benchmark._id;
+      if (args.includeRecentPreviousBenchmarks && isCurrentSelection) {
+        const publicBenchmarks = (
+          await ctx.db
+            .query("benchmarkVersions")
+            .withIndex("by_effectiveAt")
+            .order("desc")
+            .take(1_000)
+        ).filter((candidate) => candidate.provenance !== "unminted");
+        const publicBenchmarkById = new Map(
+          publicBenchmarks.map((candidate) => [candidate._id, candidate]),
+        );
+        const cutoff = Date.now() - PREVIOUS_BENCHMARK_MAX_AGE_MS;
+        const previousRows = await ctx.db
+          .query("modelScores")
+          .withIndex("by_experiment", (q) =>
+            q.eq("experiment", args.experiment),
+          )
+          .order("desc")
+          .take(1_000);
+        const latestPreviousByModel = new Map<
+          Id<"models">,
+          Doc<"modelScores">
+        >();
+
+        for (const row of previousRows) {
+          if (
+            row.benchmarkVersion === benchmark._id ||
+            row.latestRunTime < cutoff ||
+            !publicBenchmarkById.has(row.benchmarkVersion) ||
+            scoreBenchmarkByModel.has(row.modelId)
+          ) {
+            continue;
+          }
+          const existing = latestPreviousByModel.get(row.modelId);
+          if (!existing || row.latestRunTime > existing.latestRunTime) {
+            latestPreviousByModel.set(row.modelId, row);
+          }
+        }
+
+        for (const row of latestPreviousByModel.values()) {
+          const scoreBenchmark = publicBenchmarkById.get(row.benchmarkVersion)!;
+          rows.push(row);
+          scoreBenchmarkByModel.set(row.modelId, {
+            version: scoreBenchmark.version,
+            evalCount: scoreBenchmark.evalCount,
+            mintedAt: scoreBenchmark.effectiveAt,
+            matchesSelectedBenchmark: false,
+          });
+        }
+      }
+    }
+    // Only load metadata for models represented in the candidate score rows.
+    // This avoids scanning the whole models table as discovery adds models.
+    const modelIds = [...new Set(rows.map((row) => row.modelId))];
+    const modelEntries = await Promise.all(
+      modelIds.map(
+        async (modelId) => [modelId, await ctx.db.get(modelId)] as const,
+      ),
+    );
+    const modelMap = new Map(modelEntries);
+
+    // Keep the selected benchmark's real ranking intact. Previous-benchmark
+    // rows follow it in recency order and are only context, never rank entries.
     rows.sort((a, b) => {
       const modelA = modelMap.get(a.modelId)?.slug ?? "";
       const modelB = modelMap.get(b.modelId)?.slug ?? "";
+      const metadataA = scoreBenchmarkByModel.get(a.modelId)!;
+      const metadataB = scoreBenchmarkByModel.get(b.modelId)!;
+      if (
+        metadataA.matchesSelectedBenchmark !==
+        metadataB.matchesSelectedBenchmark
+      ) {
+        return metadataA.matchesSelectedBenchmark ? -1 : 1;
+      }
+      if (!metadataA.matchesSelectedBenchmark) {
+        return (
+          b.latestRunTime - a.latestRunTime || modelA.localeCompare(modelB)
+        );
+      }
       return b.totalScore - a.totalScore || modelA.localeCompare(modelB);
     });
 
-    return rows.map((r) => ({
+    const limit = args.includeRecentPreviousBenchmarks
+      ? clampLeaderboardLimit(args.limit)
+      : args.limit === undefined
+        ? rows.length
+        : clampLeaderboardLimit(args.limit);
+
+    return rows.slice(0, limit).map((r) => ({
       modelId: r.modelId,
       model: modelMap.get(r.modelId)?.slug ?? "unknown-model",
       formattedName: modelMap.get(r.modelId)?.formattedName ?? "Unknown model",
       openRouterFirstSeenAt:
         modelMap.get(r.modelId)?.openRouterFirstSeenAt ?? 0,
       benchmarkVersion: returnedVersion,
+      scoreBenchmarkVersion: scoreBenchmarkByModel.get(r.modelId)!.version,
+      scoreBenchmarkEvalCount: scoreBenchmarkByModel.get(r.modelId)!.evalCount,
+      scoreBenchmarkMintedAt: scoreBenchmarkByModel.get(r.modelId)!.mintedAt,
+      matchesSelectedBenchmark: scoreBenchmarkByModel.get(r.modelId)!
+        .matchesSelectedBenchmark,
       totalScore: r.totalScore,
       totalScoreErrorBar: r.totalScoreErrorBar,
       averageRunDurationMs: r.averageRunDurationMs,
