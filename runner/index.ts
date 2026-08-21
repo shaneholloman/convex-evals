@@ -78,8 +78,6 @@ const ANSWER_VALIDATION_MODEL: ResolvedModel = {
   formattedName: "Answer Validation",
 };
 
-const CURSOR_API_KEY_VAR = "CURSOR_API_KEY";
-
 type SharedRunOptions = Omit<RunConfig, "model" | "executionMode">;
 
 export function runAnswerValidation(
@@ -278,7 +276,7 @@ export async function runEvalsForModel(
         model.name,
         modelDisplayName,
         provider,
-        model.apiKind === "cursor-sdk" ? "chat" : model.apiKind,
+        model.apiKind,
         metadata?.openRouterFirstSeenAt,
       );
       if (modelId) {
@@ -308,42 +306,36 @@ export async function runEvalsForModel(
     let modelImpl: Model | null = null;
     let modelApiKey: string | null = null;
     if (executionMode === "generate") {
-      const apiKeyVar =
-        model.apiKind === "cursor-sdk"
-          ? CURSOR_API_KEY_VAR
-          : OPENROUTER_API_KEY_VAR;
-      const apiKey = process.env[apiKeyVar];
+      const apiKey = process.env[OPENROUTER_API_KEY_VAR];
       if (!apiKey) {
-        console.error(`${apiKeyVar} is not set`);
+        console.error(`${OPENROUTER_API_KEY_VAR} is not set`);
         process.exit(1);
       }
       modelApiKey = apiKey;
     }
 
     if (executionMode === "generate" && modelApiKey) {
-      if (model.apiKind !== "cursor-sdk") {
-        logInfo(
-          `[preflight] Checking endpoint availability for ${model.name}...`,
+      logInfo(
+        `[preflight] Checking endpoint availability for ${model.name}...`,
+      );
+      try {
+        await preflightOpenRouterEndpoint(model, modelApiKey);
+        logInfo(`[preflight] Endpoint is available for ${model.name}`);
+      } catch (error) {
+        const reason = `[infrastructure] [preflight] ${String(error)}`;
+        console.error(
+          `[preflight] Endpoint unavailable for ${model.name}: ${String(error)}`,
         );
-        try {
-          await preflightOpenRouterEndpoint(model, modelApiKey);
-          logInfo(`[preflight] Endpoint is available for ${model.name}`);
-        } catch (error) {
-          const reason = `[infrastructure] [preflight] ${String(error)}`;
-          console.error(
-            `[preflight] Endpoint unavailable for ${model.name}: ${String(error)}`,
-          );
-          if (runId) {
-            await completeRun(runId, {
-              kind: "failed",
-              failureReason: reason,
-              durationMs: Date.now() - runStartTime,
-            });
-            logInfo(`Run failed: ${reason}`);
-            runId = null;
-          }
-          throw new InfrastructureError(String(error));
+        if (runId) {
+          await completeRun(runId, {
+            kind: "failed",
+            failureReason: reason,
+            durationMs: Date.now() - runStartTime,
+          });
+          logInfo(`Run failed: ${reason}`);
+          runId = null;
         }
+        throw new InfrastructureError(String(error));
       }
       modelImpl = new Model(modelApiKey, model);
     }

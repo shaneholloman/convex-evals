@@ -15,7 +15,7 @@ export interface ResolvedModel {
   runnableName: string;
   formattedName: string;
   baseURL: string;
-  apiKind: "chat" | "responses" | "cursor-sdk";
+  apiKind: "chat" | "responses";
 }
 
 export function resolveModelDefaults(name: string): ResolvedModel {
@@ -29,7 +29,6 @@ export function resolveModelDefaults(name: string): ResolvedModel {
 }
 
 export const ALL_MODELS: string[] = [
-  "cursor/composer-2.5",
   "anthropic/claude-sonnet-5",
   "anthropic/claude-opus-5",
   "anthropic/claude-opus-4.8",

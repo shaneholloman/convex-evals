@@ -45,8 +45,6 @@ jobs:
     env:
       ENVIRONMENT: ci
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-      # The runner uses this limit for every provider, including Cursor.
       OPENROUTER_CONCURRENCY: ${{ inputs.max_concurrency }}
 
     steps:
