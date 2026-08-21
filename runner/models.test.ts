@@ -25,8 +25,11 @@ describe("ALL_MODELS", () => {
     expect(new Set(ALL_MODELS).size).toBe(ALL_MODELS.length);
   });
 
+  it("does not include Cursor Composer", () => {
+    expect(ALL_MODELS).not.toContain("cursor/composer-2.5");
+  });
+
   it("contains the current curated models", () => {
-    expect(ALL_MODELS).toContain("cursor/composer-2.5");
     expect(ALL_MODELS).toContain("anthropic/claude-sonnet-5");
     expect(ALL_MODELS).toContain("anthropic/claude-opus-5");
     expect(ALL_MODELS).toContain("anthropic/claude-opus-4.8");

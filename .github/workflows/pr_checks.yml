@@ -31,9 +31,6 @@ jobs:
         working-directory: visualizer
         run: bun install
 
-      - name: Smoke test Cursor SDK import
-        run: bun run smoke:cursor-sdk
-
       - name: Typecheck (runner + evalScores + visualizer)
         run: bun run typecheck
 
