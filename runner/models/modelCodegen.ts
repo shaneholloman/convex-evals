@@ -316,9 +316,7 @@ export function attachWebSearchUsage({
     cachedInputTokens: usage?.cachedInputTokens,
     raw: {
       ...raw,
-      ...(webSearchRequestCount === undefined
-        ? {}
-        : { webSearchRequestCount }),
+      ...(webSearchRequestCount === undefined ? {} : { webSearchRequestCount }),
     },
   };
 }
@@ -359,6 +357,89 @@ async function enrichUsageWithOpenRouterPricingFallback(
 // coupling directly to the ai package.
 export type { LanguageModelUsage };
 
+export type ProviderAttempt = {
+  attempt: number;
+  durationMs: number;
+  outcome:
+    | "success"
+    | "empty_response"
+    | "rate_limit"
+    | "transient_error"
+    | "error";
+  openRouterGenerationId?: string;
+};
+
+export class EmptyProviderResponseError extends Error {
+  readonly openRouterGenerationId?: string;
+
+  constructor(openRouterGenerationId?: string) {
+    super("Provider returned an empty response");
+    this.name = "EmptyProviderResponseError";
+    this.openRouterGenerationId = openRouterGenerationId;
+  }
+}
+
+export function extractOpenRouterGenerationId(response: {
+  id: string;
+  headers?: Record<string, string>;
+}): string | undefined {
+  const headerValue = Object.entries(response.headers ?? {}).find(
+    ([name]) => name.toLowerCase() === "x-generation-id",
+  )?.[1];
+  return headerValue || response.id || undefined;
+}
+
+/**
+ * Keep provider diagnostics inside usage.raw so they travel with the eval
+ * without requiring a schema change. The session groups retries for one eval,
+ * while each OpenRouter generation ID identifies an individual provider call.
+ */
+export function attachProviderObservabilityUsage({
+  usage,
+  sessionId,
+  attempts,
+}: {
+  usage: LanguageModelUsage | undefined;
+  sessionId: string;
+  attempts: ProviderAttempt[];
+}): LanguageModelUsage {
+  const raw =
+    usage?.raw && typeof usage.raw === "object"
+      ? (usage.raw as Record<string, unknown>)
+      : {};
+  const generationIds = attempts.flatMap((attempt) =>
+    attempt.openRouterGenerationId ? [attempt.openRouterGenerationId] : [],
+  );
+
+  return {
+    inputTokens: usage?.inputTokens,
+    inputTokenDetails: usage?.inputTokenDetails ?? {
+      noCacheTokens: undefined,
+      cacheReadTokens: undefined,
+      cacheWriteTokens: undefined,
+    },
+    outputTokens: usage?.outputTokens,
+    outputTokenDetails: usage?.outputTokenDetails ?? {
+      textTokens: undefined,
+      reasoningTokens: undefined,
+    },
+    totalTokens: usage?.totalTokens,
+    reasoningTokens: usage?.reasoningTokens,
+    cachedInputTokens: usage?.cachedInputTokens,
+    raw: {
+      ...raw,
+      requestSessionId: sessionId,
+      ...(generationIds.length > 0
+        ? {
+            openRouterGenerationId: generationIds[generationIds.length - 1],
+            openRouterGenerationIds: generationIds,
+          }
+        : {}),
+      providerAttempts: attempts,
+    },
+  };
+}
+
 function getMaxOutputTokens(model: ResolvedModel): number {
   if (model.name.startsWith("deepseek/")) return 4096;
   if (model.name === "anthropic/claude-3.5-sonnet") return 8192;
@@ -376,10 +457,14 @@ export class Model {
     this.languageModel = createLanguageModel(model, apiKey);
   }
 
-  async generate(prompt: string): Promise<{
+  async generate(
+    prompt: string,
+    request: { sessionId: string },
+  ): Promise<{
     files: Record<string, string>;
     usage?: LanguageModelUsage;
     rawResponse: string;
+    openRouterGenerationId?: string;
   }> {
     const userPrompt = renderPrompt(prompt);
     const useWebSearch = isWebSearchEnabled();
@@ -404,6 +489,11 @@ export class Model {
     const options: Parameters<typeof streamText>[0] = {
       ...baseOptions,
       ...promptOptions,
+      headers: {
+        // OpenRouter accepts this on both Chat Completions and Responses.
+        // It gives provider support one stable correlation ID across retries.
+        "x-session-id": request.sessionId,
+      },
       onChunk: ({ chunk }) => {
         if (timeToFirstTokenMs !== undefined) return;
         if (chunk.type !== "text-delta") return;
@@ -420,10 +510,19 @@ export class Model {
 
     const result = streamText(options);
 
-    const [text, usage] = await Promise.all([
+    const [text, usage, response] = await Promise.all([
       result.text,
       result.usage,
+      result.response,
     ]);
+    const openRouterGenerationId = extractOpenRouterGenerationId(response);
+
+    // Some capacity failures arrive as a successful HTTP stream with no text,
+    // so the AI SDK has nothing to throw. Turn that into a retryable provider
+    // failure instead of sending an empty answer to the scorer.
+    if (text.trim().length === 0) {
+      throw new EmptyProviderResponseError(openRouterGenerationId);
+    }
 
     const usageWithTiming = attachTimeToFirstTokenUsage({
       usage,
@@ -455,6 +554,7 @@ export class Model {
       files: parseMarkdownResponse(text),
       usage: enrichedUsage,
       rawResponse: text,
+      openRouterGenerationId,
     };
   }
 }

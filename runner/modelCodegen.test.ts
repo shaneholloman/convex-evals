@@ -2,12 +2,57 @@ import { describe, it, expect } from "bun:test";
 import type { LanguageModelUsage } from "ai";
 import {
   attachTimeToFirstTokenUsage,
+  attachProviderObservabilityUsage,
   attachWebSearchUsage,
   computeCostFromUsageAndPricing,
   normalizeUsageForScoring,
   parseMarkdownResponse,
+  extractOpenRouterGenerationId,
   renderPrompt,
 } from "./models/modelCodegen.js";
+
+describe("provider observability", () => {
+  it("extracts OpenRouter's generation ID case-insensitively", () => {
+    expect(
+      extractOpenRouterGenerationId({
+        id: "body-id",
+        headers: { "X-Generation-Id": "gen-header" },
+      }),
+    ).toBe("gen-header");
+    expect(extractOpenRouterGenerationId({ id: "gen-body" })).toBe("gen-body");
+  });
+
+  it("stores the session, generation IDs, and retry attempts in usage.raw", () => {
+    const usage = attachProviderObservabilityUsage({
+      usage: undefined,
+      sessionId: "session-123",
+      attempts: [
+        {
+          attempt: 1,
+          durationMs: 400,
+          outcome: "empty_response",
+          openRouterGenerationId: "gen-1",
+        },
+        {
+          attempt: 2,
+          durationMs: 900,
+          outcome: "success",
+          openRouterGenerationId: "gen-2",
+        },
+      ],
+    });
+
+    expect(usage.raw).toMatchObject({
+      requestSessionId: "session-123",
+      openRouterGenerationId: "gen-2",
+      openRouterGenerationIds: ["gen-1", "gen-2"],
+      providerAttempts: [
+        { attempt: 1, outcome: "empty_response" },
+        { attempt: 2, outcome: "success" },
+      ],
+    });
+  });
+});
 
 describe("parseMarkdownResponse", () => {
   it("extracts files from a well-formed markdown response", () => {
@@ -229,7 +274,9 @@ describe("renderPrompt", () => {
   it("does not include analysis instructions", () => {
     const prompt = renderPrompt("test");
     expect(prompt).not.toContain("Before writing any code, analyze the task");
-    expect(prompt).not.toContain("Begin your response with your thought process");
+    expect(prompt).not.toContain(
+      "Begin your response with your thought process",
+    );
     expect(prompt).not.toContain("Summarize the task requirements");
   });
 
@@ -256,7 +303,6 @@ describe("renderPrompt", () => {
     const prompt = renderPrompt("");
     expect(prompt.length).toBeGreaterThan(100);
   });
-
 });
 
 describe("normalizeUsageForScoring", () => {

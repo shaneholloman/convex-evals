@@ -8,7 +8,6 @@ import {
   LEADERBOARD_HISTORY_SIZE,
   isFullyCompletedRun,
   hasCompleteBenchmarkPlan,
-  isRateLimitFailure,
   computeRunScores,
 } from "./scoringUtils.js";
 
@@ -114,12 +113,18 @@ function combineModelScoreRows(
     })),
   )!;
   const duration = combineSummaries(
-    rows.map((row) => ({
-      mean: row.averageRunDurationMs,
-      stdDev: row.averageRunDurationMsErrorBar,
-      count: row.runCount,
-    })),
-  )!;
+    rows.flatMap((row) =>
+      row.averageRunDurationMs <= 0
+        ? []
+        : [
+            {
+              mean: row.averageRunDurationMs,
+              stdDev: row.averageRunDurationMsErrorBar,
+              count: row.runCount,
+            },
+          ],
+    ),
+  );
   const cost = combineSummaries(
     rows.flatMap((row) =>
       row.averageRunCostUsd === null || row.averageRunCostUsdErrorBar === null
@@ -160,8 +165,8 @@ function combineModelScoreRows(
     modelId: latest.modelId,
     totalScore: totalScore.mean,
     totalScoreErrorBar: totalScore.stdDev,
-    averageRunDurationMs: duration.mean,
-    averageRunDurationMsErrorBar: duration.stdDev,
+    averageRunDurationMs: duration?.mean ?? 0,
+    averageRunDurationMsErrorBar: duration?.stdDev ?? 0,
     averageRunCostUsd: cost?.mean ?? null,
     averageRunCostUsdErrorBar: cost?.stdDev ?? null,
     scores,
@@ -1058,7 +1063,9 @@ export const getModelSummary = query({
         .withIndex("by_runId", (q) => q.eq("runId", run._id))
         .collect();
 
-      const scorable = evals.filter((e) => !isRateLimitFailure(e));
+      const scorable = evals.filter(
+        (e) => e.status.kind === "passed" || e.status.kind === "failed",
+      );
       totalEvals += scorable.length;
       passedEvals += scorable.filter((e) => e.status.kind === "passed").length;
     }

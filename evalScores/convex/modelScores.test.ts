@@ -9,7 +9,7 @@
  * - Correct handling of multiple experiments
  * - Null cost when no cost data is present
  * - "Last 5 runs" cap is respected
- * - Infrastructure failures are excluded from scoring
+ * - Provider failures count against scoring but not generation time
  */
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -219,7 +219,7 @@ describe("recomputeModelScores", () => {
 
     const results = await t.query(api.runs.leaderboardScores, {});
     expect(results).toHaveLength(1);
-    expect(results[0].averageRunDurationMs).toBe(25_000);
+    expect(results[0].averageRunDurationMs).toBe(30_000);
   });
 
   it("upserts the row on subsequent runs", async () => {
@@ -293,7 +293,7 @@ describe("recomputeModelScores", () => {
     expect(results[0].totalScore).toBeCloseTo(1.0);
   });
 
-  it("excludes rate-limited evals from scoring", async () => {
+  it("counts exhausted rate-limit failures in scoring", async () => {
     const t = convexTest(schema, modules);
 
     await createCompletedRun(t, {
@@ -305,11 +305,10 @@ describe("recomputeModelScores", () => {
     });
 
     const results = await t.query(api.runs.leaderboardScores, {});
-    // Rate-limited eval excluded: 1/1 = 1.0
-    expect(results[0].totalScore).toBe(1.0);
+    expect(results[0].totalScore).toBe(0.5);
   });
 
-  it("excludes infrastructure eval failures from scoring", async () => {
+  it("counts exhausted infrastructure failures in scoring", async () => {
     const t = convexTest(schema, modules);
 
     await createCompletedRun(t, {
@@ -326,7 +325,33 @@ describe("recomputeModelScores", () => {
     });
 
     const results = await t.query(api.runs.leaderboardScores, {});
-    expect(results[0].totalScore).toBe(1.0);
+    expect(results[0].totalScore).toBe(0.5);
+  });
+
+  it("excludes failed provider requests from average generation time", async () => {
+    const t = convexTest(schema, modules);
+
+    await createCompletedRun(t, {
+      model: "model-a",
+      evals: [
+        {
+          category: "cat1",
+          name: "eval1",
+          passed: true,
+          generationDurationMs: 12_000,
+        },
+        {
+          category: "cat1",
+          name: "eval2",
+          rateLimited: true,
+          passed: false,
+          generationDurationMs: 90_000,
+        },
+      ],
+    });
+
+    const results = await t.query(api.runs.leaderboardScores, {});
+    expect(results[0].averageRunDurationMs).toBe(12_000);
   });
 
   it("stores null cost when no eval has cost data", async () => {
@@ -702,8 +727,8 @@ describe("recomputeModelScores", () => {
       runCount: 2,
       totalScore: 0.5,
       totalScoreErrorBar: 0.5,
-      averageRunDurationMs: 2000,
-      averageRunDurationMsErrorBar: 1000,
+      averageRunDurationMs: 1000,
+      averageRunDurationMsErrorBar: 0,
       averageRunCostUsd: 2,
       averageRunCostUsdErrorBar: 1,
       scores: { cat1: 0.5 },
